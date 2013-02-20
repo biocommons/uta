@@ -7,6 +7,10 @@ struct(
   'ensg_ids' => '@',
   'enst_ids' => '@',
   'nm_ids' => '@',
+  'cmps' => '%',
 );
 
 
+
+
+1;

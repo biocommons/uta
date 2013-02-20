@@ -5,17 +5,18 @@
 use strict;
 use warnings;
 
+
 use Config::IniFiles;
 use Data::Dumper;
-use Digest::SHA qw(sha1_hex);
+use FindBin;
 use Getopt::Long qw(:config gnu_compat);
-use Log::Log4perl qw(:easy);
+use Log::Log4perl;
 
-use Bio::EnsEMBL::Registry;
-use Bio::EnsEMBL::ApiVersion;
+use lib "$FindBin::RealBin/../lib/perl5";
+use UTA::Matchmaker;
 
-sub get_adaptors($$);
 
+my $root = "$FindBin::RealBin/..";
 
 my $opts = {
   #'host' => 'ensembldb.ensembl.org',
@@ -25,9 +26,7 @@ my $opts = {
   'pass' => undef,
 };
 
-
-
-Log::Log4perl->easy_init($INFO);
+Log::Log4perl->init_once( "$root/etc/logging.conf" );
 
 GetOptions($opts,
 		   'host|h=s',
@@ -37,171 +36,12 @@ GetOptions($opts,
 		  )
   || die("$0: you got usage issues, homey\n");
 
-my $registry = 'Bio::EnsEMBL::Registry';
-$registry->load_registry_from_db(
-    -host => $opts->{'host'},
-	-port => $opts->{'port'},
-    -user => $opts->{'user'},
-);
 
-printf("# Connected to %s%s@%s:%s, version %s\n",
-	   $opts->{'user'},
-	   defined $opts->{'pass'} ? $opts->{'pass'} : '',
-	   $opts->{'host'}, $opts->{'port'},
-	   software_version()
-	  );
-
-my $a = get_adaptors( $registry, [
-  [ 'cga'  , 'Human' , 'Core'           , 'Gene'        ],
-  [ 'csa'  , 'Human' , 'Core'           , 'Slice'       ],
-  [ 'cta'  , 'Human' , 'Core'           , 'Transcript'  ],
-  [ 'ofga' , 'Human' , 'OtherFeatures'  , 'Gene'        ],
-  [ 'ofsa' , 'Human' , 'OtherFeatures'  , 'Slice'       ],
-  [ 'ofta' , 'Human' , 'OtherFeatures'  , 'Transcript'  ],
- ]);
-
+my $mm = UTA::Matchmaker->new( %$opts );
 
 foreach my $hgnc (@ARGV) {
-  my @genes = @{ $a->{'cga'}->fetch_all_by_external_name($hgnc) };
-
-  @genes = grep { $_->display_id() =~ m/^ENSG/ } @genes;
-  die("$hgnc: too many gene matches: " . join(',',map {$_->display_id} @genes)) if $#genes > 0;
-
-  my $g = $genes[0];
-
-  my @ensts = @{ $g->get_all_Transcripts() };
-
-  my @nms = @{ $a->{'ofta'}->fetch_all_by_Slice( $g->feature_Slice() ) };
-  @nms = grep { $_->display_id() =~ m/^NM_/ } @nms;
-
-  # bin all nm-enst pairs by cmp code
-  my %cmps = map { $_ => [] } qw(CC CE Ce cC cE ce);
-  my %tx_infos = (
-	( map { $_->display_id() => tx_info($_->transform('chromosome') ) } @nms    ),
-	( map { $_->display_id() => tx_info($_                          ) } @ensts  )
-   );
-
-  for my $t_nm (@nms) {
-	my $ti_nm = $tx_infos{$t_nm->display_id()};
-	for my $t_enst (@ensts) {
-	  my $ti_enst = $tx_infos{$t_enst->display_id()};
-	  my $cmp = ti_cmp($tx_infos{$t_nm->display_id()},
-					   $tx_infos{$t_enst->display_id()});
-	  push( @{$cmps{$cmp} }, [$t_nm,$t_enst] );
-	}}
-
-  #print Dumper(\%cmps);
-
-  my @CE_unique_nms = values( { map { $_->[0]->display_id() => $_->[0] } @{$cmps{'CE'}} } );
-  my @CC_unique_nms = values( { map { $_->[0]->display_id() => $_->[0] } @{$cmps{'CC'}} } );
-
-  print( join( "\t",
-			   $hgnc, $g->display_id(),
-			   $#ensts+1, $#nms+1,
-			   $#CE_unique_nms+1, join(',', map { $_->display_id() } @CE_unique_nms),
-			   $#CC_unique_nms+1, join(',', map { $_->display_id() } @CC_unique_nms),
-			  ),
-		 "\n");
-
-
-  next;
-
-  ## # fetch all NMs on chromosom from otherfeatures
-  ## my @tx = @{ $ofta->fetch_all_by_Slice($chr_slice) };
-  ## my @rs_tx = grep { $_->display_id() =~ m/^NM_\d+\.\d+$/ } @tx;
-  ## printf("# %d transcripts on $chr\n",$#rs_tx+1);
-  ## 
-  ## # loop over NMs
-  ## foreach my $rs_tx (@rs_tx) {
-  ##   # get info from RefSeq transcript
-  ##   my $rs_ti = tx_info($rs_tx);
-  ## 
-  ##   # find all Ensembl transcripts overlapping the refseq feature
-  ##   my @e_tx = @{ $ta->fetch_all_by_Slice($rs_tx->feature_Slice()) };
-  ## 	foreach my $e_tx (@e_tx) {
-  ## 	  my $e_ti = tx_info($e_tx->transform('chromosome'));
-  ## 	  my $cmp  = ti_cmp($rs_ti,$e_ti);
-  ## 	  #die( Dumper($cmp, $rs_ti, $e_ti) ) if $cmp eq 'CE';
-  ## 	  printf("%s\t%s\t%s\n",
-  ## 			 $rs_tx->display_id(),
-  ## 			 $e_tx->display_id(),
-  ## 			 $cmp);
-  ## 	}
-  ## }
+  my $gti = $mm->match_by_gene($hgnc);
+  die Dumper($gti);
 }
 
 exit(0);
-
-############################################################################
-
-BEGIN{
-package GeneTranscriptInfo;
-
-
-
-
-}
-
-
-sub ti_cmp {
-  my ($ti1,$ti2) = @_;
-  my $c = $ti1->{'cds-sha1'}   eq $ti2->{'cds-sha1'}   ? 'C' : 'c';
-  my $e = $ti1->{'exons'}  	   eq $ti2->{'exons'}      ? 'E' :
-	$ti1->{'cds-exons'}  	   eq $ti2->{'cds-exons'}  ? 'C' : 'e';
-  return "$c$e";
-}
-
-sub tx_info {
-  my $t = shift;
-  my $cds_start = $t->coding_region_start();
-  my $cds_end = $t->coding_region_end();
-  my $cds_seq = $t->translateable_seq();
-  my @exons_se = map {[$_->start(),$_->end()]} @{ $t->get_all_Exons() };
-  my @cds_exons_se = map {[$_->start(),$_->end()]} @{ $t->get_all_translateable_Exons() };
-  my $pseudo = $cds_seq eq '';				# cds empty => pseudogene
-  # or do I want seq_region_name since we're should be at the chromosome level?
-  my ($chr) = $t->slice()->name() =~ m/chromosome:GRCh37:([^:]+):/;
-  my $g = $t->get_Gene();
-  my $gene_name = $g->display_id();
-  my @dblinks = @{$g->get_all_DBLinks()};   # perhaps empty
-  my $ccds   = join(',',uniq(grep {/^CCDS/} map {$_->display_id()} @dblinks));
-  my $refseq = join(',',uniq(grep {/^NM/}   map {$_->display_id()} @dblinks));
-  return {
-    'id' => $t->display_id(),
-    'chr' => $chr,
-    'gene' => $gene_name,
-    'pseudo' => $pseudo,
-    'ccds' => $ccds,
-    'refseq' => $refseq,
-    'strand' => $t->strand(),
-    'cds-start' => $t->coding_region_start(),
-    'cds-end' => $t->coding_region_end(),
-    'cds-length' => length($cds_seq),
-    'n-exons' => $#exons_se+1,
-    'exons' => se_str(@exons_se),
-    'cds-exons' => se_str(@cds_exons_se),
-    'cds-sha1' => sha1_hex($cds_seq),
-  };
-}
-
-
-sub uniq {
-  return keys %{{ map {$_=>1} @_ }};
-}
-
-sub se_str {
-  join(',', map {sprintf('[%s,%s]', $_->[0]||'?', $_->[1]||'?')} @_);
-}
-
-sub get_adaptors($$) {
-  my ($reg,$aspecs) = @_;
-  my %a;
-  foreach my $aspec (@$aspecs) {
-	my ($id,$sp,$db,$obj) = @$aspec;
-	my $a = $reg->get_adaptor( $sp, $db, $obj );
-	defined $a || die("Couldn't get adaptor for ( $sp, $db, $obj ): failed");
-	$a{$id} = $a;
-  }
-  return \%a;
-}
-
