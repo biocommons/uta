@@ -89,16 +89,13 @@ sub match_by_gene($$) {
    );
 }
 
-## 
-##   return $gti;
-## }
 
 
 ############################################################################
 
 sub ti_cmp {
   my ($ti1,$ti2) = @_;
-  my $c = $ti1->{'cds-md5'}   eq $ti2->{'cds-md5'}   ? 'C' : 'c';
+  my $c = $ti1->{'cds-md5'}    eq $ti2->{'cds-md5'}   ? 'C' : 'c';
   my $e = $ti1->{'exons'}  	   eq $ti2->{'exons'}      ? 'E' :
 	$ti1->{'cds-exons'}  	   eq $ti2->{'cds-exons'}  ? 'C' : 'e';
   return "$c$e";
@@ -136,7 +133,6 @@ sub tx_info {
     'cds-md5' => md5_hex($cds_seq),
   };
 }
-
 
 sub uniq {
   return keys %{{ map {$_=>1} @_ }};
