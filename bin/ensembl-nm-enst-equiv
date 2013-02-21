@@ -1,0 +1,59 @@
+#!/usr/bin/env perl
+# compare-transcripts -- compare refseq and enst transcripts in Ensembl
+#
+
+use strict;
+use warnings;
+
+
+use Config::IniFiles;
+use Data::Dumper;
+use FindBin;
+use Getopt::Long qw(:config gnu_compat);
+use Log::Log4perl;
+
+use lib "$FindBin::RealBin/../lib/perl5";
+use UTA::Matchmaker;
+
+
+my $root = "$FindBin::RealBin/..";
+
+my $opts = {
+  #'host' => 'ensembldb.ensembl.org',
+  'host' => 'ensembl-70.locusdev.net',
+  'port' => 5306,
+  'user' => 'anonymous',
+  'pass' => undef,
+  'cache-filename' => '/tmp/matchmaker.cache',
+};
+
+Log::Log4perl->init_once( "$root/etc/logging.conf" );
+
+GetOptions($opts,
+		   'host|h=s',
+		   'port|p=s',
+		   'user|u=s',
+		   'config|C=s',
+		  )
+  || die("$0: you got usage issues, homey\n");
+
+
+my $mm = UTA::Matchmaker->new( %$opts );
+
+foreach my $hgnc (@ARGV) {
+  my $gti = $mm->match_by_gene($hgnc);
+
+  my @CE = map {"$_->[0]($_->[1])"} @{$gti->cmps()->{'CE'}};
+  my @CC = map {"$_->[0]($_->[1])"} @{$gti->cmps()->{'CC'}};
+  print( join("\t", 
+			  $gti->hgnc(),
+			  #scalar(@{$gti->ensg_ids()})	, join(',', @{$gti->ensg_ids()} ),
+			  #scalar(@{$gti->enst_ids()})	, join(',', @{$gti->enst_ids()} ),
+			  #scalar(@{$gti->nm_ids()})	, join(',', @{$gti->nm_ids()}   ),
+			  scalar(@CE)				, join(',', @CE              ),
+			  scalar(@CC)				, join(',', @CC              ),
+			 ),
+		 "\n");
+}
+
+exit(0);
