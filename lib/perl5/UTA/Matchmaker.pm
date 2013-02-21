@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use BerkeleyDB;
+use Data::Dumper;
 use Digest::MD5 qw(md5_hex);
 use Log::Log4perl;
 use MLDBM qw(BerkeleyDB::Btree FreezeThaw);
@@ -104,18 +105,26 @@ sub match_by_gene($$) {
   $self->connect();							# NOP if already connected
 
   # there may be multiple ENSGs per HGNC name (e.g., GALT)
-  my @genes = @{ $self->{'cga'}->fetch_all_by_external_name($hgnc) };
+  my @genes = @{ $self->{'cga'}->fetch_all_by_external_name($hgnc,'HGNC') };
   @genes = grep { $_->display_id() =~ m/^ENSG/ } @genes;
+  @genes = grep { _gene_hgnc_match($_,$hgnc) } @genes;
+  if (0 and $#genes > 0) {
+	$self->{logger}->warn(
+	  sprintf('%s: found multiple genes (%s)', $hgnc,
+			  join(',', map {$_->display_id} @genes)));
+  }
+  my @ensg_ids = map { $_->display_id() } @genes;
 
   # fetch union of ENSTs for genes
-  my @ensg_ids = map { $_->display_id() } @genes;
   my @ensts = map { @{ $_->get_all_Transcripts() } } @genes;
   @ensts = grep { $_->display_id() =~ m/^ENST/ } @ensts;
+  @ensts = grep { $_->translation() } @ensts;
   @ensts = values({ map { $_->display_id() => $_ } @ensts }); # uniquify by id
 
   # fetch union of NMs for genes
   my @nms = map { @{ $self->{'ofta'}->fetch_all_by_Slice( $_->feature_Slice() ) } } @genes;
   @nms = grep { $_->display_id() =~ m/^NM_/ } @nms;
+  @nms = grep { $_->translation() } @nms;
   @nms = values({ map { $_->display_id() => $_ } @nms }); # uniquify by id
 
   my %nm_tis   = map { $_->display_id() => tx_info($_->transform('chromosome')) } @nms;
@@ -191,6 +200,12 @@ sub uniq {
 
 sub se_str {
   join(',', map {sprintf('[%s,%s]', $_->[0]||'?', $_->[1]||'?')} @_);
+}
+
+sub _gene_hgnc_match($$) {
+  my ($g,$hgnc) = @_;
+  my $x = $g->display_xref;
+  return ($x->dbname eq 'HGNC' and $x->display_id eq $hgnc);
 }
 
 
