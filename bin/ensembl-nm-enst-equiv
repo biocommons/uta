@@ -24,6 +24,7 @@ my $opts = {
   'port' => 5306,
   'user' => 'anonymous',
   'pass' => undef,
+  'cache-filename' => '/tmp/matchmaker.cache',
 };
 
 Log::Log4perl->init_once( "$root/etc/logging.conf" );

@@ -3,8 +3,10 @@ package UTA::Matchmaker;
 use strict;
 use warnings;
 
-use Log::Log4perl;
+use BerkeleyDB;
 use Digest::MD5 qw(md5_hex);
+use Log::Log4perl;
+use MLDBM qw(BerkeleyDB::Btree FreezeThaw);
 
 use Bio::EnsEMBL::Registry;
 use Bio::EnsEMBL::ApiVersion;
@@ -15,14 +17,16 @@ use UTA::GeneTranscriptInfo;
 sub new {
   my $class = shift;
   my $self = bless({@_}, $class);
+
   $self->{'logger'} = Log::Log4perl->get_logger();
+
+  # TODO: connect lazily on first lookup
   $self->{'registry'} = 'Bio::EnsEMBL::Registry';
   $self->{'registry'}->load_registry_from_db(
     -host => $self->{'host'},
 	-port => $self->{'port'},
     -user => $self->{'user'},
    );
-
   $self->{logger}->info(sprintf("connected to %s%s@%s:%s, version %s\n",
 								$self->{'user'},
 								defined $self->{'pass'} ? $self->{'pass'} : '',
@@ -40,6 +44,20 @@ sub new {
     $self->add_adaptor(@$aspec);
   }
 
+  if (exists $self->{'cache-filename'}) {
+	tie( %{$self->{'cache'}},
+		 'MLDBM',
+		 -Filename => $self->{'cache-filename'},
+		 -Flags => DB_CREATE
+		)
+	  or die(sprintf("Couldn't open db %s: $!", $self->{'cache-filename'}));
+
+	$self->{logger}->info(
+	  sprintf('using cache (%s); %d existing keys',
+			  $self->{'cache-filename'},
+			  scalar keys %{$self->{cache}}));
+  }
+
   return $self;
 }
 
@@ -51,9 +69,33 @@ sub add_adaptor($%) {
   $self->{$id} = $a;
 }
 
+
+sub fetch_cached($$) {
+  my ($self,$hgnc) = @_;
+  if (defined $self->{cache}
+		and exists $self->{cache}->{$hgnc}) {
+	$self->{logger}->debug(sprintf('retrieved %s from cache',$hgnc));
+	return $self->{cache}->{$hgnc};
+  }
+  return undef;
+}
+
+sub store_cached($$$) {
+  my ($self,$hgnc,$gti) = @_;
+  if (defined $self->{cache}) {
+	$self->{cache}->{$hgnc} = $gti;
+	$self->{logger}->debug(sprintf('cached %s',$hgnc));
+  }
+  return;
+}
+
+
 sub match_by_gene($$) {
   my $self = shift;
   my $hgnc = shift;
+
+  my $gti = $self->fetch_cached($hgnc);
+  return $gti if defined $gti;
 
   # there may be multiple ENSGs per HGNC name (e.g., GALT)
   my @genes = @{ $self->{'cga'}->fetch_all_by_external_name($hgnc) };
@@ -80,13 +122,16 @@ sub match_by_gene($$) {
 	}
   }
 
-  return UTA::GeneTranscriptInfo->new(
+  $gti = UTA::GeneTranscriptInfo->new(
 	'hgnc' => $hgnc,
 	'ensg_ids' => \@ensg_ids,
 	'enst_ids' => [map {$_->display_id()} @ensts],
 	'nm_ids' => [map {$_->display_id()} @nms],
 	'cmps' => \%cmps,
    );
+
+  $self->store_cached($hgnc,$gti);			# NOP if cache NA
+  return $gti;
 }
 
 
