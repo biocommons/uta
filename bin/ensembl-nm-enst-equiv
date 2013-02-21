@@ -41,7 +41,12 @@ GetOptions($opts,
 my $mm = UTA::Matchmaker->new( %$opts );
 
 foreach my $hgnc (@ARGV) {
-  my $gti = $mm->match_by_gene($hgnc);
+  my $gti;
+  eval '$gti = $mm->match_by_gene($hgnc)';
+  if (not defined $gti) {
+	print(STDERR "$hgnc failed: $@");
+	next;
+  }
 
   my @CE = map {"$_->[0]($_->[1])"} @{$gti->cmps()->{'CE'}};
   my @CC = map {"$_->[0]($_->[1])"} @{$gti->cmps()->{'CC'}};
