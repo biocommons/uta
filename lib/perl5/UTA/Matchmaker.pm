@@ -20,7 +20,27 @@ sub new {
 
   $self->{'logger'} = Log::Log4perl->get_logger();
 
-  # TODO: connect lazily on first lookup
+  if (exists $self->{'cache-filename'}) {
+	tie( %{$self->{'cache'}},
+		 'MLDBM',
+		 -Filename => $self->{'cache-filename'},
+		 -Flags => DB_CREATE
+		)
+	  or die(sprintf("Couldn't open db %s: $!", $self->{'cache-filename'}));
+
+	$self->{logger}->info(
+	  sprintf('using cache (%s); %d existing keys',
+			  $self->{'cache-filename'},
+			  scalar keys %{$self->{cache}}));
+  }
+
+  return $self;
+}
+
+sub connect($) {
+  my $self = shift;
+  return if exists $self->{'registry'};
+
   $self->{'registry'} = 'Bio::EnsEMBL::Registry';
   $self->{'registry'}->load_registry_from_db(
     -host => $self->{'host'},
@@ -43,22 +63,6 @@ sub new {
    ) {
     $self->add_adaptor(@$aspec);
   }
-
-  if (exists $self->{'cache-filename'}) {
-	tie( %{$self->{'cache'}},
-		 'MLDBM',
-		 -Filename => $self->{'cache-filename'},
-		 -Flags => DB_CREATE
-		)
-	  or die(sprintf("Couldn't open db %s: $!", $self->{'cache-filename'}));
-
-	$self->{logger}->info(
-	  sprintf('using cache (%s); %d existing keys',
-			  $self->{'cache-filename'},
-			  scalar keys %{$self->{cache}}));
-  }
-
-  return $self;
 }
 
 sub add_adaptor($%) {
@@ -96,6 +100,8 @@ sub match_by_gene($$) {
 
   my $gti = $self->fetch_cached($hgnc);
   return $gti if defined $gti;
+
+  $self->connect();							# NOP if already connected
 
   # there may be multiple ENSGs per HGNC name (e.g., GALT)
   my @genes = @{ $self->{'cga'}->fetch_all_by_external_name($hgnc) };
