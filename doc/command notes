@@ -1,0 +1,16 @@
+begin;
+delete from transcript T where not exists (select * from transcript_exon TE where TE.ac=T.ac);
+delete from transcript T where not exists (select * from genomic_exon GE where GE.ac=T.ac);
+delete from gene G where not exists (select * from transcript T where T.gene=G.gene);
+-- commit;
+
+
+
+begin;
+
+insert into transcripts.gene 
+select * from transcripts_20120821.gene G1 where not exists (select * from transcripts.gene G2 where G2.gene=G1.gene);
+
+insert into transcripts.transcript 
+select * from transcripts_20120821.transcript T1 where not exists (select * from transcripts.transcript T2 where T2.ac=T1.ac);
+
