@@ -88,3 +88,15 @@ FROM gene G
 JOIN transcript T on G.gene=T.gene
 LEFT JOIN transcript_summary_v TS on T.ac=TS.ac
 LEFT JOIN nm_enst_equivs_v NEE on split_part(T.ac,'.',1)=split_part(NEE.ac,'.',1);
+
+
+
+CREATE OR REPLACE VIEW transcript_cds_exon_v AS
+SELECT transcript_exon_id,TE.ac,
+	   greatest(TE.start_i,T.cds_start_i) as start_i,
+	   least(TE.end_i,T.cds_end_i) as end_i,
+	   ord, name
+FROM transcript_exon TE
+JOIN transcript T ON TE.ac=T.ac
+WHERE TE.start_i <= T.cds_end_i AND TE.end_i >= T.cds_start_i
+;
