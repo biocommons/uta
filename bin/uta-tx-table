@@ -10,7 +10,7 @@ import locus.utils.genomeutils as gu
 import IPython
 
 conn = psycopg2.connect("dbname=reece")
-sel_sql = '''SELECT * FROM transcript_table_mv WHERE enst_equivs IS NOT NULL AND n_t_exons > 0'''
+sel_sql = '''SELECT * FROM transcript_table_v WHERE enst_equivs IS NOT NULL AND n_t_exons > 0'''
 
 def ex_op_pos(cigar):
     '''Add positions to operations in cigar string, treating deletes as

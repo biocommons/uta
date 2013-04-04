@@ -36,8 +36,6 @@ def load_transcript(tx_db,hgnc,g,nm):
 
     g_exons = g.grch37p10_product_exons(nm)
 
-    tx_db.connection().execute('SET CONSTRAINTS all DEFERRED')
-
     logging.debug('loading %s, gene %s, %d g/%d tx exons' % (
             nm, hgnc, len(g_exons), len(t_exons)))
 
@@ -50,13 +48,11 @@ def load_transcript(tx_db,hgnc,g,nm):
     # genomic exons
     for i,se in enumerate(g_exons):
         tx_db.genomic_exon.insert(ac = nm, start_i = se[0], end_i = se[1], ord = i+1)
-    tx_db.commit()
 
     # transcript exons
     for i,sen in enumerate(zip(t_exons,t_ex_names)):
         tx_db.transcript_exon.insert(ac = nm,  name = sen[1], ord = i+1,
                                      start_i = sen[0][0], end_i = sen[0][1])
-    tx_db.commit()
 
     return (len(g_exons), len(t_exons))
 
@@ -66,7 +62,7 @@ if __name__ == '__main__':
     def _fetch_gene(hgnc):
         return lnh.efetch_gene_by_hgnc_name(hgnc)
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # database schema defined in db.sql
     # 'postgresql:///' == local socket connection
@@ -81,24 +77,31 @@ if __name__ == '__main__':
     for hgnc in sys.argv[1:]:
         tx_db.rollback()
 
-        g = locus.ncbi.gene.Gene( _fetch_gene(hgnc) )
+        try:
+            g = locus.ncbi.gene.Gene( _fetch_gene(hgnc) )
+            if hgnc in existing_genes:
+                logging.info('gene %s: already in database' % hgnc)
+            else:
+                m = g.grch37p10_mapping()
+                tx_db.gene.insert(
+                    gene = hgnc,
+                    chr = m['chr'], strand = _strand_as_signed_int(m['strand']),
+                    start_i = m['start_i'], end_i = m['end_i'], maploc = g.maploc,
+                    descr = g.desc, summary = g.summary
+                    )
+                tx_db.commit()
+                logging.info('gene %s: loaded' % hgnc)
+        except (LocusNCBIError) as e:
+            tx_db.rollback()
+            logging.warn('gene %s: %s' % (hgnc,str(e)))
+            continue
 
-        if hgnc in existing_genes:
-            logging.debug('Gene %s already in database' % hgnc)
-            pass
-        else:
-            # load gene
-            m = g.grch37p10_mapping()
-            tx_db.gene.insert(
-                gene = hgnc,
-                chr = m['chr'], strand = _strand_as_signed_int(m['strand']),
-                start_i = m['start_i'], end_i = m['end_i'], maploc = g.maploc,
-                descr = g.desc, summary = g.summary
-                )
-            tx_db.commit()
-            logging.info('loaded gene %s' % hgnc)
+        try:
+            products = g.grch37p10_products()
+        except (LocusNCBIError) as e:
+            logging.warn('gene %s: %s' % (hgnc,str(e)))
+            continue
 
-        products = g.grch37p10_products()
         nms = set([ p for p in products if p.startswith('NM_') ])
         if len(nms) == 0:
             logging.warn("Gene {gene} has no NMs ({np} total)".format(
@@ -107,20 +110,23 @@ if __name__ == '__main__':
         for nm in nms:
             if nm in existing_nm_gene:
                 if hgnc != existing_nm_gene[nm]:
-                    logging.error(nm + ": associated with %s in db, ncbi says %s" % (existing_nm_gene[nm],hgnc))
+                    tx_db.connection().execute('update transcript set gene=%s where ac=%s',hgnc,nm)
+                    logging.error(nm + ": associated with %s in db, ncbi says %s; updated" % (existing_nm_gene[nm],hgnc))
                 else:
                     logging.debug(nm + ": transcript already in database; skipping")
                 continue
             try:
+                tx_db.connection().execute('SET CONSTRAINTS all DEFERRED')
                 n_g_exons, n_t_exons = load_transcript(tx_db,hgnc,g,nm)
                 tx_db.commit()
-                logging.info("loaded gene %s, transcript %s with %d genomic/%d transcript exons " %
+                logging.info("Gene %s, transcript %s: loaded %d genomic/%d transcript exons" %
                              (hgnc, nm, n_g_exons, n_t_exons) )
             except (AssertionError,LocusNCBIError,sqlalchemy.exc.SQLAlchemyError) as e:
                 tx_db.rollback()
-                logging.warn('Gene ' + hgnc + ': ' + str(e))
+                logging.warn('Gene %s, transcript %s: %s' % (hgnc,nm,str(e)))
 
         loaded_nms = set([ r[0] for r in 
                           tx_db.connection().execute('select ac from transcript where gene=%s',hgnc).fetchall() ])
         missing_nms = nms - loaded_nms
-        assert len(missing_nms) == 0, 'missing '+','.join(sorted(missing_nms))
+        if len(missing_nms) > 0:
+            logging.error('gene %s: missing %s' % (hgnc, ','.join(sorted(missing_nms))))
