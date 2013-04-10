@@ -100,3 +100,17 @@ FROM transcript_exon TE
 JOIN transcript T ON TE.ac=T.ac
 WHERE TE.start_i <= T.cds_end_i AND TE.end_i >= T.cds_start_i
 ;
+
+
+
+CREATE OR REPLACE VIEW genome_transcript_exon_pairs as
+SELECT GE.genomic_exon_id,TE.transcript_exon_id,
+  G.gene,T.ac,
+  G.chr,G.strand,GE.start_i as g_start_i,GE.end_i as g_end_i,
+  TE.start_i as t_start_i,TE.end_i as t_end_i,
+  TE.ord, TE.name
+FROM gene G
+LEFT JOIN transcript T on G.gene=T.gene
+LEFT JOIN genomic_exon GE on T.ac=GE.ac
+LEFT JOIN transcript_exon TE on GE.ac=TE.ac and GE.ord=TE.ord
+;
