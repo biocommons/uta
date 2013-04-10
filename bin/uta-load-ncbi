@@ -38,12 +38,12 @@ def _load_gene(db,g):
     """load given locus.ncbi.gene.Gene"""
     m = g.grch37p10_mapping()
     db.gene.insert(
-        gene = hgnc,
+        gene = g.hgnc,
         chr = m['chr'], strand = _strand_as_signed_int(m['strand']),
         start_i = m['start_i'], end_i = m['end_i'], maploc = g.maploc,
         descr = g.desc, summary = g.summary
         )
-    logging.info('gene %s: loaded' % hgnc)
+    logging.info('gene %s: loaded' % g.hgnc)
 
 def _load_transcript(db,t,g):
     """load given locus.ncbi.refseq.RefSeq"""
@@ -100,6 +100,7 @@ def load_transcript_and_gene(db,nm,g=None):
         raise RuntimeError('%s is associated with %d genes (%s)' % (nm,len(t.gene),', '.join(t.gene)))
     if g is None:
         g = locus.ncbi.gene.Gene( _fetch_gene(t.gene[0]) )
+    _load_gene(db, g)
     _load_transcript(db, t, g)
     return (t.acv, g.hgnc)
 
