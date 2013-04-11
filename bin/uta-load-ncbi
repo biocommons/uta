@@ -10,6 +10,9 @@ import filecache
 import logging
 
 import IPython
+
+import psycopg2
+import psycopg2.extras
 import sqlalchemy.exc
 import sqlsoup
 
@@ -24,75 +27,103 @@ def _fetch_gene(hgnc):
     """return raw XML for NCBI gene record, cached"""
     return lnh.efetch_gene_by_hgnc_name(hgnc)
 
+
 @filecache.filecache(filecache.MONTH)
 def _fetch_refseq(nm):
     """return raw XML for NCBI refseq record, cached"""
     return lnh.efetch_nuccore_by_ac(nm)
+
 
 def _strand_as_signed_int(plus_minus):
     if plus_minus == 'plus': return 1
     if plus_minus == 'minus': return -1
     raise RuntimeError('strand "'+plus_minus+'" not understood')
 
-def _load_gene(db,g):
+
+def _gen_upsert_stmts(tbl,cols):
+    """return update/insert pair.  Assumes cols[0] is primary key"""
+    upd = 'UPDATE %s SET %s WHERE %s=%%(%s)s' % (
+        tbl,
+        ','.join([ '%s=%%(%s)s' % (c,c) for c in cols ]),
+        cols[0], cols[0]
+        )
+    ins = 'INSERT INTO %s (%s) VALUES (%s)' % (
+        tbl,
+        ','.join(cols),
+        ','.join([ '%('+c+')s' for c in cols ])
+        )
+    return upd,ins
+
+
+def _upsert(cur,tbl,cols,data):
+    upd,ins = _gen_upsert_stmts(tbl,cols)
+    cur.execute(upd, data)
+    if cur.rowcount == 0:
+        cur.execute(ins, data)
+    return
+
+
+def _upsert_gene(cur,g):
     """load given locus.ncbi.gene.Gene"""
     m = g.grch37p10_mapping()
-    db.gene.insert(
-        gene = g.hgnc,
-        chr = m['chr'], strand = _strand_as_signed_int(m['strand']),
-        start_i = m['start_i'], end_i = m['end_i'], maploc = g.maploc,
-        descr = g.desc, summary = g.summary
-        )
-    logging.info('gene %s: loaded' % g.hgnc)
+    data = {
+        'gene': g.hgnc,
+        'chr': m['chr'],
+        'strand': _strand_as_signed_int(m['strand']),
+        'start_i': m['start_i'],
+        'end_i': m['end_i'],
+        'maploc': g.maploc,
+        'descr': g.desc,
+        'summary': g.summary,
+        }
+    _upsert(cur, 'gene', ['gene','chr','strand','start_i','end_i','maploc','descr','summary'], data)
+    logging.debug('gene %s: inserted/updated' % g.hgnc)
+    return
 
-def _load_transcript(db,t,g):
+
+def _upsert_transcript(cur,t,g):
     """load given locus.ncbi.refseq.RefSeq"""
     g_exons = g.grch37p10_product_exons(t.acv)
 
     t_exons = t.exons
     t_ex_names = t.exon_names
-    assert len(t_exons) == len(t_ex_names), nm+": exon <s,e> list and exon name list have different numbers of elements"
-
-    # TBD: figure out how to defer constraints with sqlsoup/sqlalchemy
-    # didn't work: db.connection().execute('SET CONSTRAINTS all DEFERRED')
-    # (and appropriate constraints are marked deferrable)
+    assert len(t_exons) == len(t_ex_names), t.acv+": exon <s,e> list and exon name list have different numbers of elements"
 
     # load transcript
     cds_start_i,cds_end_i = t.cds_start_end_i
-    db.transcript.insert( ac = nm, gene = g.hgnc, cds_start_i = cds_start_i,
-                             cds_end_i = cds_end_i, seq = t.seq )
+    _upsert(cur, 'transcript', ['ac', 'gene', 'cds_start_i', 'cds_end_i', 'seq'], {
+            'ac': t.acv,
+            'gene': g.hgnc,
+            'cds_start_i': cds_start_i,
+            'cds_end_i': cds_end_i,
+            'seq': t.seq
+            })
 
     # genomic exons
     for i,se in enumerate(g_exons):
-        db.genomic_exon.insert(ac = nm, start_i = se[0], end_i = se[1], ord = i+1)
+        _upsert(cur,'genomic_exon', ['ac', 'start_i', 'end_i', 'ord'], {
+                'ac': t.acv,
+                'start_i': se[0],
+                'end_i': se[1],
+                'ord': i+1
+                })
 
     # transcript exons
     for i,sen in enumerate(zip(t_exons,t_ex_names)):
         # sen = [[start,end],name]
-        db.transcript_exon.insert(ac = nm,  name = sen[1], ord = i+1,
-                                     start_i = sen[0][0], end_i = sen[0][1])
+        _upsert(cur, 'transcript_exon', ['ac', 'name', 'ord', 'start_i', 'end_i'], {
+                'ac': t.acv, 
+                'name': sen[1], 
+                'ord': i+1,
+                'start_i': sen[0][0],
+                'end_i': sen[0][1]
+                })
 
-    return (len(g_exons), len(t_exons))
+    logging.debug('upserted transcript %s' % t.acv)
+    return
 
 
-def load_gene_and_transcripts(db,hgnc):
-    """load gene and all transcripts for it"""
-    g =_fetch_gene(hgnc)
-    _load_gene(db,g)
-
-    products = g.grch37p10_products()
-    nms = set([ p for p in products if p.startswith('NM_') ])
-    if len(nms) == 0:
-        logging.warn("Gene {gene} has no NMs ({np} total)".format(
-                gene = hgnc, np = len(products)))
-
-    for nm in nms:
-        _load_transcript(db, _fetch_transcript(nm), g)
-
-    logging.debug('loading Gene %s, %d tx: %s' % (hgnc, len(nms), ', '.join(sorted(nms)))) 
-        
-    
-def load_transcript_and_gene(db,nm,g=None):
+def load_transcript_and_gene(conn,nm,g=None):
     """load transcript and, if needed, relevant gene"""
     t = locus.ncbi.refseq.RefSeq( _fetch_refseq(nm) )
     assert nm == t.acv, "asked for transcript %s, got %s" % (nm,t.acv)
@@ -100,28 +131,70 @@ def load_transcript_and_gene(db,nm,g=None):
         raise RuntimeError('%s is associated with %d genes (%s)' % (nm,len(t.gene),', '.join(t.gene)))
     if g is None:
         g = locus.ncbi.gene.Gene( _fetch_gene(t.gene[0]) )
-    _load_gene(db, g)
-    _load_transcript(db, t, g)
+    
+    cur = conn.cursor()
+    cur.execute('SET CONSTRAINTS ALL DEFERRED')
+
+    try:
+        _upsert_gene(cur, g)
+        conn.commit()
+    except psycopg2.IntegrityError as e:
+        if 'duplicate key' not in str(e):
+            raise
+        conn.rollback()
+        pass
+
+    try:
+        _upsert_transcript(cur, t, g)
+        conn.commit()
+        logging.info( 'committed transcript %s, gene %s' % (t.acv,g.hgnc) )
+    except psycopg2.IntegrityError as e:
+        if 'duplicate key' not in str(e):
+            raise
+        conn.rollback()
+    except (AssertionError,LocusNCBIError) as e:
+        conn.rollback()
+        logging.warn('Transcript %s: %s' % (nm,str(e)))
+
     return (t.acv, g.hgnc)
 
 
+def load_gene_and_transcripts(conn,hgnc):
+    """load gene and all transcripts for it"""
+    cur = conn.cursor()
+    cur.execute('SET CONSTRAINTS ALL DEFERRED')
+
+    g = locus.ncbi.gene.Gene( _fetch_gene(hgnc) )
+    products = g.grch37p10_products()
+    nms = set([ p for p in products if p.startswith('NM_') ])
+    if len(nms) == 0:
+        logging.warn("Gene {gene} has no NMs ({np} total)".format(
+                gene = hgnc, np = len(products)))
+
+    try:
+        _upsert_gene(cur,g)
+        for nm in nms:
+            t = locus.ncbi.refseq.RefSeq( _fetch_refseq(nm) )
+            _upsert_transcript(cur, t, g)
+        conn.commit()
+    except (AssertionError,LocusNCBIError) as e:
+        conn.rollback()
+        logging.warn('Gene %s: %s' % (hgnc,str(e)))
+
+    logging.info('upserted gene %s w/%d transcripts (%s)' % (hgnc, len(nms), ', '.join(sorted(nms)))) 
+        
+    
 ############################################################################
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     # database schema defined in db.sql
     # 'postgresql:///' == local socket connection
-    db = sqlsoup.SQLSoup('postgresql:///reece')
-    conn = db.connection()
+    conn = psycopg2.connect(database='reece')
 
-    for nm in sys.argv[1:]:
-        trans = conn.begin()
-        try:
-            _,hgnc = load_transcript_and_gene(db,nm)
-            trans.commit()
-            logging.info( 'loaded transcript %s, gene %s' % (nm,hgnc) )
-        except (AssertionError,LocusNCBIError,sqlalchemy.exc.SQLAlchemyError) as e:
-            trans.rollback()
-            logging.warn('Transcript %s: %s' % (nm,str(e)))
+    for hgnc in sys.argv[1:]:
+        load_gene_and_transcripts(conn,hgnc)
+    #for nm in sys.argv[1:]:
+    #    load_transcript_and_gene(conn,nm)
         
