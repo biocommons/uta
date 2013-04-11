@@ -1,15 +1,3 @@
-CREATE OR REPLACE VIEW exon_alignments_v AS
-SELECT G.gene,T.ac,TE.ord,TE.name,
-       TE.end_i-TE.start_i as t_ex_len,GE.end_i-GE.start_i as g_ex_len,GA.cigar
-FROM gene G
-JOIN transcript T on G.gene=T.gene
-JOIN genomic_exon GE on T.ac=GE.ac
-JOIN transcript_exon TE on T.ac=TE.ac
-JOIN gtx_alignment GA on (GE.genomic_exon_id=GA.genomic_exon_id 
-                         and TE.transcript_exon_id=GA.transcript_exon_id)
-ORDER BY gene,ac,ord;
-
-
 CREATE OR REPLACE VIEW genomic_exons_flat_v AS
 SELECT ac,COUNT(ord) as n_exons,
        array_to_string(array_agg(start_i order by ord),',') as starts_i,
@@ -35,6 +23,18 @@ JOIN transcript_exon TE on GE.ac=TE.ac
 JOIN gtx_alignment GA on (GE.genomic_exon_id=GA.genomic_exon_id 
                       and TE.transcript_exon_id=GA.transcript_exon_id)
 GROUP BY T.ac;
+
+
+CREATE OR REPLACE VIEW exon_alignments_v AS
+SELECT G.gene,T.ac,TE.ord,TE.name,
+       TE.end_i-TE.start_i as t_ex_len,GE.end_i-GE.start_i as g_ex_len,GA.cigar
+FROM gene G
+JOIN transcript T on G.gene=T.gene
+JOIN genomic_exon GE on T.ac=GE.ac
+JOIN transcript_exon TE on T.ac=TE.ac
+JOIN gtx_alignment GA on (GE.genomic_exon_id=GA.genomic_exon_id 
+                         and TE.transcript_exon_id=GA.transcript_exon_id)
+ORDER BY gene,ac,ord;
 
 
 CREATE OR REPLACE VIEW transcript_discrepancies_v AS
