@@ -13,8 +13,6 @@ import IPython
 
 import psycopg2
 import psycopg2.extras
-import sqlalchemy.exc
-import sqlsoup
 
 from locus.core.exceptions import LocusNCBIError
 import locus.ncbi.gene
@@ -40,23 +38,27 @@ def _strand_as_signed_int(plus_minus):
     raise RuntimeError('strand "'+plus_minus+'" not understood')
 
 
-def _gen_upsert_stmts(tbl,cols):
+def _gen_upsert_stmts(tbl,pks,cols):
     """return update/insert pair.  Assumes cols[0] is primary key"""
-    upd = 'UPDATE %s SET %s WHERE %s=%%(%s)s' % (
+    upd = 'UPDATE %s SET %s WHERE %s' % (
         tbl,
-        ','.join([ '%s=%%(%s)s' % (c,c) for c in cols ]),
-        cols[0], cols[0]
+            ','.join([ '%s=%%(%s)s' % (c,c) for c in cols ]),
+        ' AND '.join([ '%s=%%(%s)s' % (c,c) for c in pks  ]),
         )
     ins = 'INSERT INTO %s (%s) VALUES (%s)' % (
         tbl,
-        ','.join(cols),
-        ','.join([ '%('+c+')s' for c in cols ])
+        ','.join(pks+cols),
+        ','.join([ '%('+c+')s' for c in pks+cols ])
         )
     return upd,ins
 
 
 def _upsert(cur,tbl,cols,data):
-    upd,ins = _gen_upsert_stmts(tbl,cols)
+    if isinstance(cols[0],list):
+        tbl_pks, tbl_cols = cols[0], cols[1:]
+    else:
+        tbl_pks, tbl_cols = cols[0:1], cols[1:]
+    upd,ins = _gen_upsert_stmts(tbl,tbl_pks,tbl_cols)
     cur.execute(upd, data)
     if cur.rowcount == 0:
         cur.execute(ins, data)
@@ -101,7 +103,7 @@ def _upsert_transcript(cur,t,g):
 
     # genomic exons
     for i,se in enumerate(g_exons):
-        _upsert(cur,'genomic_exon', ['ac', 'start_i', 'end_i', 'ord'], {
+        _upsert(cur,'genomic_exon', [['ac','ord'], 'start_i', 'end_i'], {
                 'ac': t.acv,
                 'start_i': se[0],
                 'end_i': se[1],
@@ -111,7 +113,7 @@ def _upsert_transcript(cur,t,g):
     # transcript exons
     for i,sen in enumerate(zip(t_exons,t_ex_names)):
         # sen = [[start,end],name]
-        _upsert(cur, 'transcript_exon', ['ac', 'name', 'ord', 'start_i', 'end_i'], {
+        _upsert(cur, 'transcript_exon', [ ['ac', 'ord'], 'name', 'start_i', 'end_i'], {
                 'ac': t.acv, 
                 'name': sen[1], 
                 'ord': i+1,
@@ -186,6 +188,9 @@ def load_gene_and_transcripts(conn,hgnc):
     
 ############################################################################
 
+class DummyException(Exception):
+    pass
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
@@ -194,7 +199,10 @@ if __name__ == '__main__':
     conn = psycopg2.connect(database='reece')
 
     for hgnc in sys.argv[1:]:
-        load_gene_and_transcripts(conn,hgnc)
+        try:
+            load_gene_and_transcripts(conn,hgnc)
+        except DummyException as e:
+            logging.error('Gene '+hgnc+': '+str(e))
     #for nm in sys.argv[1:]:
     #    load_transcript_and_gene(conn,nm)
         

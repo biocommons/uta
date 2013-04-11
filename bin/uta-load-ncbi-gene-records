@@ -111,7 +111,8 @@ if __name__ == '__main__':
             if nm in existing_nm_gene:
                 if hgnc != existing_nm_gene[nm]:
                     tx_db.connection().execute('update transcript set gene=%s where ac=%s',hgnc,nm)
-                    logging.error(nm + ": associated with %s in db, ncbi says %s; updated" % (existing_nm_gene[nm],hgnc))
+                    tx_db.commit()
+                    logging.warn(nm + ": associated with %s in db, ncbi says %s; updated" % (existing_nm_gene[nm],hgnc))
                 else:
                     logging.debug(nm + ": transcript already in database; skipping")
                 continue
