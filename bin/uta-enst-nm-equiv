@@ -19,8 +19,8 @@ use UTA::Matchmaker;
 my $root = "$FindBin::RealBin/..";
 
 my $opts = {
-  'host' => 'ensembldb.ensembl.org',
-  #'host' => 'ensembl-70.locusdev.net',
+  #'host' => 'ensembldb.ensembl.org',
+  'host' => '10.10.2.15', #'ensembl-71.locusdev.net',
   'port' => 5306,
   'user' => 'anonymous',
   'pass' => undef,

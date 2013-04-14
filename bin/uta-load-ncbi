@@ -201,7 +201,7 @@ if __name__ == '__main__':
     for hgnc in sys.argv[1:]:
         try:
             load_gene_and_transcripts(conn,hgnc)
-        except DummyException as e:
+        except Exception as e:
             logging.error('Gene '+hgnc+': '+str(e))
     #for nm in sys.argv[1:]:
     #    load_transcript_and_gene(conn,nm)
