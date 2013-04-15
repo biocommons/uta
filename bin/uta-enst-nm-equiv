@@ -62,17 +62,10 @@ foreach my $hgnc (@genes) {
 	next;
   }
 
-  my @CE = map {"$_->[0]($_->[1])"} @{$gti->cmps()->{'CE'}};
-  my @CC = map {"$_->[0]($_->[1])"} @{$gti->cmps()->{'CC'}};
-  print( join("\t", 
-			  $gti->hgnc(),
-			  #scalar(@{$gti->ensg_ids()})	, join(',', @{$gti->ensg_ids()} ),
-			  #scalar(@{$gti->enst_ids()})	, join(',', @{$gti->enst_ids()} ),
-			  #scalar(@{$gti->nm_ids()})	, join(',', @{$gti->nm_ids()}   ),
-			  scalar(@CE)				, join(',', @CE              ),
-			  scalar(@CC)				, join(',', @CC              ),
-			 ),
-		 "\n");
+  foreach my $rec (	(map {[@$_,'CE']} @{$gti->cmps()->{'CE'}}),
+					(map {[@$_,'CC']} @{$gti->cmps()->{'CC'}}) ) {
+	print( join("\t",$gti->hgnc(),@$rec), "\n" );
+  }
 }
 
 exit(0);
