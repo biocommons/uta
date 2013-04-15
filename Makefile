@@ -28,5 +28,4 @@ setup: install-perl-modules
 
 
 install-perl-modules:
-	mkdir -p ve/lib/perl5
-	./sbin/perl-module-install --install-dir ve/lib/perl5   Log::Log4perl
+	./sbin/perl-module-install --install-base ve   Log::Log4perl
