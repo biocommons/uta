@@ -5,14 +5,15 @@
 use strict;
 use warnings;
 
-
 use Config::IniFiles;
 use Data::Dumper;
 use FindBin;
 use Getopt::Long qw(:config gnu_compat);
+
+use local::lib "$FindBin::RealBin/../ve";
 use Log::Log4perl;
 
-use lib "$FindBin::RealBin/../lib/perl5";
+use local::lib "$FindBin::RealBin/..";
 use UTA::Matchmaker;
 
 
@@ -20,7 +21,7 @@ my $root = "$FindBin::RealBin/..";
 
 my $opts = {
   #'host' => 'ensembldb.ensembl.org',
-  'host' => '10.10.2.15', #'ensembl-71.locusdev.net',
+  'host' => 'ensembl-71.locusdev.net',
   'port' => 5306,
   'user' => 'anonymous',
   'pass' => undef,
