@@ -119,13 +119,15 @@ sub match_by_gene($$) {
   my @ensts = map { @{ $_->get_all_Transcripts() } } @genes;
   @ensts = grep { $_->display_id() =~ m/^ENST/ } @ensts;
   @ensts = grep { $_->translation() } @ensts;
-  @ensts = values({ map { $_->display_id() => $_ } @ensts }); # uniquify by id
+  my %ensts = map { $_->display_id() => $_ } @ensts;
+  @ensts = values(%ensts);					# uniquify by id
 
   # fetch union of NMs for genes
   my @nms = map { @{ $self->{'ofta'}->fetch_all_by_Slice( $_->feature_Slice() ) } } @genes;
   @nms = grep { $_->display_id() =~ m/^NM_/ } @nms;
   @nms = grep { $_->translation() } @nms;
-  @nms = values({ map { $_->display_id() => $_ } @nms }); # uniquify by id
+  my %nms = map { $_->display_id() => $_ } @nms;
+  @nms = values(%nms);						# uniquify by id
 
   my %nm_tis   = map { $_->display_id() => tx_info($_->transform('chromosome')) } @nms;
   my %enst_tis = map { $_->display_id() => tx_info($_                         ) } @ensts;
