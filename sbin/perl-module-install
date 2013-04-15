@@ -17,6 +17,7 @@ exists $opts{'install-base-dir'}
   or die("$0: --install-base-dir is required");
 
 eval 'use local::lib $opts{"install-base-dir"}';
+die($@) if ($@);
 
 for my $pkg (@ARGV) {
   CPAN::install($pkg);
