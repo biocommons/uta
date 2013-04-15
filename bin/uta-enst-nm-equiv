@@ -26,6 +26,7 @@ my $opts = {
   'user' => 'anonymous',
   'pass' => undef,
   'cache-filename' => $ENV{'HOME'} . '/tmp/matchmaker.cache',
+  'database' => 'homo_sapiens_core_71_37',
 };
 
 Log::Log4perl->init_once( "$root/etc/logging.conf" );
@@ -39,9 +40,21 @@ GetOptions($opts,
   || die("$0: you got usage issues, homey\n");
 
 
+sub fetch_genes($) {
+  my $opts = shift;
+  eval 'use DBI';
+  my $dsn = "DBI:mysql:host=$opts->{host};port=$opts->{port};database=$opts->{database}";
+  my $dbh = DBI->connect($dsn, $opts->{user}, $opts->{pass});
+  my @res = map {$_->[0]} @{ $dbh->selectall_arrayref(
+	'select display_label from xref where external_db_id=1100') };
+  return sort(@res);
+}
+
+my @genes = $#ARGV == -1 ? fetch_genes($opts) : @ARGV;
+
 my $mm = UTA::Matchmaker->new( %$opts );
 
-foreach my $hgnc (@ARGV) {
+foreach my $hgnc (@genes) {
   my $gti;
   eval '$gti = $mm->match_by_gene($hgnc)';
   if (not defined $gti) {
