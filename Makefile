@@ -21,3 +21,12 @@ load-nm-enst-equiv: load-%: %
 	| egrep -v 'ENST00000390321|ENST00000443402|ENST00000526893' \
 	| sort -u \
 	| psql -c '\copy nm_enst_equiv from STDIN' >$@
+
+
+
+setup: install-perl-modules
+
+
+install-perl-modules:
+	mkdir -p ve/lib/perl5
+	./sbin/perl-module-install --install-dir ve/lib/perl5   Log::Log4perl

@@ -1,0 +1,24 @@
+#!/usr/bin/perl
+# perl-module-install -- install module at specified directory
+
+use strict;
+use warnings;
+
+use CPAN;
+use Getopt::Long qw(:config gnu_getopt);
+
+my %opts = ();
+
+GetOptions( \%opts,
+			'install-dir|d=s' )
+  or die("$!");
+
+exists $opts{'install-dir'}
+  or die("$0: --install-dir is required");
+
+eval 'use local::lib $opts{"install-dir"}';
+
+for my $pkg (@ARGV) {
+  CPAN::install($pkg);
+}
+
