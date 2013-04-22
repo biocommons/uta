@@ -114,3 +114,12 @@ LEFT JOIN transcript T on G.gene=T.gene
 LEFT JOIN genomic_exon GE on T.ac=GE.ac
 LEFT JOIN transcript_exon TE on GE.ac=TE.ac and GE.ord=TE.ord
 ;
+
+
+CREATE OR REPLACE VIEW exon_n_mismatch AS
+SELECT TEF.ac,TEF.n_exons as n_t_exons,GEF.n_exons as n_g_exons,
+	   TEF.lengths as t_lengths,GEF.lengths as g_lengths
+FROM transcript_exons_flat_v TEF
+JOIN genomic_exons_flat_v GEF ON TEF.ac=GEF.ac
+WHERE TEF.n_exons!=GEF.n_exons
+;

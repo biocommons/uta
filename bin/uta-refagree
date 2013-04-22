@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+
+from __future__ import division, print_function, unicode_literals
+
+__doc__ = """generates data for agreement/discordance between refseq
+transcripts and reference genome"""
+__version__ = '0.0.0'
+
+import logging, os, pprint, psycopg2, sys, time
+
+############################################################################
+
+logging.basicConfig(level=logging.DEBUG)
+
+def strand_sign(strand_val):
+    if strand_val is None: return None
+    if strand_val == 1: return '+'
+    if strand_val == -1: return '-'
+    raise Exception('invalid strand value (expected None, +1, or -1)')
+
+def header(src=None):
+    return """# transcript-genome agreement
+# run on: {ts}
+# accession source: {src}
+# Records consist of a summary line followed by 0 or more mismatch lines:
+#
+# * <ac> \\t <locus> \\t <strand><maploc> \\t <#exons> \\t <n_ex_eq?> \\t <ex_len_eq?> \\t <n_mismatches> \\t <mismatch_summary>
+# \\t <chr> \\t <gstart> \\t <gend> \\t <hgvsc_pos> \\t <exon#> \\t <exon_start> \\t <exon_end> \\t <type> \\t <g_allele> \\t <t_allele> \\t <seqviewer_url>
+#
+# \\t == tab
+# Lines starting with # are comments. Empty lines are ignored.
+# All coordinates and indexes are human (1-based, inclusive).
+# Mismatch key (a la cigar): X=sub, I=ins, D=del
+# This would have been XML if humans weren't involved. Darn humans. 
+""".format(src=src,ts=time.strftime('%F %TZ',time.gmtime()))
+
+
+## EXAMPLE:
+## * NM_000022.2   ADA -20q13.12   12  True    True    1   1X/0I/0D
+##     20  43264927    43264927    NM_000022.2:c.36    3   60  60  X   C   T   http://1.usa.gov/KXlHan
+## * NM_000035.3   ALDOB   -9q21.3-q22.2   9   True    True    0   0X/0I/0D
+
+
+if __name__ == '__main__':
+    assembly_name = 'GRCh37'
+
+    # acv = ACessions.Version (e.g., NM_0123.4)
+    if len(sys.argv) > 1:
+        # from command line
+        acvs = sys.argv[1:]
+        src = 'command line (%d accessions)' % len(acvs)
+    else:
+        # from database
+        acvs = ltr.fetch_acvs(conn)
+        src = 'cache (%d accessions)' % len(acvs)
+
+    print( header(src) )
+    for acv in acvs:
+        try:
+            g_info = ltr.fetch_gene_info_for_transcript(conn,acv,assembly_name)
+            t_info = ltr.fetch_transcript_info(conn,acv)
+            if t_info is None:
+                raise RuntimeError('transcript not found (not in cache?)')
+
+            if acv in manual_g_exons:
+                g_exons = manual_g_exons[acv]
+            else:
+                g_exons = ltr.fetch_genome_exon_coords(conn,acv,assembly_name)
+            t_exons = ltr.fetch_transcript_exon_coords(conn,acv)
+
+            g_ex_lens = [ e['end_i']-e['start_i'] for e in g_exons ]
+            t_ex_lens = [ e['end_i']-e['start_i'] for e in t_exons ]
+
+            exon_map = ltr.make_exon_mapping( g_exons, t_exons )
+
+            mismatches = ltr.build_exon_disrepancies( gene_info=g_info, transcript_info=t_info, exon_map=exon_map )
+            subs = [ mm for mm in mismatches if mm.type == 'X' ]
+            ins =  [ mm for mm in mismatches if mm.type == 'I' ]
+            dels = [ mm for mm in mismatches if mm.type == 'D' ]
+
+            print('* ' + '\t'.join([acv, g_info['locus'],
+                                    strand_sign(g_info['strand']) + g_info['maploc'],
+                                    str(len(t_exons)),                 # num transcript exons
+                                    str(len(g_exons) == len(t_exons)), # num exons match
+                                    str(g_ex_lens == t_ex_lens),       # exon lengths match
+                                    str(len(mismatches)),              # num contiguous mismatches
+                                    '%dX/%dI/%dD' % (len(subs),len(ins),len(dels)),
+                                    ]))
+            for mm in mismatches:
+                print('\t'+'\t'.join([ mm.chr, 
+                                       str(mm.g_start_i+1), str(mm.g_end_i),
+                                       mm.hgvsc_pos,
+                                       str(mm.exon+1), str(mm.e_start_i+1), str(mm.e_end_i),
+                                       mm.type, mm.g_aseq, mm.t_aseq,
+                                       mm.seqviewer_url,
+                                       ]))
+
+        except RuntimeError as e:
+            print('#' + acv + ': ' + e.message)
+            logging.warn(acv + ': ' + e.message)
+
