@@ -1,8 +1,10 @@
-The goal: A list of RefSeq transcripts with 1) sequence descrepancies with
-GRCh37, and 2) equivalence with Ensembl transcripts (ENSTs).
+* Goal
+Build a single database of transcripts that provides:
+1) sequence descrepancies with GRCh37, and
+2) equivalence with Ensembl transcripts (ENSTs, and perhaps LRGs later)
 
 * Requirements
-- use NCBI RefSeq alignemnts specifically (as opposed to those at UCSC, which use BLAT)
+- use NCBI RefSeq alignements specifically (ie., not UCSC, which use BLAT)
 - include historical transcripts
 - support transcripts that have significant exon structure anomalies
   between the transcript and gene records
@@ -11,25 +13,17 @@ GRCh37, and 2) equivalence with Ensembl transcripts (ENSTs).
 * Design
 The requirement to include historical transcripts (i.e., no longer
 available at NCBI) means that we need persistent storage.  Relying on NCBI
-Eutilities exclusively won't work.
+E-Utilities exclusively won't work.
 
 The requirement to allow significant anomalies means that we can't use the
-current Locus transcript schema.
-
-So, that leaves:
-- designing a new schema
-- populating it with data from the Locus transcript database
-- updating it with data from NCBI
-- computing alignments for refagree status
-- computing equivalent ENSTs
-
-The current code requires postgresql and psycopg2, but porting to other
-dbs should be easy. 
+current transcript schema.
 
 
 * Output
-One row per RefSeq transcript, current or obsolete.
+** refagree
 
+** tx-table
+One row per RefSeq transcript, current or obsolete.
 Columns:
 gene -- HGNC gene name
 maploc -- [strand][NCBI maploc], eg -3q21.3

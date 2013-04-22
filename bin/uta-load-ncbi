@@ -198,11 +198,15 @@ if __name__ == '__main__':
     # 'postgresql:///' == local socket connection
     conn = psycopg2.connect(database='reece')
 
-    for hgnc in sys.argv[1:]:
+#    for hgnc in sys.argv[1:]:
+#        try:
+#            load_gene_and_transcripts(conn,hgnc)
+#        except Exception as e:
+#            logging.error('Gene '+hgnc+': '+str(e))
+
+    for nm in sys.argv[1:]:
         try:
-            load_gene_and_transcripts(conn,hgnc)
+            load_transcript_and_gene(conn,nm)
         except Exception as e:
-            logging.error('Gene '+hgnc+': '+str(e))
-    #for nm in sys.argv[1:]:
-    #    load_transcript_and_gene(conn,nm)
+            logging.error('Transcript '+nm+': '+str(e))
         
