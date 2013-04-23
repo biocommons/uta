@@ -6,11 +6,15 @@ __doc__ = """generates data for agreement/discordance between refseq
 transcripts and reference genome"""
 __version__ = '0.0.0'
 
-import logging, os, pprint, psycopg2, sys, time
+import logging, os, pprint, sys, time
+import psycopg2, psycopg2.extras
+import locus.tools.refagree as ltr
+
+import IPython
+
+assembly_name = 'GRCh37'
 
 ############################################################################
-
-logging.basicConfig(level=logging.DEBUG)
 
 def strand_sign(strand_val):
     if strand_val is None: return None
@@ -41,8 +45,58 @@ def header(src=None):
 ## * NM_000035.3   ALDOB   -9q21.3-q22.2   9   True    True    0   0X/0I/0D
 
 
+def fetch_acvs(cur):
+    cur = conn.cursor()
+    cur.execute('select ac from transcripts.transcript')
+    return [ e[0] for e in cur ]
+
+def fetch_gene_info_for_transcript(cur,acv):
+    sql = """
+select distinct G.chr,G.strand,G.start_i,G.end_i,G.gene,G.maploc,G.descr,G.summary
+from gene G
+join transcript T on G.gene=T.gene
+where T.ac = %(acv)s
+"""
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute(sql, {'acv': acv})
+    assert cur.rowcount == 1, 'fetched %d genes for %s' % (cur.rowcount,acv)
+    return cur.fetchone()
+
+def fetch_transcript_info(cur,acv):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    sql = """SELECT ac, cds_start_i, cds_end_i, seq FROM transcripts.transcript T WHERE T.ac=%(acv)s"""
+    cur.execute( sql, {'acv': acv} )
+    assert cur.rowcount <= 1, 'fetched %d transripts for %s' % (cur.rowcount,acv)
+    return dict(cur.fetchone()) if cur.rowcount == 1 else None
+
+def fetch_transcript_exon_coords(conn,acv):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    sql = """SELECT E.start_i,E.end_i FROM transcript_exon E WHERE E.ac=%(acv)s ORDER BY start_i;"""
+    cur.execute( sql, {'acv': acv} )
+    return cur.fetchall()
+
+def fetch_genome_exon_coords(conn,acv,assy=None):
+    """return genome interbase coordinates of exons in transcript order; start<end regardless of strand"""
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    sql = """
+SELECT G.gene,T.ac,G.chr,G.strand,GE.start_i,GE.end_i
+FROM transcript T
+JOIN genomic_exon GE on T.ac=GE.ac
+JOIN gene G ON T.gene=G.gene
+WHERE T.ac=%(acv)s
+ORDER BY ac,start_i
+"""
+    cur.execute( sql, {'acv': acv} )
+    return cur.fetchall()
+
+
+
+
+
 if __name__ == '__main__':
-    assembly_name = 'GRCh37'
+    logging.basicConfig(level=logging.DEBUG)
+
+    conn = psycopg2.connect(database='reece')
 
     # acv = ACessions.Version (e.g., NM_0123.4)
     if len(sys.argv) > 1:
@@ -51,34 +105,36 @@ if __name__ == '__main__':
         src = 'command line (%d accessions)' % len(acvs)
     else:
         # from database
-        acvs = ltr.fetch_acvs(conn)
-        src = 'cache (%d accessions)' % len(acvs)
+        acvs = fetch_acvs(conn)
+        acvs = acvs[:5]         # debugging
+        src = 'database (%d accessions)' % len(acvs)
 
     print( header(src) )
+
     for acv in acvs:
         try:
-            g_info = ltr.fetch_gene_info_for_transcript(conn,acv,assembly_name)
-            t_info = ltr.fetch_transcript_info(conn,acv)
+            g_info = fetch_gene_info_for_transcript(conn,acv)
+            t_info = fetch_transcript_info(conn,acv)
             if t_info is None:
                 raise RuntimeError('transcript not found (not in cache?)')
 
-            if acv in manual_g_exons:
-                g_exons = manual_g_exons[acv]
-            else:
-                g_exons = ltr.fetch_genome_exon_coords(conn,acv,assembly_name)
-            t_exons = ltr.fetch_transcript_exon_coords(conn,acv)
+            g_exons = fetch_genome_exon_coords(conn,acv,assembly_name)
+            t_exons = fetch_transcript_exon_coords(conn,acv)
 
             g_ex_lens = [ e['end_i']-e['start_i'] for e in g_exons ]
             t_ex_lens = [ e['end_i']-e['start_i'] for e in t_exons ]
 
             exon_map = ltr.make_exon_mapping( g_exons, t_exons )
 
-            mismatches = ltr.build_exon_disrepancies( gene_info=g_info, transcript_info=t_info, exon_map=exon_map )
+            mismatches = []
+            #mismatches = ltr.build_exon_disrepancies( gene_info=g_info,
+            #                                          transcript_info=t_info,
+            #                                          exon_map=exon_map )
             subs = [ mm for mm in mismatches if mm.type == 'X' ]
             ins =  [ mm for mm in mismatches if mm.type == 'I' ]
             dels = [ mm for mm in mismatches if mm.type == 'D' ]
 
-            print('* ' + '\t'.join([acv, g_info['locus'],
+            print('* ' + '\t'.join([acv, g_info['gene'],
                                     strand_sign(g_info['strand']) + g_info['maploc'],
                                     str(len(t_exons)),                 # num transcript exons
                                     str(len(g_exons) == len(t_exons)), # num exons match
