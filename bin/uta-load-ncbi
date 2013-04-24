@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+# N.B. This script currently returns
+# Exception TypeError: "'NoneType' object is not callable" in  ignored
+# four times on every exectution. This results from a bug in python
+# described here:
+# http://re.runcode.us/q/really-weird-issue-with-shelve-python
+
+
 from __future__ import division, print_function, unicode_literals
 
 __doc__ = """load NCBI genes and/or transcripts into UTA"""
@@ -8,8 +15,6 @@ __version__ = '1.0.0'
 import os, sys
 import filecache
 import logging
-
-import IPython
 
 import psycopg2
 import psycopg2.extras
@@ -198,15 +203,11 @@ if __name__ == '__main__':
     # 'postgresql:///' == local socket connection
     conn = psycopg2.connect(database='reece')
 
-#    for hgnc in sys.argv[1:]:
-#        try:
-#            load_gene_and_transcripts(conn,hgnc)
-#        except Exception as e:
-#            logging.error('Gene '+hgnc+': '+str(e))
-
-    for nm in sys.argv[1:]:
+    for arg in sys.argv[1:]:
         try:
-            load_transcript_and_gene(conn,nm)
-        except Exception as e:
-            logging.error('Transcript '+nm+': '+str(e))
-        
+            if arg.startswith('NM_'):
+                load_transcript_and_gene(conn,arg)
+            else:
+                load_gene_and_transcripts(conn,arg)
+        except DummyException as e:
+            logging.error('Transcript/Gene '+arg+': '+str(e))
