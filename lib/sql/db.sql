@@ -62,7 +62,11 @@ create table gtx_alignment (
        transcript_exon_id int not null 
             references transcript_exon(transcript_exon_id) on update cascade on delete cascade,
        cigar text not null,
-       seqviewer_url text
+       seqviewer_url text,
+	   g_seq_a text,
+	   t_seq_a text,
+
+	   constraint aligned_seq_eq_length check (length(g_seq_a) = length(t_seq_a))
 );
 
 create table nm_enst_equiv (
