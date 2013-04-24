@@ -56,9 +56,9 @@ SELECT G.gene,T.ac,TEF.n_exons as n_t_exons,GEF.n_exons as n_g_exons,
        CONCAT(
         CASE WHEN TEF.n_exons=GEF.n_exons THEN 'N' ELSE 'n' END,
         CASE WHEN TEF.lengths=GEF.lengths THEN 'L' ELSE 'l' END,
-        CASE WHEN TC.cigars ~ 'X' 		  THEN 'X' ELSE 'x' END,
-        CASE WHEN TC.cigars ~ 'D' 		  THEN 'D' ELSE 'd' END,
-        CASE WHEN TC.cigars ~ 'I' 		  THEN 'I' ELSE 'i' END
+        CASE WHEN TC.cigars !~ 'X' 		  THEN 'x' ELSE 'X' END,
+        CASE WHEN TC.cigars !~ 'D' 		  THEN 'd' ELSE 'D' END,
+        CASE WHEN TC.cigars !~ 'I' 		  THEN 'i' ELSE 'I' END
         ) as status,
         TEF.lengths,TC.cigars,TD.seqviewer_urls
 FROM transcript T
