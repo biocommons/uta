@@ -12,8 +12,6 @@ import locus.tools.refagree as ltr
 
 import IPython
 
-assembly_name = 'GRCh37'
-
 ############################################################################
 
 def strand_sign(strand_val):
@@ -60,11 +58,16 @@ where T.ac = %(acv)s
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(sql, {'acv': acv})
     assert cur.rowcount == 1, 'fetched %d genes for %s' % (cur.rowcount,acv)
-    return cur.fetchone()
+    return dict(cur.fetchone())
 
 def fetch_transcript_info(cur,acv):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    sql = """SELECT ac, cds_start_i, cds_end_i, seq FROM transcripts.transcript T WHERE T.ac=%(acv)s"""
+    sql = """
+SELECT ac, chr, cds_start_i, cds_end_i, exists (select * from transcript_exon TE join gtx_alignment GA on TE.transcript_exon_id=GA.transcript_exon_id and GA.cigar~'[XDI]' where TE.ac=T.ac) as mismatches_p, seq
+FROM transcripts.transcript T
+JOIN gene G on T.gene=G.gene
+WHERE T.ac=%(acv)s
+"""
     cur.execute( sql, {'acv': acv} )
     assert cur.rowcount <= 1, 'fetched %d transripts for %s' % (cur.rowcount,acv)
     return dict(cur.fetchone()) if cur.rowcount == 1 else None
@@ -84,7 +87,7 @@ FROM transcript T
 JOIN genomic_exon GE on T.ac=GE.ac
 JOIN gene G ON T.gene=G.gene
 WHERE T.ac=%(acv)s
-ORDER BY ac,start_i
+ORDER BY T.ac,GE.start_i*G.strand
 """
     cur.execute( sql, {'acv': acv} )
     return cur.fetchall()
@@ -106,8 +109,10 @@ if __name__ == '__main__':
     else:
         # from database
         acvs = fetch_acvs(conn)
-        acvs = acvs[:5]         # debugging
+        acvs = acvs[:100]         # debugging
         src = 'database (%d accessions)' % len(acvs)
+
+    acvs.sort()
 
     print( header(src) )
 
@@ -115,10 +120,15 @@ if __name__ == '__main__':
         try:
             g_info = fetch_gene_info_for_transcript(conn,acv)
             t_info = fetch_transcript_info(conn,acv)
+            g_info['chromosome'] = g_info['chr']
+            t_info['chromosome'] = t_info['chr']
+            t_info['accession'] = t_info['ac']
+            t_info['sequence'] = t_info['seq']
+
             if t_info is None:
                 raise RuntimeError('transcript not found (not in cache?)')
 
-            g_exons = fetch_genome_exon_coords(conn,acv,assembly_name)
+            g_exons = fetch_genome_exon_coords(conn,acv)
             t_exons = fetch_transcript_exon_coords(conn,acv)
 
             g_ex_lens = [ e['end_i']-e['start_i'] for e in g_exons ]
@@ -127,9 +137,13 @@ if __name__ == '__main__':
             exon_map = ltr.make_exon_mapping( g_exons, t_exons )
 
             mismatches = []
-            #mismatches = ltr.build_exon_disrepancies( gene_info=g_info,
-            #                                          transcript_info=t_info,
-            #                                          exon_map=exon_map )
+            if t_info['mismatches_p']:
+                # align only if transcripts database says there are mismatches
+                logging.info('aligning exons for '+acv)
+                mismatches = ltr.build_exon_disrepancies( gene_info=g_info,
+                                                          transcript_info=t_info,
+                                                          exon_map=exon_map )
+
             subs = [ mm for mm in mismatches if mm.type == 'X' ]
             ins =  [ mm for mm in mismatches if mm.type == 'I' ]
             dels = [ mm for mm in mismatches if mm.type == 'D' ]
