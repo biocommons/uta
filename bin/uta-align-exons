@@ -24,7 +24,10 @@ WHERE NOT EXISTS (SELECT * FROM gtx_alignment GA
                   GA.transcript_exon_id=TE.transcript_exon_id)
 '''
 
-ins_sql = 'INSERT INTO gtx_alignment (genomic_exon_id,transcript_exon_id,cigar,seqviewer_url) VALUES (%s,%s,%s,%s)'
+ins_sql = """
+INSERT INTO gtx_alignment (genomic_exon_id,transcript_exon_id,cigar,seqviewer_url,g_seq_a,t_seq_a)
+VALUES (%(genomic_exon_id)s,%(transcript_exon_id)s,%(cigar)s,%(seqviewer_url)s,%(g_seq_a)s,%(t_seq_a)s)
+"""
 
 sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 ins_cur = conn.cursor()
@@ -43,9 +46,15 @@ for row in sel_cur:
         else gu.url_for_slice(row['chr'],row['g_start_i']-25,row['g_end_i']+25)
 
     cigar = gu.alignment_cigar_string(g_seq_a,t_seq_a)
-    ins_cur.execute(ins_sql, 
-                    (row['genomic_exon_id'],row['transcript_exon_id'],
-                     cigar,url) )
+    ins_cur.execute(ins_sql, {
+            'genomic_exon_id': row['genomic_exon_id'],
+            'transcript_exon_id': row['transcript_exon_id'],
+            'cigar': cigar,
+            'seqviewer_url': url,
+            'g_seq_a': g_seq_a,
+            't_seq_a': t_seq_a,
+            })
     conn.commit()
+
     logging.info("gene %s, transcript %s, exon %s, %s" % (
             row['gene'],row['ac'],row['name'],cigar))
