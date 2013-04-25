@@ -20,14 +20,15 @@ use UTA::Matchmaker;
 my $root = "$FindBin::RealBin/..";
 
 my $opts = {
-  #'host' => 'ensembldb.ensembl.org',
-  'host' => 'ensembl-71.locusdev.net',
+  'database' => 'homo_sapiens_core_70_37',
+  'host' => 'ensembl-70.locusdev.net',
   'port' => 5306,
   'user' => 'anonymous',
   'pass' => undef,
-  'cache-filename' => $ENV{'HOME'} . '/tmp/matchmaker.cache',
-  'database' => 'homo_sapiens_core_71_37',
 };
+$opts->{'cache-filename'} = join('/', $ENV{'HOME'}, 'tmp',
+								 'matchmaker-'.$opts->{'database'}.'.cache');
+
 
 Log::Log4perl->init_once( "$root/etc/logging.conf" );
 
