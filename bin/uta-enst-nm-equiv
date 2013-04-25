@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
-# compare-transcripts -- compare refseq and enst transcripts in Ensembl
+#
+# compare-transcripts -- compare refseq and enst transcript exon
+# structures and CDS as stored in Ensembl
 #
 
 use strict;
@@ -51,11 +53,15 @@ sub fetch_genes($) {
   return sort(@res);
 }
 
-my @genes = $#ARGV == -1 ? fetch_genes($opts) : @ARGV;
+my @genes = $#ARGV == -1 ? sort(fetch_genes($opts)) : @ARGV;
+printf(STDERR "# %d genes to list\n", $#genes+1);
 
 my $mm = UTA::Matchmaker->new( %$opts );
 
-foreach my $hgnc (@genes) {
+for(my $i=0; $i<=$#genes; $i++) {
+  my $hgnc = $genes[$i];
+  printf(STDERR "%d/%d (%4.1f%%): %-40s\r", 
+		 $i+1, $#genes+1, ($i+1)/($#genes+1)*100, $hgnc);
   my $gti;
   eval '$gti = $mm->match_by_gene($hgnc)';
   if (not defined $gti) {
