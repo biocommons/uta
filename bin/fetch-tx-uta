@@ -6,16 +6,18 @@ import psycopg2, psycopg2.extras
 
 if __name__ == '__main__':
     sel_sql = """
-SELECT G.gene,GE.ac,array_to_string(array_agg(format('(%s,%s)',GE.start_i,GE.end_i) order by G.strand*GE.ord),';') as "se_list"
+SELECT G.gene,GE.ac,G.chr,G.strand,
+  format('(%s,%s)',T.cds_start_i,T.cds_end_i) as cds_se,
+  array_to_string(array_agg(format('(%s,%s)',GE.start_i,GE.end_i) order by G.strand*GE.ord),';') as "exon_ses"
 FROM genomic_exon GE
 JOIN transcript T on GE.ac=T.ac
 JOIN gene G on T.gene=G.gene
-GROUP by G.gene,GE.ac
+WHERE T.ac in ('NM_144670.4','NM_017436.4')
+GROUP by G.gene,GE.ac,G.chr,G.strand,cds_se
 """
     conn = psycopg2.connect("dbname=reece")
     sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     sel_cur.execute(sel_sql)
     for row in sel_cur.fetchall():
-        #vals = [gt.ac,gt.chrom,gt.strand,gt.tx_start,gt.tx_end,gt.cds_start,gt.cds_end,
-        #        ','.join([str(v) for v in exon_lengths])]
-        print( '\t'.join([row['ac'],str(len(row['se_list'].split(';'))),row['se_list']]) )
+        print( '\t'.join([row['ac'], row['chr'], str(row['strand']), row['cds_se'],
+                          str(len(row['exon_ses'].split(';'))), row['exon_ses']]) )
