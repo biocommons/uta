@@ -19,9 +19,7 @@ build
 dev
 distribute-*
 hgtools-*
-misc/journal-counts
-misc/journal-counts.gz
-misc/journal-year-pmid.gz
+misc/data
 misc/tests
 missing-tests.ls
 parts

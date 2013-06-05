@@ -123,3 +123,13 @@ FROM transcript_exons_flat_v TEF
 JOIN genomic_exons_flat_v GEF ON TEF.ac=GEF.ac
 WHERE TEF.n_exons!=GEF.n_exons
 ;
+
+
+CREATE OR REPLACE VIEW transcript_comparison_v AS 
+SELECT public.ac_base(TEF1.ac) as base, TEF1.ac as ac1, TEF2.ac as ac2, 
+	   TEF1.lengths = TEF2.lengths as eq_lens, TEF1.lengths as len1, TEF2.lengths as len2
+FROM transcripts.transcript_exons_flat_v TEF1
+FULL JOIN transcripts_20120821.transcript_exons_flat_v TEF2
+	  ON public.ac_base(TEF1.ac) = public.ac_base(TEF2.ac)
+;
+

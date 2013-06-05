@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+import collections
+import psycopg2, psycopg2.extras
+
+
+if __name__ == '__main__':
+    sel_sql = """
+SELECT G.gene,GE.ac,array_to_string(array_agg(format('(%s,%s)',GE.start_i,GE.end_i) order by G.strand*GE.ord),';') as "se_list"
+FROM genomic_exon GE
+JOIN transcript T on GE.ac=T.ac
+JOIN gene G on T.gene=G.gene
+GROUP by G.gene,GE.ac
+"""
+    conn = psycopg2.connect("dbname=reece")
+    sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    sel_cur.execute(sel_sql)
+    for row in sel_cur.fetchall():
+        #vals = [gt.ac,gt.chrom,gt.strand,gt.tx_start,gt.tx_end,gt.cds_start,gt.cds_end,
+        #        ','.join([str(v) for v in exon_lengths])]
+        print( '\t'.join([row['ac'],str(len(row['se_list'].split(';'))),row['se_list']]) )

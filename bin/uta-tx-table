@@ -10,7 +10,23 @@ import locus.utils.genomeutils as gu
 import IPython
 
 conn = psycopg2.connect("dbname=reece")
-sel_sql = '''SELECT * FROM transcript_table_v WHERE enst_equivs IS NOT NULL AND n_t_exons > 0'''
+
+def build_sel_sql(preds=[]):
+    sel_preds = [ 
+        # 'enst_equivs IS NOT NULL',
+        'n_t_exons > 0',
+        ]
+    sel_preds += preds
+    pred = ''
+    if len(sel_preds) > 0:
+        pred = 'WHERE ' + ' AND '.join(sel_preds)
+
+    return ' '.join([
+            'SELECT * FROM transcript_table_v',
+            pred,
+            'ORDER BY gene,ac',
+            ])
+
 
 def ex_op_pos(cigar):
     '''Add positions to operations in cigar string, treating deletes as
@@ -113,13 +129,14 @@ if __name__ == '__main__':
     sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if len(sys.argv) > 1:
-        sel_sql += " AND gene = %(hgnc)s ORDER BY gene,ac"
+        sel_sql = build_sel_sql(preds = [ 'gene = %(hgnc)s' ])
+        print(sel_sql)
         for hgnc in sys.argv[1:]:
             sel_cur.execute(sel_sql,{'hgnc': hgnc})
             for row in sel_cur:
                 print( row_str(row) )
     else:
-        sel_sql += " ORDER BY gene,ac"
+        sel_sql = build_sel_sql()
         sel_cur.execute(sel_sql)
         for row in sel_cur:
             print( row_str(row) )
