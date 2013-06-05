@@ -86,12 +86,13 @@ SELECT concat(acc,'.',version) as ac,chrom,strand,txStart,txEnd,
 FROM refFlat RF
 JOIN gbSeq GB on RF.name=GB.acc
 WHERE name like 'NM_%' and chrom not like '%\_%'
+ and name in ('NM_144670','NM_017436')
 """)
     
     for row in cursor.fetchall():
         gt = GenomicTranscript.new_from_ucsc_row(row)
         se = gt.exon_se_list
-        #vals = [gt.ac,gt.chrom,gt.strand,gt.tx_start,gt.tx_end,gt.cds_start,gt.cds_end,
-        #        ','.join([str(v) for v in exon_lengths])]
-        print( '\t'.join([str(gt.ac), str(len(gt.exon_se_list)), 
+        print( '\t'.join([str(gt.ac), gt.chrom, str(gt.strand),
+                          '(%d,%d)' % (gt.cds_start,gt.cds_end),
+                          str(len(gt.exon_se_list)), 
                           ';'.join(['(%d,%d)'%(se) for se in gt.exon_se_list])]) )
