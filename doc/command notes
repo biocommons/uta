@@ -1,5 +1,6 @@
 -- reload nm_enst_equiv
-\! grep -v ^\# workspace/nm-enst-equiv-70.tsv | sort -u >/tmp/y
+gzip -cd workspace/nm-enst-equiv-e70-2013-04-25.tsv.gz | grep -v ^\# | sort -u >|/tmp/y
+
 begin;
 truncate nm_enst_equiv;
 \copy nm_enst_equiv FROM /tmp/y

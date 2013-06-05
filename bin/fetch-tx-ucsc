@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+
+import collections,MySQLdb
+import IPython
+
+class Transcript(
+    collections.namedtuple('Transcript',(
+            'ac','cds_start','cds_end','exon_starts','exon_ends'))):
+    @property
+    def exon_se_list(self):
+        "return a list of (start,end) pairs"
+        return zip(self.exon_starts,self.exon_ends)
+    @property
+    def exon_lengths(self):
+        return [ se[1]-se[0]
+                 for se in self.exon_se_list ]
+    pass
+
+class GenomicTranscript(
+    collections.namedtuple('GenomicTranscript',
+                           Transcript._fields + ('chrom','strand','tx_start','tx_end')),
+    Transcript):
+    """Represents a transcript using genomic coordinates.  The
+    representation is based on a Transcript, but includes genome
+    localization with chrom, strand, tx_start, and tx_end.
+    
+    All coordinates and exon ordering is with respect to the positive
+    strand, 5'-to-3', even if the transcript is encoded on the minus
+    strand. Therefore:
+    * start coordinates are always less than corresponding end
+    coordinates.
+    * CDS and exon starts, ends, and lengths are "backwards" coding sense
+    for minus-strand transcripts (even though start<=end)
+    """
+
+    @classmethod
+    def new_from_ucsc_row(cls,row):
+        def _string_to_int_list(s):
+            return [ int(v) for v in s.rstrip(',').split(',') ]
+        def _strand_sign_to_int(sign):
+            return -1 if sign == '-' else 1
+        return GenomicTranscript(
+            ac = row['ac'],
+            chrom = row['chrom'],
+            cds_start = row['cdsStart'],
+            cds_end = row['cdsEnd'],
+            tx_start = row['txStart'],
+            tx_end = row['txEnd'],
+            strand = _strand_sign_to_int(row['strand']),
+            exon_starts = _string_to_int_list(row['exonStarts']),
+            exon_ends = _string_to_int_list(row['exonEnds']),
+            )
+    
+    def as_Transcript(self):
+        if self.strand == 1:
+            cds_start_idx = self._find_exon_index(self.cds_start)
+            cum_cds_len = sum(self.exon_lengths[:cds_start_idx+1])
+            t_exon_starts = [ p-self.tx_start for p in self.exon_starts ]
+            t_exon_ends   = [ p-self.tx_start for p in self.exon_ends   ]
+        elif self.strand == -1:
+            t_exon_starts = [ self.tx_end-p   for p in self.exon_ends   ]
+            t_exon_ends   = [ self.tx_end-p   for p in self.exon_starts ]
+        return Transcript(ac = self.ac,
+                          cds_start = t_cds_start,
+                          cds_end = t_cds_end,
+                          exon_starts = t_exon_starts,
+                          exon_ends = t_exon_ends,
+                          )
+
+    def _find_exon_index(self, gpos):
+        """return index of exon that contains position gpos; return None
+        if position not within any exon"""
+        for i,se in enumerate(zip(self.exon_starts,self.exon_ends)):
+            if se[0] <= gpos < se[1]:
+                return i
+        return None
+
+if __name__ == '__main__':
+    conn = MySQLdb.connect(host = 'genome-mysql.cse.ucsc.edu',
+                           user = 'genome',
+                           db = 'hg19' )
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("""
+SELECT concat(acc,'.',version) as ac,chrom,strand,txStart,txEnd,
+	cdsStart,cdsEnd,exonStarts,exonEnds
+FROM refFlat RF
+JOIN gbSeq GB on RF.name=GB.acc
+WHERE name like 'NM_%' and chrom not like '%\_%'
+""")
+    
+    for row in cursor.fetchall():
+        gt = GenomicTranscript.new_from_ucsc_row(row)
+        se = gt.exon_se_list
+        #vals = [gt.ac,gt.chrom,gt.strand,gt.tx_start,gt.tx_end,gt.cds_start,gt.cds_end,
+        #        ','.join([str(v) for v in exon_lengths])]
+        print( '\t'.join([str(gt.ac), str(len(gt.exon_se_list)), 
+                          ';'.join(['(%d,%d)'%(se) for se in gt.exon_se_list])]) )
