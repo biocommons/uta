@@ -21,6 +21,7 @@ distribute-*
 hgtools-*
 misc/data
 misc/tests
+misc/exon-str-cmp
 missing-tests.ls
 parts
 patches
