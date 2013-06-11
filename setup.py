@@ -13,7 +13,10 @@ setup(
     zip_safe = True,
     #test_suite = 'nose.collector',
     install_requires = [
+        'docopt',
         'nose',
         'sqlalchemy',
+        # 'alembic'
+        # 'sphinx'
         ],    
 )
