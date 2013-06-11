@@ -1,0 +1,2 @@
+class UTAError(Exception):
+    pass
