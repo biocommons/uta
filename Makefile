@@ -19,6 +19,7 @@ clean:
 cleaner: clean
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
 cleanest: cleaner
+	/bin/rm -fr *.egg-info ve
 pristine: cleanest
 	# deleting anything unknown to mercurial, including your
 	# precious uncommitted changes

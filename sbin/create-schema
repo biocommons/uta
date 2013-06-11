@@ -13,8 +13,8 @@ Session = sessionmaker(bind=engine)
 
 uta.models.Base.metadata.create_all(engine)
 
-m = uta.models.Meta(key='schema_version', value=uta.models.schema_version)
-
+# inject the schema version into the database
 session = Session()
-session.add(m)
+session.add(uta.models.Meta(
+        key='schema_version', value=uta.models.schema_version))
 session.commit()
