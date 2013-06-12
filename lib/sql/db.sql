@@ -1,77 +1,69 @@
--- drop table gtx_alignment;
--- drop table transcript_exon;
--- drop table genomic_exon;
--- drop table transcript;
--- drop table gene;
-
-
-create table gene (
-       gene text primary key,
-       chr text not null,
-       strand smallint not null,
-       start_i int not null,
-       end_i int not null,
-       maploc text,
-       descr text,
-       summary text,
-	   added timestamptz not null default now(),
-
-       constraint "start_i-lt-end_i" check (start_i < end_i)       
+CREATE TABLE exon (
+    exon_id serial primary key,
+    transcript_id integer NOT NULL,
+    start_i integer NOT NULL,
+    end_i integer NOT NULL,
+    name TEXT,
+    seq TEXT
 );
 
-create table transcript (
-       ac text primary key,
-       gene text not null
-            references gene(gene) on update cascade on delete cascade,
-       cds_start_i int not null,
-       cds_end_i int not null,
-	   added timestamptz not null default now(),
-       seq text,
-
-       constraint "cds_start_i-lt-cds_end_i" check (cds_start_i < cds_end_i)
+CREATE TABLE exon_alignment (
+    exon_alignment_id serial primary key,
+    exon_id1 integer NOT NULL,
+    exon_id2 integer NOT NULL,
+    cigar TEXT NOT NULL,
+    alignment TEXT,
+    CONSTRAINT exon_alignment_check CHECK (exon_id1 < exon_id2)
 );
 
-create table genomic_exon (
-       genomic_exon_id serial primary key,
-       ac text not null
-            references transcript(ac) on update cascade on delete cascade,
-       start_i int not null,
-       end_i int not null,
-       ord smallint NOT NULL,
-
-       constraint "ge-ord-unique-per-ac" unique (ac,ord),
-       constraint "start_i-lt-end_i" check (start_i < end_i)       
+CREATE TABLE gene (
+    gene_id serial primary key,
+    added timestamp without time zone NOT NULL,
+    gene TEXT NOT NULL,
+    maploc TEXT,
+    strand smallint,
+    descr TEXT,
+    summary TEXT,
+    CONSTRAINT strand_is_plus_or_minus_1 CHECK (strand = -1 OR strand = 1)
 );
 
-create table transcript_exon (
-       transcript_exon_id serial primary key,
-       ac text not null
-            references transcript(ac) on update cascade on delete cascade,
-       start_i int not null,
-       end_i int not null,
-       ord smallint NOT NULL,
-       name text,
-
-       constraint "te-ord-unique-per-ac" unique (ac,ord),
-       constraint "start_i-lt-end_i" check (start_i < end_i)
+CREATE TABLE meta (
+    key TEXT NOT NULL,
+    value TEXT NOT NULL
 );
 
-create table gtx_alignment (
-       genomic_exon_id int not null 
-            references genomic_exon(genomic_exon_id) on update cascade on delete cascade,
-       transcript_exon_id int not null 
-            references transcript_exon(transcript_exon_id) on update cascade on delete cascade,
-       cigar text not null,
-       seqviewer_url text,
-	   g_seq_a text,
-	   t_seq_a text,
-
-	   constraint aligned_seq_eq_length check (length(g_seq_a) = length(t_seq_a))
+CREATE TABLE nseq (
+    nseq_id serial primary key,
+    origin_id integer NOT NULL,
+    ac TEXT NOT NULL,
+    added timestamp without time zone NOT NULL,
+    md5 TEXT,
+    seq TEXT
 );
 
-create table nm_enst_equiv (
-       ac text not null,
-       enst text not null,
-       status text not null,
-       constraint "ac-enst-unique" unique (ac,enst)
+CREATE TABLE origin (
+    origin_id serial primary key,
+    name TEXT NOT NULL,
+    added timestamp without time zone NOT NULL,
+    url TEXT,
+    url_fmt TEXT
+;
+
+CREATE TABLE origin_transcript_alias (
+    transcript_id serial primary key,
+    origin_id integer NOT NULL,
+    nseq_id integer NOT NULL,
+    added timestamp without time zone NOT NULL,
+    gene TEXT,
+    gene_id integer
+);
+
+CREATE TABLE transcript (
+    transcript_id serial primary key,
+    nseq_id integer NOT NULL,
+    added timestamp without time zone NOT NULL,
+    strand smallint NOT NULL,
+    cds_start_i integer NOT NULL,
+    cds_end_i integer NOT NULL,
+    CONSTRAINT strand_is_plus_or_minus_1 CHECK (strand = -1 OR strand = 1)
 );
