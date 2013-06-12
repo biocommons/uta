@@ -1,18 +1,18 @@
 import uta
-import uta.models
+import uta.sa_models as usam
 
 ############################################################################
 
 def create_schema(engine,session,opts,cf):
     if opts['--drop-current']:
-        session.execute('drop schema if exists '+uta.models.schema_name+' cascade')
-        session.execute('create schema '+uta.models.schema_name)
-        session.execute('alter database uta set search_path = '+uta.models.schema_name)
+        session.execute('drop schema if exists '+usam.schema_name+' cascade')
+        session.execute('create schema '+usam.schema_name)
+        session.execute('alter database uta set search_path = '+usam.schema_name)
 
     session.commit()
-    uta.models.Base.metadata.create_all(engine)
-    session.add(uta.models.Meta(
-            key='schema_version', value=uta.models.schema_version))
+    usam.Base.metadata.create_all(engine)
+    session.add(usam.Meta(
+            key='schema_version', value=usam.schema_version))
     session.commit()
 
 ############################################################################
@@ -27,7 +27,7 @@ def load_gene(engine,session,opts,cf):
     for gi in gip:
         if gi['tax_id'] != '9606' or gi['Symbol_from_nomenclature_authority'] == '-':
             continue
-        g = uta.models.Gene(gene_id=gi['GeneID'], gene=gi['Symbol_from_nomenclature_authority'], 
+        g = usam.Gene(gene_id=gi['GeneID'], gene=gi['Symbol_from_nomenclature_authority'], 
                             name=gi['Full_name_from_nomenclature_authority'], maploc=gi['map_location'],
                             chrom=gi['chromosome'], descr=gi['description'])
         session.add(g)
@@ -45,7 +45,7 @@ def load_transcripts_gbff(engine,session,opts,cf):
         if not rec.id.startswith('NM_'):
                 continue
         #nseq_id = 
-        #t = uta.models.Transcript(
+        #t = usam.Transcript(
         #    origin_id = 
         #    nseq_id =
         #    gene_id = 
