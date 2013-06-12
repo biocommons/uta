@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 ############################################################################
@@ -17,18 +15,23 @@ Usage:
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
 
-Examples:
-1) Drop and create schema in PostgreSQL:
-  /usr/bin/dropdb uta
-  /usr/bin/createdb -O reece uta
-  /usr/bin/psql -d uta -c 'create schema uta'
-  PYTHONPATH=lib/python ./bin/uta -C etc/uta.conf create-schema
-
 """
+
+## Examples:
+## All require
+## export PYTHONPATH=lib/python
+## 
+## 1) Drop and create schema in PostgreSQL:
+##   ./bin/uta -C etc/uta.conf create-schema --drop-current
+## 
+## 2) load data from seq_gene.md.gz files
+##   ./bin/uta -C etc/uta.conf load-transcripts-seqgene misc/data/ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz
+## 
+## """
 
 ############################################################################
 
-import csv, gzip, ConfigParser, logging
+import csv, gzip, ConfigParser, itertools, logging
 
 from Bio import SeqIO
 from docopt import docopt
@@ -81,20 +84,30 @@ def load_transcripts_gbff(engine,session,opts,cf):
     for rec in SeqIO.parse(gzip.open(opts['FILE']),'genbank'):
         if not rec.id.startswith('NM_'):
                 continue
-        import IPython; IPython.embed();
+        #nseq_id = 
+        #t = uta.models.Transcript(
+        #    origin_id = 
+        #    nseq_id =
+        #    gene_id = 
+        #    cds_start_i = STOPPED HERE
+        #    )
+        #import IPython; IPython.embed();
     
 ############################################################################
 
 def load_transcripts_seqgene(engine,session,opts,cf):
     """
-    import data as downloaded (by you) from 
-    ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/human.rna.gbff.gz
+    import data as downloaded (by you) as from
+    ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz
     """
-    for rec in SeqIO.parse(gzip.open(opts['FILE']),'genbank'):
-        if not rec.id.startswith('NM_'):
-                continue
-        import IPython; IPython.embed();
-    
+    import uta.parsers.seqgene
+    src = ( rec for rec in uta.parsers.seqgene.SeqGeneParser(gzip.open(opts['FILE']))
+            if rec['transcript'].startswith('NM_') )
+    for key,reciter in itertools.groupby(src, lambda r: r['transcript']):
+        recs = list(reciter)
+        import IPython; IPython.embed()
+        
+
 ############################################################################
 
 def run(argv=None):
