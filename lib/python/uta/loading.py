@@ -1,3 +1,8 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import csv, gzip, itertools, logging
+import prettytable
+
 import uta
 import uta.sa_models as usam
 
@@ -61,9 +66,16 @@ def load_transcripts_seqgene(engine,session,opts,cf):
     ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz
     """
     import uta.parsers.seqgene
-    src = ( rec for rec in uta.parsers.seqgene.SeqGeneParser(gzip.open(opts['FILE']))
-            if rec['transcript'].startswith('NM_') )
-    for key,reciter in itertools.groupby(src, lambda r: r['transcript']):
-        recs = list(reciter)
-        import IPython; IPython.embed()
-        
+    cols = [ 'chr_orient','chr_start','chr_stop','feature_type','group_label','transcript' ]
+    sg_filter = lambda r: r['transcript'].startswith('NM_') and r['feature_type'] in ['CDS','UTR']
+    sgparser = uta.parsers.seqgene.SeqGeneParser(gzip.open(opts['FILE']),
+                                                 filter = sg_filter)
+    slurp = sorted(list(sgparser), 
+                   key = lambda r: (r['transcript'],r['group_label'],r['chr_start'],r['chr_stop']))
+    for k,i in itertools.groupby(slurp, key = lambda r: (r['transcript'],r['group_label'])):
+        pt = prettytable.PrettyTable(cols)
+        pt.padding_width = 1
+        for r in i:
+            pt.add_row([ r[c] for c in cols ])
+        print(k,':')
+        print(pt)

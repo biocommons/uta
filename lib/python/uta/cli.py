@@ -31,7 +31,7 @@ Options:
 
 ############################################################################
 
-import csv, gzip, ConfigParser, itertools, logging
+import ConfigParser, logging
 
 from Bio import SeqIO
 from docopt import docopt
