@@ -2,9 +2,6 @@
 """
 
 # TODO: review for table uniqueness criteria
-# TODO: __str__ for all
-# TODO: FK backrefs
-# TODO: " -> '
 
 import datetime, hashlib
 
@@ -32,7 +29,7 @@ class Origin(Base):
 
     # columns:
     origin_id = sa.Column(sa.Integer, sa.Sequence('origin_id_seq'), primary_key = True, index = True)
-    name = sa.Column(sa.String, nullable = False)
+    name = sa.Column(sa.String, nullable = False, unique = True)
     added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
     updated = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now(), onupdate = datetime.datetime.now() )
     url = sa.Column(sa.String, nullable = True)
@@ -129,6 +126,7 @@ class ExonSet(Base):
     __tablename__ = 'exon_set'
     __table_args__ = (
         sa.CheckConstraint('cds_start_i < cds_end_i', 'cds_start_i_must_be_lt_cds_end_i'),
+        sa.UniqueConstraint('transcript_id','ref_nseq_id',name='transcript_on_ref_nseq_must_be_unique'),
         )
     
     # columns:
@@ -165,6 +163,8 @@ class Exon(Base):
     __tablename__ = 'exon'
     __table_args__ = (
         sa.CheckConstraint('start_i < end_i', 'exon_start_i_must_be_lt_end_i'),
+        sa.UniqueConstraint('exon_set_id','start_i',name='start_i_must_be_unique_in_exon_set'),
+        sa.UniqueConstraint('exon_set_id','end_i',name='end_i_must_be_unique_in_exon_set'),
         # {'schema' : schema_name}
         )
 

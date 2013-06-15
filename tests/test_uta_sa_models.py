@@ -147,8 +147,6 @@ class Test_uta_sa_models(unittest.TestCase):
 
         self.session.commit()
 
-        import IPython; IPython.embed()
-
 
     def test_origin(self):
         all_origins = self.session.query(usam.Origin).all()
@@ -226,8 +224,8 @@ class Test_uta_sa_models(unittest.TestCase):
     def test_exon(self):
         t = self.session.query(usam.Transcript).filter(usam.Transcript.ac=='NM_000680.2').one()
         es = [ es for es in t.exon_sets if es.is_primary ][0]
-        self.assertEqual( (es[0].start_i,es[0].end_i) == (0,1319) )
-        self.assertEqual( (es[1].start_i,es[1].end_i) == (1319,2281) )
+        self.assertEqual( (es.exons[0].start_i,es.exons[0].end_i) , (0,1319) )
+        self.assertEqual( (es.exons[1].start_i,es.exons[1].end_i) , (1319,2281) )
 
 
 if __name__ == '__main__':
