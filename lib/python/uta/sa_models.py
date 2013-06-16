@@ -1,8 +1,6 @@
 """Schema for Universal Transcript Archive
 """
 
-# TODO: review for table uniqueness criteria
-
 import datetime, hashlib
 
 import sqlalchemy as sa
@@ -10,22 +8,26 @@ import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
 schema_version = '0'
-#schema_name = 'uta'+schema_version
-schema_qual = ''
+schema_name = 'uta'+schema_version
+schema_qual = schema_name + '.'
 
 Base = saed.declarative_base()
 
 
 class Meta(Base):
     __tablename__ = 'meta'
-    #__table_args__ = {'schema' : schema_name}
+    __table_args__ = (
+        {'schema' : schema_name},
+        )
     key = sa.Column(sa.String, primary_key = True, nullable = False, index = True)
     value = sa.Column(sa.String, nullable = False)
 
 
 class Origin(Base):
     __tablename__ = 'origin'
-    #__table_args__ = {'schema' : schema_name}
+    __table_args__ = (
+        {'schema' : schema_name},
+        )
 
     # columns:
     origin_id = sa.Column(sa.Integer, sa.Sequence('origin_id_seq'), primary_key = True, index = True)
@@ -44,16 +46,15 @@ class Origin(Base):
 class Gene(Base):
     __tablename__ = 'gene'
     __table_args__ = (
-        sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
-        #{'schema' : schema_name}
+        #sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
+        {'schema' : schema_name},
         )
 
     # columns:
-    gene_id = sa.Column(sa.Integer, sa.Sequence('gene_id_seq'), primary_key = True, index = True)
-    origin_id = sa.Column(sa.Integer, sa.Sequence('origin_id_seq'), index = True)
+    gene_id = sa.Column(sa.Integer, primary_key = True, index = True)
+    origin_id = sa.Column(sa.Integer, index = True)
     name = sa.Column(sa.String, index = True, unique = True, nullable = False)
     maploc = sa.Column(sa.String)
-    strand = sa.Column(sa.SMALLINT)
     added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
     descr = sa.Column(sa.String)
     summary = sa.Column(sa.String)
@@ -77,7 +78,9 @@ class NSeq(Base):
         return None 
 
     __tablename__ = 'nseq'
-    #__table_args__ = {'schema' : schema_name}
+    __table_args__ = (
+        {'schema' : schema_name},
+        )
 
     # columns:
     nseq_id = sa.Column(sa.Integer, sa.Sequence('nseq_id_seq'), primary_key = True, index = True)
@@ -100,7 +103,7 @@ class Transcript(Base):
     __tablename__ = 'transcript'
     __table_args__ = (
         sa.Index('ac_unique_in_origin', 'origin_id', 'ac', unique = True),
-        #{'schema' : schema_name}
+        {'schema' : schema_name},
         )
 
     # columns:
@@ -127,6 +130,7 @@ class ExonSet(Base):
     __table_args__ = (
         sa.CheckConstraint('cds_start_i < cds_end_i', 'cds_start_i_must_be_lt_cds_end_i'),
         sa.UniqueConstraint('transcript_id','ref_nseq_id',name='transcript_on_ref_nseq_must_be_unique'),
+        {'schema' : schema_name},
         )
     
     # columns:
@@ -134,7 +138,7 @@ class ExonSet(Base):
     transcript_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'transcript.transcript_id'), nullable = False)
     ref_nseq_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'nseq.nseq_id'), nullable = False)
     origin_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'origin.origin_id'), nullable = False)
-    strand = sa.Column(sa.SMALLINT, nullable = False)
+    strand = sa.Column(sa.SmallInteger, nullable = False)
     cds_start_i = sa.Column(sa.Integer, nullable = False)
     cds_end_i = sa.Column(sa.Integer, nullable = False)
     added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
@@ -165,7 +169,7 @@ class Exon(Base):
         sa.CheckConstraint('start_i < end_i', 'exon_start_i_must_be_lt_end_i'),
         sa.UniqueConstraint('exon_set_id','start_i',name='start_i_must_be_unique_in_exon_set'),
         sa.UniqueConstraint('exon_set_id','end_i',name='end_i_must_be_unique_in_exon_set'),
-        # {'schema' : schema_name}
+        {'schema' : schema_name},
         )
 
     # columns:
@@ -188,8 +192,8 @@ class Exon(Base):
 class ExonAlignment(Base):
     __tablename__ = 'exon_alignment'
     __table_args__ = (
+        {'schema' : schema_name},
         #sa.CheckConstraint('exon_id1 < exon_id2'),
-        #{'schema' : schema_name}
         )
 
     # columns:
