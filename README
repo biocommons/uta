@@ -1,3 +1,5 @@
+-*-outline-*-
+
 * Goal
 Build a single database of transcripts that provides:
 1) sequence descrepancies with GRCh37, and
@@ -38,3 +40,9 @@ ref agree
 ensembl
   ENST equiv
   comments
+
+
+
+* Status
+left off at:
+PYTHONPATH=lib/python ./bin/uta -C etc/uta.conf load-transcripts-seqgene tests/data/seq_gene10k.md.gz

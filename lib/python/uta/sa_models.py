@@ -13,8 +13,16 @@ schema_qual = schema_name + '.'
 
 Base = saed.declarative_base()
 
+class UTABase(object):
+    def __str__(self):
+        try:
+            return self.__unsafe_str__()
+        except AttributeError:
+            return '{self.__class__.__name__}<incomplete record>'.format(
+                self = self)
 
-class Meta(Base):
+
+class Meta(Base,UTABase):
     __tablename__ = 'meta'
     __table_args__ = (
         {'schema' : schema_name},
@@ -23,7 +31,7 @@ class Meta(Base):
     value = sa.Column(sa.String, nullable = False)
 
 
-class Origin(Base):
+class Origin(Base,UTABase):
     __tablename__ = 'origin'
     __table_args__ = (
         {'schema' : schema_name},
@@ -38,12 +46,12 @@ class Origin(Base):
     url_ac_fmt = sa.Column(sa.String, nullable = True)
 
     # methods:
-    def __str__(self):
+    def __unsafe_str__(self):
         return '{self.__class__.__name__}<name={self.name}; updated={self.updated}; url={self.url}>'.format(
             self = self)
 
 
-class Gene(Base):
+class Gene(Base,UTABase):
     __tablename__ = 'gene'
     __table_args__ = (
         #sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
@@ -65,12 +73,12 @@ class Gene(Base):
         return '' if self.strand is None else '-' if self.strand == -1 else '+'
 
     # methods:
-    def __str__(self):
+    def __unsafe_str__(self):
         return '{self.__class__.__name__}<gene={self.name}; maploc={self.strand_pm}{self.maploc}; descr={self.descr}>'.format(
             self = self)
 
 
-class NSeq(Base):
+class NSeq(Base,UTABase):
     def _seq_hash(context):
         seq = context.current_parameters['seq']
         if seq is not None:
@@ -94,12 +102,12 @@ class NSeq(Base):
     origin = sao.relationship('Origin', backref = 'nseqs')
 
     # methods:
-    def __str__(self):
+    def __unsafe_str__(self):
         return '{self.__class__.__name__}<ac={self.ac}; seq({len})={self.seq}>'.format(
             self = self,len = len(self.seq) if self.seq else '?')
     
 
-class Transcript(Base):
+class Transcript(Base,UTABase):
     __tablename__ = 'transcript'
     __table_args__ = (
         sa.Index('ac_unique_in_origin', 'origin_id', 'ac', unique = True),
@@ -110,7 +118,7 @@ class Transcript(Base):
     transcript_id = sa.Column(sa.Integer, sa.Sequence('transcript_id_seq'), primary_key = True, index = True)
     origin_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'origin.origin_id'), nullable = False)
     ac = sa.Column(sa.String, nullable = False)
-    nseq_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'nseq.nseq_id'), nullable = False)
+    nseq_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'nseq.nseq_id'))
     gene_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'gene.gene_id'))
     added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
 
@@ -120,12 +128,12 @@ class Transcript(Base):
     gene = sao.relationship('Gene', backref = 'transcripts')
 
     # methods:
-    def __str__(self):
+    def __unsafe_str__(self):
         return '{self.__class__.__name__}<origin={self.origin.name},ac={self.ac},gene={self.gene.name}>'.format(
             self = self)
 
 
-class ExonSet(Base):
+class ExonSet(Base,UTABase):
     __tablename__ = 'exon_set'
     __table_args__ = (
         sa.CheckConstraint('cds_start_i < cds_end_i', 'cds_start_i_must_be_lt_cds_end_i'),
@@ -158,12 +166,12 @@ class ExonSet(Base):
         return self.ref_nseq_id == self.transcript.nseq_id
 
     # methods:
-    def __str__(self):
+    def __unsafe_str__(self):
         return '{self.__class__.__name__}<origin={self.origin.name},transcript={self.transcript.ac},ref={self.ref_nseq.ac},primary={self.is_primary},exons={nexons}>'.format(
             self = self, nexons = len(self.exons))
 
 
-class Exon(Base):
+class Exon(Base,UTABase):
     __tablename__ = 'exon'
     __table_args__ = (
         sa.CheckConstraint('start_i < end_i', 'exon_start_i_must_be_lt_end_i'),
@@ -184,12 +192,12 @@ class Exon(Base):
     exon_set = sao.relationship('ExonSet', backref = 'exons')
 
     # methods:
-    def __str__(self):
+    def __unsafe_str__(self):
         return '{self.__class__.__name__}<{self.exon_set.transcript.ac},{self.name},@{self.exon_set.ref_nseq.ac}:[{self.start_i}:{self.end_i}]>'.format(
             self = self)
 
 
-class ExonAlignment(Base):
+class ExonAlignment(Base,UTABase):
     __tablename__ = 'exon_alignment'
     __table_args__ = (
         {'schema' : schema_name},
@@ -210,6 +218,5 @@ class ExonAlignment(Base):
     ref_exon = sao.relationship('Exon', backref = 'q_alignments', foreign_keys =[ref_exon_id])
 
     # methods:
-    def __str__(self):
+    def __unsafe_str__(self):
         return '{self.__class__.__name__}<{self.tx_exon} ~ {self.ref_exon}>'.format(self = self)
-
