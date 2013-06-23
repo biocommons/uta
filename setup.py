@@ -3,19 +3,23 @@ use_setuptools()
 
 from setuptools import setup, find_packages
 
+# fetch __version__
+with open('lib/python/uta/version.py') as f: exec(f.read())
+
 setup(
-    name = "UTA",
+    author = 'InVitae Keyboard Monkeys',
+    author_email='reece.hart@invitae.com',   # TODO: ask devs about gen. support address
     description = """Universal Transcript Archive""",
     license = 'MIT',
-    version = "0.0.0",
-    author_email='reece.hart@invitae.com',
+    name = "UTA",
     packages = find_packages(),
+    url = 'https://bitbucket.org/invitae/uta',
+    version = __version__,
     zip_safe = True,
-    #test_suite = 'nose.collector',
     install_requires = [
         'docopt',
         'nose',
-        'sqlalchemy',
+        # 'sqlalchemy',
         # 'alembic'
         # 'sphinx'
         ],    

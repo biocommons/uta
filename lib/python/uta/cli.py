@@ -41,6 +41,7 @@ from sqlalchemy.orm import sessionmaker
 import uta
 import uta.loading as ul
 
+
 def run(argv=None):
     dispatch_table = [
         ('create-schema', 		ul.create_schema),
@@ -49,7 +50,7 @@ def run(argv=None):
         ('load-transcripts-seqgene', 	ul.load_transcripts_seqgene),
         ]
 
-    opts = docopt(__doc__, argv=argv, version=uta.__version__)
+    opts = docopt(__doc__, argv=argv, version=uta.version_hg_id)
 
     logging.basicConfig(level=logging.INFO)
 
