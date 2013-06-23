@@ -20,6 +20,16 @@ E-Utilities exclusively won't work.
 The requirement to allow significant anomalies means that we can't use the
 current transcript schema.
 
+CIGARs -- store in *transcript* order to facilitate tx-based
+
+
+* Components
+sqlalchemy
+flask
+flask-restless
+
+
+
 
 * Output
 ** refagree
