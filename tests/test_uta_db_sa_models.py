@@ -1,20 +1,26 @@
+import ConfigParser
 import os
 import unittest
 
 import sqlalchemy as sa
+import sqlalchemy.schema as sas
 import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
 import uta.db.sa_models as usam
 
+data_dir = os.path.realpath(os.path.realpath( os.path.join(__file__,'../data')))
+cp = ConfigParser.SafeConfigParser()
+cp.readfp( open( os.path.join(data_dir,'test.conf') ) )
 
-# Test data are from:
-# http://www.ncbi.nlm.nih.gov/nuccore/NM_033304.2
 
 class Test_uta_sa_models(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        engine = sa.create_engine(os.environ['UTA_TEST_DB_URL'])
+        print( "testing against " + cp.get('uta','url') )
+        engine = sa.create_engine(cp.get('uta','url'))
+        engine.execute('DROP SCHEMA IF EXISTS ' + usam.schema_name + ' CASCADE')
+        engine.execute(sas.CreateSchema(usam.schema_name))
 
         Session = sao.sessionmaker(bind = engine)
         self.session = Session()
@@ -28,6 +34,9 @@ class Test_uta_sa_models(unittest.TestCase):
             url_ac_fmt = 'http://bogus.com/{ac}',
             )
         self.session.add(o)
+
+        # Test data are from:
+        # http://www.ncbi.nlm.nih.gov/nuccore/NM_033304.2
 
         g = usam.Gene(
             origin_id = o.origin_id,

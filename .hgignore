@@ -42,3 +42,4 @@ workspace
 syntax: regexp
 (.*/)?\#[^/]*\#$
 archive
+.uta.conf.mk
