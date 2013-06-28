@@ -28,10 +28,10 @@ clean:
 	find . -name \*~ -print0 | xargs -0r /bin/rm
 cleaner: clean
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	rm -f distribute-*
+	find . -name \*.pyc -print0 | xargs -0r /bin/rm -f
+	/bin/rm -fr distribute-* *.egg *.egg-info
 cleanest: cleaner
-	find . -name \*.pyc -print0 | xargs -0r rm -f
-	/bin/rm -fr *.egg-info ve
+	/bin/rm -fr ve
 pristine: cleanest
 	# deleting anything unknown to mercurial, including your
 	# precious uncommitted changes
