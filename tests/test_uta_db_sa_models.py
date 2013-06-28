@@ -5,7 +5,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
-import uta.sa_models as usam
+import uta.db.sa_models as usam
 
 
 # Test data are from:
