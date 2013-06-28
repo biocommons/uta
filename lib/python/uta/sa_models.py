@@ -1,4 +1,7 @@
 """Schema for Universal Transcript Archive
+
+NOTE: This code and schema are NOT currently in use.  This was exploratory work.  It is incomplete and untested.
+
 """
 
 import datetime, hashlib
@@ -52,9 +55,13 @@ class Origin(Base,UTABase):
 
 
 class Gene(Base,UTABase):
+    # strand is really a property of ExonSet; however it is so commonly
+    # used in the context of a gene and maploc, that I'm adding it to Gene
+    # as well
+
     __tablename__ = 'gene'
     __table_args__ = (
-        #sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
+        sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
         {'schema' : schema_name},
         )
 
@@ -62,6 +69,7 @@ class Gene(Base,UTABase):
     gene_id = sa.Column(sa.Integer, primary_key = True, index = True)
     origin_id = sa.Column(sa.Integer, index = True)
     name = sa.Column(sa.String, index = True, unique = True, nullable = False)
+    strand = sa.Column(sa.SmallInteger, nullable = False)
     maploc = sa.Column(sa.String)
     added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
     descr = sa.Column(sa.String)
@@ -214,8 +222,8 @@ class ExonAlignment(Base,UTABase):
     added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
 
     # relationships:
-    tx_exon = sao.relationship('Exon', backref = 'r_alignments', foreign_keys =[tx_exon_id])
-    ref_exon = sao.relationship('Exon', backref = 'q_alignments', foreign_keys =[ref_exon_id])
+    tx_exon = sao.relationship('Exon', backref = 'r_alignments', foreign_keys = [tx_exon_id])
+    ref_exon = sao.relationship('Exon', backref = 'q_alignments', foreign_keys = [ref_exon_id])
 
     # methods:
     def __unsafe_str__(self):

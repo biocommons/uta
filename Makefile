@@ -2,6 +2,10 @@
 .PRECIOUS :
 .PHONY : FORCE
 
+UTA_TEST_DB_URL=sqlite:///:memory:
+UTA_TEST_DB_URL=postgresql://reece@/test
+export UTA_TEST_DB_URL
+
 SHELL:=/bin/bash -o pipefail
 
 setup: install-perl-modules
@@ -13,6 +17,7 @@ develop:
 	python setup.py develop
 
 test:
+	/usr/bin/psql -d test -c 'drop schema uta0 cascade; create schema uta0'
 	PYTHONPATH=lib/python python setup.py nosetests
 
 

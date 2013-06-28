@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import sqlalchemy as sa
@@ -13,7 +14,7 @@ import uta.sa_models as usam
 class Test_uta_sa_models(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        engine = sa.create_engine('sqlite:///:memory:')
+        engine = sa.create_engine(os.environ['UTA_TEST_DB_URL'])
 
         Session = sao.sessionmaker(bind = engine)
         self.session = Session()
