@@ -1,12 +1,13 @@
 .SUFFIXES :
 .PRECIOUS :
 .PHONY : FORCE
-
-UTA_TEST_DB_URL=sqlite:///:memory:
-UTA_TEST_DB_URL=postgresql://reece@/test
-export UTA_TEST_DB_URL
+.DELETE_ON_ERROR:
 
 SHELL:=/bin/bash -o pipefail
+
+-include .uta.conf.mk
+.uta.conf.mk: etc/uta.conf
+	./sbin/conf-to-vars $< >$@
 
 setup: install-perl-modules
 
@@ -17,7 +18,6 @@ develop:
 	python setup.py develop
 
 test:
-	/usr/bin/psql -d test -c 'drop schema uta0 cascade; create schema uta0'
 	PYTHONPATH=lib/python python setup.py nosetests
 
 

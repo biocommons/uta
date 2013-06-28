@@ -1,7 +1,7 @@
 """Schema for Universal Transcript Archive
 
 NOTE: This code and schema are NOT currently in use.  This was exploratory work.  It is incomplete and untested.
-
+It requires schema support (i.e., sqlite won't work)
 """
 
 import datetime, hashlib
