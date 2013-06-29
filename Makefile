@@ -5,6 +5,8 @@
 
 SHELL:=/bin/bash -o pipefail
 
+# TODO: use sbin/extract-makefile-documentation
+
 -include .uta.conf.mk
 .uta.conf.mk: etc/uta.conf
 	./sbin/conf-to-vars $< >$@
@@ -27,6 +29,9 @@ develop:
 test:
 	PYTHONPATH=lib/python python setup.py nosetests -v --with-xunit
 
+# TODO: make release target
+release-%:
+	#tag, dist, upload
 
 ############################################################################
 ### CLEANUP
