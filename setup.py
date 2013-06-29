@@ -4,7 +4,8 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 # fetch __version__
-with open('lib/python/uta/version.py') as f: exec(f.read())
+with open('lib/python/uta/version.py') as f:
+    exec(f.read())
 
 setup(
     author = 'InVitae Keyboard Monkeys',

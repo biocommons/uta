@@ -1,12 +1,14 @@
 import unittest
 
+from uta.exceptions import *
 from uta.tools.intervalmapper import Interval, IntervalPair, IntervalMapper
-       
+
+
 class Test_intervalmapper_interval(unittest.TestCase):
     def test_intervalmapper_interval(self):
         iv = Interval(23,45)
         self.assertEqual( (iv.start_i, iv.end_i) , (23,45) )
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(InvalidIntervalError):
             iv = Interval(45,23)
 
 class Test_intervalmapper_intervalpair(unittest.TestCase):
@@ -14,7 +16,7 @@ class Test_intervalmapper_intervalpair(unittest.TestCase):
         i = IntervalPair(Interval(12,34), Interval(56,78))
         self.assertEqual( (i.ref.start_i,i.ref.end_i), (12,34) )
         self.assertEqual( (i.tgt.start_i,i.tgt.end_i), (56,78) )
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(InvalidIntervalError):
             ip = IntervalPair(Interval(12,34),Interval(12,33))
 
 class Test_intervalmapper_intervalmapper_1(unittest.TestCase):
@@ -56,7 +58,7 @@ class Test_intervalmapper_intervalmapper_1(unittest.TestCase):
                 ((45,55), (40,50)),
                 ]:
             self.assertEqual( im.map_ref_to_tgt(*input), expected )
-        self.assertRaises(RuntimeError, lambda: im.map_ref_to_tgt(55,56))
+        self.assertRaises(InvalidIntervalError, lambda: im.map_ref_to_tgt(55,56))
 
 
     def Test_intervalmapper_backward(self):
@@ -73,7 +75,7 @@ class Test_intervalmapper_intervalmapper_1(unittest.TestCase):
                 ((40,50), (45,55)),
                 ]:
             self.assertEqual( im.map_tgt_to_ref(*input), expected )
-        self.assertRaises(RuntimeError, lambda: im.map_tgt_to_ref(50,51))
+        self.assertRaises(InvalidIntervalError, lambda: im.map_tgt_to_ref(50,51))
 
 
 ## class Test_intervalmapper_intervalmapper_2(unittest.TestCase):

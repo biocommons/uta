@@ -1,6 +1,7 @@
 import re
 
 from uta.tools.intervalmapper import IntervalMapper
+from uta.exceptions import *
 
 class TranscriptMapper(object):
     def __init__(self,db,ac,ref='GRCH37.p10'):
@@ -10,7 +11,7 @@ class TranscriptMapper(object):
         self.tx_info = db.get_tx_info(self.ac)
         self.tx_exons = db.get_tx_exons(self.ac,ref)
         if self.tx_info is None or len(self.tx_exons) == 0:
-            raise RuntimeError("Couldn't build TranscriptMapper(ref={self.ref},ac={self.ac})".format(
+            raise UTAError("Couldn't build TranscriptMapper(ref={self.ref},ac={self.ac})".format(
                 self=self))
         self.strand = self.tx_info['strand']
         self.cds_start_i = self.tx_info['cds_start_i']
@@ -39,7 +40,7 @@ class TranscriptMapper(object):
         elif self.strand == -1:
             return self.im.tgt_len-fre, self.im.tgt_len-frs
         else:
-            raise RuntimeError("Code fell through strand check; shouldn't be here.")
+            raise UTAError("Code fell through strand check; shouldn't ever get here.")
 
     def r_to_g(self,rs,re):
         if self.strand == 1:
@@ -47,7 +48,7 @@ class TranscriptMapper(object):
         elif self.strand == -1:
             frs, fre = self.im.tgt_len-re, self.im.tgt_len-rs
         else:
-            raise RuntimeError("Code fell through strand check; shouldn't be here.")
+            raise UTAError("Code fell through strand check; shouldn't be here.")
         gs,ge = self.im.map_tgt_to_ref(frs,fre)
         return gs+self.gc_offset,ge+self.gc_offset
 

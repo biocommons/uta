@@ -1,6 +1,7 @@
 import unittest
 
 from uta.db.transcriptdb import TranscriptDB
+from uta.exceptions import *
 from uta.tools.transcriptmapper import TranscriptMapper
 
 class Test_transcriptmapper(unittest.TestCase):
@@ -10,7 +11,8 @@ class Test_transcriptmapper(unittest.TestCase):
         self.db = TranscriptDB()
 
     def test_transcriptmapper_failures(self):
-        self.assertRaises(RuntimeError, TranscriptMapper, self.db,ref=self.ref,ac='bogus')
+        self.assertRaises(UTAError, TranscriptMapper, self.db,ref=self.ref,ac='bogus')
+        self.assertRaises(UTAError, TranscriptMapper, self.db,ref='bogus',ac='NM_033089.6')
 
     # reece=> select * from uta.tx_info where ac='NM_033089.6';
     #   gene  | strand |     ac      | cds_start_i | cds_end_i |                 descr                 | summary 

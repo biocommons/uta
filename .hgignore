@@ -2,6 +2,7 @@ syntax: glob
 
 *.bak
 *.cache
+*.egg
 *.egg-info
 *.err
 *.log
@@ -15,6 +16,7 @@ syntax: glob
 .Python
 .idea/*
 .installed.cfg
+.uta.conf.mk
 bdist
 build
 dev
@@ -26,6 +28,7 @@ misc/data
 misc/exon-str-cmp
 misc/tests
 missing-tests.ls
+nosetests.xml
 parts
 patches
 prd
@@ -37,9 +40,9 @@ tip
 tmp
 tst
 ve
+virtualenv.py
 workspace
 
 syntax: regexp
 (.*/)?\#[^/]*\#$
 archive
-.uta.conf.mk
