@@ -1,2 +1,7 @@
-.. automodule:: uta.db.transcriptdb
-   :members:
+Modules
+-------
+
+.. toctree::
+   :maxdepth: 1
+
+   modules_ud_transcriptdb

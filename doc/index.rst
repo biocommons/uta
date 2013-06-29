@@ -1,13 +1,17 @@
 UTA -- Universal Transcript Archive
 ===================================
 
-.. figure:: _static/uta-logo-128.png
+.. figure:: static/uta-logo-128.png
    :align: right
 
-Contents:
+.. include:: overview.rst
+
+
+Contents
+--------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    overview
    examples
@@ -15,7 +19,7 @@ Contents:
 
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

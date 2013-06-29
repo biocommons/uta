@@ -7,6 +7,16 @@ Eventually, this transcripts database will be replaced by a dedicated UTA
 database that offers more extensive transcript data, including archived
 transcripts, alternate assemblies and multiple alignment methods.  We will
 attempt to preserve this API.
+
+
+Example
+.......
+
+    >>> from uta.db.transcriptdb import TranscriptDB
+    >>> db = TranscriptDB()
+    >>> tx_info = db.get_tx_info('NM_000051.3')
+    >>> tx_info['gene']
+    'ATM'
 """
 
 import psycopg2, psycopg2.extras, os, urlparse, sys
@@ -16,37 +26,14 @@ class TranscriptDB(object):
     """
     Returns a connection to the transcript DB.
 
-    >>> from uta.db.transcriptdb import TranscriptDB
-    >>> db = TranscriptDB()
-    >>> tx_info = db.get_tx_info('NM_000051.3')
-    >>> tx_info['gene']
-    'ATM'
-    
-    >>> tx_exons = db.get_tx_exons('NM_000051.3','GRCh37.p10')
-    >>> len(tx_exons)
-    63
-
-    tx_exons have the following attributes::
-
-      {'ac': 'NM_000051.3',               # transcript accession
-      'ref': 'GRCh37.p10',
-      'g_start_i': 108093558,             # genomic start coordinate
-      'g_end_i': 108093913,               # genome end coordinate
-      'name': '1',
-      'ord': 1,
-      't_start_i': 0
-      't_end_i': 355,
-      'g_cigar': '355M',                  # CIGAR string, relative to genome
-      'g_seq_a': None,
-      't_seq_a': None,
-    }
-
-    .. note:: chromosome and strand are in the tx_info record
-
-    For example:
-    >>> tx_exons[0]['ac']
-    'NM_000051.3'
-
+    :param host: hostname to connect to (None if local socket)
+    :type host: str
+    :param user: username to connect as
+    :type user: str
+    :param password: password (None for no password)
+    :type password: str
+    :param database: which database to connect to
+    :type database: str
     """
 
     # create view uta.tx_info as select G.gene,G.strand,T.ac,T.cds_start_i,T.cds_end_i,G.descr,G.summary from gene G join transcript T on G.gene=T.gene;
@@ -57,10 +44,6 @@ class TranscriptDB(object):
     tx_exons_sql = 'select * from uta.tx_exons where ac=%(ac)s and ref=%(ref)s order by g_start_i'
 
     def __init__(self, host=None, user=None, password=None, database=None):
-        """
-        :param host: hostname to connect to
-        :param type: str
-        """
         if 'UTA_DB_URL' in os.environ:
             # eg localhost via socket, as user, database=username:
             # UTA_DB_URL=postgresql:/// PYTHONPATH=lib/python nosetests lib/python/uta/db/transcriptdb.py
@@ -81,18 +64,62 @@ class TranscriptDB(object):
         self.cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     def get_tx_info(self,ac):
-        """return transcript info for supplied accession (ac), or None if not found"""
+        """return transcript info for supplied accession (ac), or None if not found
+
+        :param ac: transcript accession with version (e.g., 'NM_000051.3')
+        :type ac: str
+        """
+
         self.cur.execute(self.tx_info_sql,{'ac': ac})
         assert self.cur.rowcount <= 1, 'get_tx_info({ac}) unexpectedly returned {c} rows'.format(
             ac=ac, c=self.cur.rowcount)
         return self.cur.fetchone()        # None if no match
 
     def get_tx_exons(self,ac,ref):    
-        """return transcript info for supplied accession (ac), or None if not found"""
+        """
+        return transcript info for supplied accession (ac), or None if not found
+        
+        :param ac: transcript accession with version (e.g., 'NM_000051.3')
+        :type ac: str
+        :param ref: reference genome ('GRCh37.p10' is the only valid value at this time)
+        :type ref: str
+        
+        >>> tx_exons = db.get_tx_exons('NM_000051.3','GRCh37.p10')
+        >>> len(tx_exons)
+        63
+        
+        tx_exons have the following attributes::
+        
+          {'ac': 'NM_000051.3',               # transcript accession
+          'ref': 'GRCh37.p10',
+          'g_start_i': 108093558,             # genomic start coordinate
+          'g_end_i': 108093913,               # genome end coordinate
+          'name': '1',
+          'ord': 1,
+          't_start_i': 0
+          't_end_i': 355,
+          'g_cigar': '355M',                  # CIGAR string, relative to genome
+          'g_seq_a': None,
+          't_seq_a': None,
+          }
+        
+        .. note:: chromosome and strand are in the tx_info record
+        
+        For example:
+        
+        >>> tx_exons[0]['ac']
+        'NM_000051.3'
+        
+        """
         self.cur.execute(self.tx_exons_sql,{'ac': ac, 'ref': ref})
         return self.cur.fetchall()        # [] if no match
 
     def get_tx_for_gene(self,gene):
-        """return transcript info records for supplied gene, in order of decreasing length"""
+        """
+        return transcript info records for supplied gene, in order of decreasing length
+
+        :param gene: HGNC gene name
+        :type gene: str
+        """
         self.cur.execute(self.tx_for_gene_sql,{'gene': gene})
         return self.cur.fetchall()

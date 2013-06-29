@@ -29,6 +29,9 @@ develop:
 test:
 	PYTHONPATH=lib/python python setup.py nosetests -v --with-xunit
 
+docs:
+	make -C doc html
+
 # TODO: make release target
 release-%:
 	#tag, dist, upload
