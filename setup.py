@@ -17,10 +17,13 @@ setup(
     version = __version__,
     zip_safe = True,
     install_requires = [
+        # 'alembic'
+        # 'biopython',
         'docopt',
         'nose',
-        # 'sqlalchemy',
-        # 'alembic'
-        # 'sphinx'
+        'prettytable',
+        'psycopg2',
+        'sphinx',
+        'sqlalchemy',
         ],    
 )

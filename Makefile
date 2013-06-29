@@ -9,15 +9,16 @@ SHELL:=/bin/bash -o pipefail
 .uta.conf.mk: etc/uta.conf
 	./sbin/conf-to-vars $< >$@
 
-setup: install-python-packages install-perl-modules
+setup: setup-python setup-perl
 
-install-python-packages:
-	curl https://raw.github.com/pypa/virtualenv/master/virtualenv.py >virtualenv.py
-	python virtualenv.py --distribute ve
+setup-python: virtualenv.py
+	python $< --distribute ve
 	source ve/bin/activate; python setup.py develop
+virtualenv.py:
+	curl https://raw.github.com/pypa/virtualenv/master/virtualenv.py >$@
 
 # TODO: consider perl brew instead
-install-perl-modules:
+setup-perl:
 	./sbin/perl-module-install --install-base ve   Log::Log4perl
 
 develop:
