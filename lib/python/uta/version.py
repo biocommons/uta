@@ -16,11 +16,12 @@ or
 If the tag contains rel-, the following text is used for __version__.
 Otherwise, __version__ is 'dev'
 
-http://semver.org/
+I'd like to switch to http://semver.org/, but I can't quite figure out a
+scheme I like to manage dev versions with mercurial.
 """
 
 try:
-
+    
     from _release import __hg_id__
 
 except ImportError:
@@ -39,7 +40,7 @@ except ImportError:
     def fetch_hg_id():
         return subprocess.check_output([
             'hg', '-R', find_hg_root(__file__), 'id', '-bit', 
-            '--config', 'trusted.users=*',    # prevents Not trusting file...
+            '--config', 'trusted.users=*',    # prevents Not trusting file... message
             ]).rstrip()
     
     __hg_id__ = fetch_hg_id() or 'hg id not available'
@@ -47,6 +48,6 @@ except ImportError:
 
 hg_info = dict(zip(['changeset','branch','tag'],__hg_id__.split()))
 
-__version__ = 'dev'
+__version__ = '0.0.0'
 if hg_info['tag'].startswith('rel-'):
     __version__ = hg_info['tag'].replace('rel-','')

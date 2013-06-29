@@ -1,16 +1,23 @@
 .. UTA documentation master file, created by
-   sphinx-quickstart on Wed Jun  5 15:08:12 2013.
+   sphinx-quickstart on Fri Jun 28 22:48:23 2013.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to UTA's documentation!
-===============================
+UTA -- Universal Transcript Archive
+===================================
+
+
+
+.. figure:: _static/uta-logo-128.png
+   :align: right
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
+.. automodule:: uta.db.transcriptdb
+   :members:
 
 
 Indices and tables
