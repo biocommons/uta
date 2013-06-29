@@ -1,5 +1,6 @@
 import re
 
+from uta.exceptions import *
 
 class Interval(object):
     __slots__ = ('start_i','end_i')
@@ -7,7 +8,7 @@ class Interval(object):
         self.start_i = start_i
         self.end_i = end_i
         if not self.start_i <= self.end_i:
-            raise RuntimeError('start_i must be less than or equal to end_i')
+            raise InvalidIntervalError('start_i must be less than or equal to end_i')
     @property
     def len(self):
         return self.end_i - self.start_i
@@ -27,7 +28,7 @@ class IntervalPair(object):
         # TODO: check for adjacency
         # TODO: new class for ungapped (lengths == ?)
         if self.ref.len != self.tgt.len and self.ref.len != 0 and self.tgt.len != 0:
-            raise RuntimeError('intervals must have equal lengths (|{self.ref}| != |{self.tgt}|)'.format(
+            raise InvalidIntervalError('intervals must have equal lengths (|{self.ref}| != |{self.tgt}|)'.format(
                 self=self))
     def __repr__(self):
         return str(self)
@@ -74,7 +75,7 @@ class IntervalMapper(object):
             si = s_index(from_ivs,from_start_i)
             ei = e_index(from_ivs,from_end_i)
         except ValueError:
-            raise RuntimeError('start_i,end_i interval out of bounds')
+            raise InvalidIntervalError('start_i,end_i interval out of bounds')
         to_start_i = clip_to_iv( to_ivs[si], to_ivs[si].start_i + (from_start_i - from_ivs[si].start_i) )
         to_end_i   = clip_to_iv( to_ivs[ei], to_ivs[ei].end_i   - (from_ivs[ei].end_i - from_end_i)     )
         #print('from se: (%d,%d); selected si=%d, ei=%d, to se: (%d,%d), from_ivs:\n%s' % (

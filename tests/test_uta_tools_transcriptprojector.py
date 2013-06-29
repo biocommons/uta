@@ -2,6 +2,7 @@ import unittest
 
 from uta.db.transcriptdb import TranscriptDB
 from uta.tools.transcriptprojector import TranscriptProjector
+from uta.exceptions import *
 
 class Test_transcriptdb(unittest.TestCase):
     def setUp(self):
@@ -32,8 +33,8 @@ class Test_transcriptdb(unittest.TestCase):
         self.assertEquals( pj.map_backward(724,725), (972,973) )
 
     def test_failures(self):
-        self.assertRaises( RuntimeError, TranscriptProjector, self.db,self.ref,'NM_bogus','NM_bogus' )
-        self.assertRaises( RuntimeError, TranscriptProjector, self.db,'bogus','NM_001197320.1','NM_021960.4' )
+        self.assertRaises( UTAError, TranscriptProjector, self.db,self.ref,'NM_bogus','NM_bogus' )
+        self.assertRaises( UTAError, TranscriptProjector, self.db,'bogus','NM_001197320.1','NM_021960.4' )
         
 
 if __name__ == '__main__':

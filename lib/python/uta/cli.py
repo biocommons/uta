@@ -41,7 +41,6 @@ from sqlalchemy.orm import sessionmaker
 import uta
 import uta.loading as ul
 
-
 def run(argv=None):
     dispatch_table = [
         ('create-schema', 		ul.create_schema),
@@ -67,5 +66,5 @@ def run(argv=None):
             sub = func
             break
     if sub is None:
-        raise RuntimeError('No valid actions specified')
+        raise UTAError('No valid actions specified')
     sub(engine,session,opts,cf)
