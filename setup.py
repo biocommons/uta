@@ -35,6 +35,7 @@ setup(
         'prettytable',
         'psycopg2',
         'sphinx',
+        'sphinx-pypi-upload',
         'sqlalchemy',
         ],    
 )
