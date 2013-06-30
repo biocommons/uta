@@ -1,3 +1,7 @@
+import os, sys
+root_dir = os.path.dirname(__file__)
+sys.path[0:0] = [os.path.join(root_dir ,'lib','python')]
+
 from distribute_setup import use_setuptools
 use_setuptools()
 
@@ -7,11 +11,15 @@ from setuptools import setup, find_packages
 with open('lib/python/uta/version.py') as f:
     exec(f.read())
 
+with open('doc/description.rst') as f:
+    long_description = f.read()
+
 setup(
     author = 'InVitae Keyboard Monkeys',
     author_email='reece.hart@invitae.com',   # TODO: ask devs about gen. support address
     description = """Universal Transcript Archive""",
     license = 'MIT',
+    long_description = long_description,
     name = "UTA",
     packages = find_packages(),
     url = 'https://bitbucket.org/invitae/uta',
