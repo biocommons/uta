@@ -1,5 +1,5 @@
 """
-populate __version__ and __hg_id__
+populate __version__ and hg_id
 
 Two cases:
 1) _release.py exists: we get __hg_id__ from that file.
@@ -11,43 +11,23 @@ Two cases:
 Either way, __hg_id__ is a string like
 17c1924c3d44+ default tip
 or
-17c1924c3d44 default rel-1.2.3
+17c1924c3d44 default 1.2.3
 
-If the tag contains rel-, the following text is used for __version__.
-Otherwise, __version__ is 'dev'
-
-I'd like to switch to http://semver.org/, but I can't quite figure out a
-scheme I like to manage dev versions with mercurial.
 """
+
+from uta.utils.hgid import HgId
 
 try:
     
-    from _release import __hg_id__
+    hg_id = HgId.init_from_hg(__file__)
 
 except ImportError:
 
-    import os,subprocess
+    from _release import hg_id
+    hg_id = HgId.init_from_string( hg_id )
 
-    def find_hg_root(path):
-        "return hg root for a given file/dir path (e.g., package.__file__)"
-        root = os.path.abspath(path)
-        while root:
-            if os.path.exists( os.path.join( root, '.hg' ) ):
-                return root
-            root = os.path.dirname(root)
-        return None
-
-    def fetch_hg_id():
-        return subprocess.check_output([
-            'hg', '-R', find_hg_root(__file__), 'id', '-bit', 
-            '--config', 'trusted.users=*',    # prevents Not trusting file... message
-            ]).rstrip()
-    
-    __hg_id__ = fetch_hg_id() or 'hg id not available'
-
-
-hg_info = dict(zip(['changeset','branch','tag'],__hg_id__.split()))
-
-__version__ = '0.0.0'
-if hg_info['tag'].startswith('rel-'):
-    __version__ = hg_info['tag'].replace('rel-','')
+# __version__ will end up as a string like
+# 'tip (33cdf1ff34a8+ default tip)'
+# Then the repo is tagged as 1.2.3, the result
+# will comply with http://semver.org/ recommendations
+__version__ = hg_id.tag0
