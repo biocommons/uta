@@ -1,4 +1,4 @@
-import os, subprocess
+import os, re, subprocess
 
 class HgId(object):
     __slots__ = ['root', 'branch', 'id', 'tags']
@@ -50,6 +50,19 @@ class HgId(object):
     def tag0(self):
         return self.tags[0]
 
+    @property
+    def semver(self):
+        """Return Semantic Version (http://semver.org/) if the tag
+        has that format, else None"""
+        matches = [ re.match('\d+\.\d+\.\d+.*',t) for t in self.tags ]
+        return matches[0].group(0) if any(matches) else None
+
+    @property
+    def version(self):
+        """Return semver if not None, otherwise the first 7 chars of the
+        changeset it (same as used by BitBucket"""
+        return self.semver or self.id[:7]
+
     def __str__(self):
         return '{self.tag0} ({self.id} {self.branch} {tags_str})'.format(
             self = self, tags_str = ' '.join(self.tags))
@@ -60,5 +73,3 @@ if __name__ == '__main__':
     hg_id = HgId.init_from_hg(__file__)
     print( 'repr:', repr(hg_id) )
     print( 'str:', str(hg_id) )
-
-

@@ -54,7 +54,10 @@ test:
 docs:
 	make -C doc html
 
-package:
+sdist:
+	python setup.py sdist
+upload-%:
+	hg up -r $*
 	python setup.py sdist upload
 
 
@@ -67,12 +70,12 @@ clean:
 #=> cleaner: above, and remove generated files
 cleaner: clean
 	find . -name \*.pyc -print0 | xargs -0r /bin/rm -f
-	/bin/rm -fr distribute-* *.egg *.egg-info
+	/bin/rm -fr distribute-* *.egg *.egg-info .uta.conf.mk
 	make -C doc clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr ve
+	/bin/rm -fr ve dist bdist
 #=> pristine: above, and delete anything unknown to mercurial
 pristine: cleanest
 	hg st -un0 | xargs -0r echo /bin/rm -fv
