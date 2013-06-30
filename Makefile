@@ -68,6 +68,7 @@ clean:
 cleaner: clean
 	find . -name \*.pyc -print0 | xargs -0r /bin/rm -f
 	/bin/rm -fr distribute-* *.egg *.egg-info
+	make -C doc clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
