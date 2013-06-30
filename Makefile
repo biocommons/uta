@@ -45,20 +45,18 @@ setup-perl:
 ############################################################################
 #= 
 
-develop:
-	python setup.py develop
-
 test:
 	PYTHONPATH=lib/python python setup.py nosetests -v --with-xunit
 
-docs:
-	make -C doc html
+docs: build_sphinx
 
-sdist:
-	python setup.py sdist
+develop build_sphinx sdist upload_sphinx: %:
+	python setup.py $*
+
 upload-%:
 	hg up -r $*
 	python setup.py sdist upload
+
 
 
 ############################################################################
