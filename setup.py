@@ -14,6 +14,7 @@ with open('lib/python/uta/version.py') as f:
 with open('doc/description.rst') as f:
     long_description = f.read()
 
+pkg_dir = 'lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
     author_email='reece.hart@invitae.com',   # TODO: ask devs about gen. support address
@@ -21,10 +22,11 @@ setup(
     license = 'MIT',
     long_description = long_description,
     name = "UTA",
-    packages = find_packages(),
+    package_dir = {'': pkg_dir},
+    packages = find_packages(pkg_dir),
     url = 'https://bitbucket.org/invitae/uta',
     version = __version__,
-    zip_safe = True,
+    #zip_safe = True,
     install_requires = [
         # 'alembic'
         # 'biopython',
