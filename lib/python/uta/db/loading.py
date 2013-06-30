@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import csv, gzip, itertools, logging
 
 import uta
-import uta.sa_models as usam
+import uta.db.sa_models as usam
 import uta.luts
 
 ############################################################################

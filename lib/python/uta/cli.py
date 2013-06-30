@@ -39,7 +39,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import uta
-import uta.loading as ul
+import uta.db.loading as ul
 
 def run(argv=None):
     dispatch_table = [
