@@ -6,7 +6,8 @@ Two cases:
    mostly to development code.
 2) If that fails, look for _release.py.
    _release.py is created during packaging, but is NOT added in hg.
-   Therefore, this case applies mostly to deployed code.
+   Therefore, this case applies mostly to deployed code that
+   doesn't have a .hg directory somewhere along the path to __file__.
 """
 
 from uta.utils.hgid import HgId

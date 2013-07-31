@@ -7,13 +7,16 @@ __doc__ = """UTA -- Universal Transcript Archive
 Usage:
   uta ( -h | --help )
   uta --version
-  uta [options] create-schema [ --drop-current ]
+  uta [options] create-schema [--drop-current]
   uta [options] load-gene FILE
   uta [options] load-transcripts-gbff FILE
   uta [options] load-transcripts-seqgene FILE
 
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
+
+
+Examples:
 
 """
 
@@ -49,7 +52,7 @@ def run(argv=None):
         ('load-transcripts-seqgene', 	ul.load_transcripts_seqgene),
         ]
 
-    opts = docopt(__doc__, argv=argv, version=uta.version_hg_id)
+    opts = docopt(__doc__, argv=argv, version=uta.version.hg_id)
 
     logging.basicConfig(level=logging.INFO)
 

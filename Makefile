@@ -24,15 +24,20 @@ help:
 	@sbin/extract-makefile-documentation "${SELF}"
 
 ############################################################################
-#= INSTALLATION/SETUP HELP
+#= INSTALLATION/SETUP
+
+#=> setup -- prepare python and perl environment for prequisites
+#=>> This is optional; the only requirement is that packages are discoverable
+#=>> in PYTHONPATH and PERL5LIB
 setup: setup-python setup-perl
 
-#=> setup-python: create a virtualenv (or provide your own)
+#=> setup-python: create a virtualenv with base packages
 # NOTE: setup-python only makes the virtualenv. You must actvate it
 # yourself (source ve/bin/activate)
-setup-python: virtualenv.py
-	python $< --distribute ve
+setup-python: ve
 	source ve/bin/activate; python setup.py develop
+ve: virtualenv.py
+	python $< --distribute ve
 virtualenv.py:
 	curl https://raw.github.com/pypa/virtualenv/master/virtualenv.py >$@
 
@@ -43,16 +48,20 @@ setup-perl:
 
 
 ############################################################################
-#= 
+#= UTILITY FUNCTIONS
 
+#=> test -- run tests
 test:
 	PYTHONPATH=lib/python python setup.py nosetests -v --with-xunit
 
+#=> docs -- make sphinx docs
 docs: build_sphinx
 
+#=> develop, build_sphinx, sdist, upload_sphinx
 develop build_sphinx sdist upload_sphinx: %:
 	python setup.py $*
 
+#=> upload-<tag>
 upload-%:
 	hg up -r $*
 	python setup.py sdist upload
