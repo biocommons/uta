@@ -31,11 +31,15 @@ setup(
         # 'alembic'
         # 'biopython',
         'docopt',
+        'hgvs',
         'nose',
         'prettytable',
         'psycopg2',
         'sphinx',
         'sphinx-pypi-upload',
         'sqlalchemy',
-        ],    
+        ],
+    dependency_links = [
+        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs-0.0.1',
+    ]
 )

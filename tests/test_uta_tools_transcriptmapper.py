@@ -130,5 +130,25 @@ class Test_transcriptmapper(unittest.TestCase):
     #     pass
 
 
+#    def test_data_garcia(self):
+#        import csv, hgvs.parser
+#        hgvs_parser = hgvs.parser.Parser()
+#        tests_fn = 'tests/data/garcia.tsv'
+#        tests_in = csv.DictReader(open(tests_fn,'r'),delimiter='\t')
+#        for test_rec in tests_in:
+#            g_hgvs = test_rec['Genomic_position']
+#            g_var = hgvs_parser.parse(g_hgvs)
+#            g_pos = (g_var.pos.start,g_var.pos.end)
+#            for c_hgvs in [test_rec['Mapping1'], test_rec['Mapping2']]:
+#                c_var = hgvs_parser.parse(c_hgvs)
+#                c_var = hgvs_parser.parse(c_hgvs)
+#                tm = TranscriptMapper(self.db, ref = self.ref, ac = c_var.seqref)
+#                c0 = (c_var.pos.start.base - 1, c_var.pos.end.base)
+#                g0 = tm.c_to_g(*c0)
+#                g1 = (g0[0]+1,g0[1])
+#                self.assertEqual( g_pos, g1, msg = g_hgvs + ' ~ ' + c_hgvs )
+
+
+
 if __name__ == '__main__':
     unittest.main()
