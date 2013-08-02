@@ -31,9 +31,7 @@ class TranscriptMapper(object):
                 else '?')
 
     def g_to_r(self,gs,ge):
-        # frs, fre = forward cds start & end; forward meaning
-        # w.r.t. genome and forward w.r.t. to + strand transcripts, or
-        # backward w.r.t. to - strand transcripts
+        # frs, fre = (f)orward (r)na (s)tart & (e)nd; forward w.r.t. genome
         frs,fre = self.im.map_ref_to_tgt(gs-self.gc_offset,ge-self.gc_offset)
         if self.strand == 1:
             return frs,fre
@@ -64,6 +62,23 @@ class TranscriptMapper(object):
     def c_to_g(self,cs,ce):
         return self.r_to_g( *self.c_to_r(cs,ce) )
 
+    def _debug_info(self):
+        import prettytable, textwrap
+        ti_table = prettytable.PrettyTable(field_names=['k','v'])
+        ti_table.align['k'] = 'r'
+        ti_table.align['v'] = 'l'
+        fields = ['ac', 'gene', 'descr', 'strand', 'cds_start_i', 'cds_end_i', 'summary', ]
+        for f in fields:
+            ti_table.add_row([f, textwrap.fill(str(self.tx_info[f]),80)])
+
+        fields = ['ref','ac','ord','name','t_start_i','t_end_i','g_start_i','g_end_i','g_cigar']
+        ex_table = prettytable.PrettyTable(field_names=fields)
+        for ex in sorted(self.tx_exons,key=lambda ex: ex['ord']):
+            ex_table.add_row([ex[f] for f in fields ])
+
+        return str(ti_table) + "\n" + str(ex_table)
+
+
 
 def build_tx_cigar(exons,strand):
     if len(exons) == 0:
@@ -81,6 +96,11 @@ def build_tx_cigar(exons,strand):
         tx_cigar += [ str(exons[i]['g_start_i']-exons[i-1]['g_end_i']) + 'N',
                       exons[i]['g_cigar'] ]
     return ''.join(tx_cigar)
+
+
+
+
+
 
 
 if __name__ == '__main__':
