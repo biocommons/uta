@@ -24,7 +24,7 @@ def mk_results_table(fn):
     hgvs_parser = hgvs.parser.Parser()
     tests_in = csv.DictReader(open(tests_fn,'r'),delimiter='\t')
 
-    results_table = prettytable.PrettyTable(field_names = ['hgvsg','gpos','hgvsc','c0','g0','g1','match?'])
+    results_table = prettytable.PrettyTable(field_names = ['I','=','S','gene','hgvsc','c0','g0','g1','hgvsg','gpos'])
     for test_rec in tests_in:
         if test_rec['Gene'].startswith('#'):
             continue
@@ -33,19 +33,21 @@ def mk_results_table(fn):
         g_pos = (g_var.pos.start,g_var.pos.end)
         for c_hgvs in [test_rec['Mapping1'], test_rec['Mapping2']]:
             c_var = hgvs_parser.parse(c_hgvs)
-            if c_var.pos.start.offset != 0 or c_var.pos.end.offset != 0:
-                print(c_hgvs + ": skipping intronic variant")
-                continue
-            try:
-                if c_var.seqref not in tm_cache:
+            if c_var.seqref not in tm_cache:
+                try:
                     tm_cache[c_var.seqref] = TranscriptMapper(db, ref = ref, ac = c_var.seqref)
-                tm = tm_cache[c_var.seqref]
-                c0 = (c_var.pos.start.base - 1, c_var.pos.end.base)
-                g0 = tm.c_to_g(*c0)
-                g1 = (g0[0]+1,g0[1])
-                results_table.add_row([ g_hgvs, g_pos,
-                                        c_hgvs, c0, g0, g1,
-                                        g_pos == g1 ])
-            except UTAError as e:
-                print(e.message)
+                except UTAError as e:
+                    print(e.message)
+                    continue
+            tm = tm_cache[c_var.seqref]
+            intronic = c_var.pos.start.is_intronic or c_var.pos.end.is_intronic
+            c0 = (c_var.pos.start.base - 1, c_var.pos.end.base)
+            g0 = tm.c_to_g(*c0)
+            g1 = (g0[0]+1,g0[1])
+            results_table.add_row([ str(intronic)[0], str(g_pos == g1)[0],
+                                    tm.tx_info['gene'], tm.tx_info['strand'],
+                                    c_hgvs, c0, g0, g1,
+                                    g_hgvs, g_pos ])
+            if intronic:
+                break
     return results_table
