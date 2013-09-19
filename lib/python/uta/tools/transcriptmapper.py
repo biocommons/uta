@@ -4,6 +4,18 @@ from uta.tools.intervalmapper import IntervalMapper
 from uta.exceptions import *
 
 class TranscriptMapper(object):
+    __doc__ = """
+    All coordinates are interbase (0-based, right-open)
+
+    gs, ge = genomic start,end 
+    rs, re = rna start,end 
+    cs, ce = cds start,end 
+
+    NOTE: cs and ce are continuous coordinates, unlike the HGVS CDS coordinate
+    which have no 0 (i.e., ..,-2,-1,1,2,..).  See uta.utils.coords for interval
+    and coordinate conversion functions.
+    """
+
     def __init__(self,db,ac,ref='GRCH37.p10'):
         self.db = db
         self.ref = ref
@@ -96,9 +108,6 @@ def build_tx_cigar(exons,strand):
         tx_cigar += [ str(exons[i]['g_start_i']-exons[i-1]['g_end_i']) + 'N',
                       exons[i]['g_cigar'] ]
     return ''.join(tx_cigar)
-
-
-
 
 
 

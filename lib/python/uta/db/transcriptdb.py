@@ -36,8 +36,9 @@ class TranscriptDB(object):
     :type database: str
     """
 
-    # create view uta.tx_info as select G.gene,G.strand,T.ac,T.cds_start_i,T.cds_end_i,G.descr,G.summary from gene G join transcript T on G.gene=T.gene;
-    # create view uta.tx_exons as select TE.ac,TE.ord,TE.name,TE.start_i as t_start_i,TE.end_i as t_end_i,'GRCh37.p10'::text as ref,GE.start_i as g_start_i,GE.end_i as g_end_i,GA.cigar as g_cigar,GA.g_seq_a,GA.t_seq_a from gtx_alignment GA join transcript_exon TE on GA.transcript_exon_id=TE.transcript_exon_id join genomic_exon GE on GA.genomic_exon_id=GE.genomic_exon_id;
+    # The UTA database is under development. For now, rely on views from the (outgoing) transcript database
+    # create view uta.tx_info as select G.gene,G.chr,G.strand,T.ac,T.cds_start_i,T.cds_end_i,G.descr,G.summary from transcripts.gene G join transcripts1.transcript T on G.gene=T.gene;
+    # create view uta.tx_exons as select TE.ac,TE.ord,TE.name,TE.start_i as t_start_i,TE.end_i as t_end_i,'GRCh37.p10'::text as ref,GE.start_i as g_start_i,GE.end_i as g_end_i,GA.cigar as g_cigar,GA.g_seq_a,GA.t_seq_a from transcripts1.gtx_alignment GA join transcripts1.transcript_exon TE on GA.transcript_exon_id=TE.transcript_exon_id join transcripts1.genomic_exon GE on GA.genomic_exon_id=GE.genomic_exon_id;
     # grant usage on schema uta to PUBLIC; grant select on uta.tx_info to PUBLIC; grant select on uta.tx_exons to PUBLIC;
     tx_info_sql = 'select * from uta.tx_info where ac=%(ac)s'
     tx_for_gene_sql = 'select * from uta.tx_info where gene=%(gene)s order by cds_end_i-cds_start_i desc'
