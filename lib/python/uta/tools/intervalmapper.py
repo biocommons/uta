@@ -70,7 +70,7 @@ class IntervalMapper(object):
             return min([ i for i,iv in enumerate(ivs[si:]) if e <= iv.end_i ]) + si
         def clip_to_iv(iv,pos):
             return max(iv.start_i,min(iv.end_i,pos))
-        assert from_start_i != 0 and from_end_i != 0 and from_start_i<=from_end_i, 'expected from_start_i <= from_end_i'
+        assert from_start_i<=from_end_i, 'expected from_start_i <= from_end_i'
         try:
             si = s_index(from_ivs,from_start_i)
             ei = e_index(from_ivs,from_end_i)
