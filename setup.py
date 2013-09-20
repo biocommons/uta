@@ -14,7 +14,7 @@ with open('lib/python/uta/version.py') as f:
 with open('doc/description.rst') as f:
     long_description = f.read()
 
-pkg_dir = '.'
+pkg_dir = 'lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
     author_email='reece.hart@invitae.com',   # TODO: ask devs about gen. support address
