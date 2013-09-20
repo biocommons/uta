@@ -3,6 +3,8 @@ import re
 from uta.tools.intervalmapper import IntervalMapper
 from uta.exceptions import *
 
+# TODO: use ci_to_cds/cds_to_ci
+
 class TranscriptMapper(object):
     __doc__ = """
     All coordinates are interbase (0-based, right-open)

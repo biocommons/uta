@@ -14,7 +14,7 @@ with open('lib/python/uta/version.py') as f:
 with open('doc/description.rst') as f:
     long_description = f.read()
 
-pkg_dir = 'lib/python'
+pkg_dir = '.' #lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
     author_email='reece.hart@invitae.com',   # TODO: ask devs about gen. support address
@@ -31,7 +31,7 @@ setup(
         # 'alembic'
         # 'biopython',
         'docopt',
-        # 'hgvs',
+        'hgvs',
         'nose',
         'prettytable',
         'psycopg2',
@@ -40,6 +40,6 @@ setup(
         'sqlalchemy',
         ],
     dependency_links = [
-        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs-0.0.1',
+        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs',
     ]
 )
