@@ -1,11 +1,11 @@
 import os, sys
+
+import ez_setup
+ez_setup.use_setuptools()
+from setuptools import setup, find_packages
+
 root_dir = os.path.dirname(__file__)
 sys.path[0:0] = [os.path.join(root_dir ,'lib','python')]
-
-from distribute_setup import use_setuptools
-use_setuptools()
-
-from setuptools import setup, find_packages
 
 # fetch __version__
 with open('lib/python/uta/version.py') as f:
@@ -31,7 +31,7 @@ setup(
         # 'alembic'
         # 'biopython',
         'docopt',
-        'hgvs',
+        # 'hgvs',
         'nose',
         'prettytable',
         'psycopg2',
