@@ -52,7 +52,7 @@ setup-perl:
 
 #=> test -- run tests
 test:
-	PYTHONPATH=lib/python python setup.py nosetests -v --with-xunit
+	PYTHONPATH=lib/python nosetests --with-xunit
 
 #=> docs -- make sphinx docs
 docs: build_sphinx
