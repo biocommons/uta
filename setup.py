@@ -26,7 +26,7 @@ setup(
     packages = find_packages(pkg_dir),
     url = 'https://bitbucket.org/invitae/uta',
     version = __version__,
-    #zip_safe = True,
+    zip_safe = True,
     install_requires = [
         'docopt',
         'hgvs',
@@ -38,10 +38,7 @@ setup(
         'sqlalchemy',
         ],
     dependency_links = [
-        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs',
-    ],
-    setup_requires = [
-        'hgtools'
+        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs-dev',
     ],
 )
 
