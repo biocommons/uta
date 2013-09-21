@@ -38,7 +38,7 @@ setup(
         'sqlalchemy',
         ],
     dependency_links = [
-        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs-dev',
+        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs-pre',
     ],
 )
 
