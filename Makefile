@@ -58,13 +58,16 @@ test:
 docs: build_sphinx
 
 #=> develop, build_sphinx, sdist, upload_sphinx
-develop build_sphinx sdist upload_sphinx: %:
+develop build_sphinx install sdist upload_sphinx: %:
 	python setup.py $*
 
 #=> upload-<tag>
 upload-%:
 	hg up -r $*
 	python setup.py sdist upload
+invitae-upload-%:
+	hg up -r $*
+	python setup.py sdist upload -r invitae
 
 
 
