@@ -1,7 +1,10 @@
 import os, sys
 
-import ez_setup
-ez_setup.use_setuptools()
+# ez_setup uses versions of setuptools that create problems for
+# certain locus projects.
+# import ez_setup
+# ez_setup.use_setuptools()
+
 from setuptools import setup, find_packages
 
 root_dir = os.path.dirname(__file__)
@@ -41,5 +44,3 @@ setup(
         'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs@0.0.2#egg=hgvs-0.0.2',
     ],
 )
-
-
