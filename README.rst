@@ -26,6 +26,13 @@ It will facilitate the following:
   interface
 
 
+Installation
+------------
+
+Tested on Ubuntu 13.04, Python 2.7.5::
+
+  snafu$ mkvirtualenv installtest
+  (installtest)snafu$ pip install hg+ssh://hg@bitbucket.org/locusdevelopment/uta
 
 Examples
 --------
