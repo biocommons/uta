@@ -12,11 +12,11 @@ attempt to preserve this API.
 Example
 .......
 
-    >>> from uta.db.transcriptdb import TranscriptDB
-    >>> db = TranscriptDB()
-    >>> tx_info = db.get_tx_info('NM_000051.3')
-    >>> tx_info['gene']
-    'ATM'
+    # >>> from uta.db.transcriptdb import TranscriptDB
+    # >>> db = TranscriptDB()
+    # >>> tx_info = db.get_tx_info('NM_000051.3')
+    # >>> tx_info['gene']
+    # 'ATM'
 """
 
 import psycopg2, psycopg2.extras, os, urlparse, sys
@@ -34,6 +34,8 @@ class TranscriptDB(object):
     :type password: str
     :param database: which database to connect to
     :type database: str
+
+    # db = TranscriptDB()
     """
 
     # The UTA database is under development. For now, rely on views from the (outgoing) transcript database
@@ -56,7 +58,7 @@ class TranscriptDB(object):
             database = url.path[1:]
 
         elif host is None and user is None and password is None and database is None:
-            # TODO: Move this to a dedicated database
+            # TODO: Pull this from a package default instead
             host = host or 'db.locusdev.net'
             user = user or 'PUBLIC'
             database = database or 'reece'
@@ -85,8 +87,8 @@ class TranscriptDB(object):
         :param ref: reference genome ('GRCh37.p10' is the only valid value at this time)
         :type ref: str
         
-        >>> tx_exons = db.get_tx_exons('NM_000051.3','GRCh37.p10')
-        >>> len(tx_exons)
+        # tx_exons = db.get_tx_exons('NM_000051.3','GRCh37.p10')
+        # len(tx_exons)
         63
         
         tx_exons have the following attributes::
@@ -108,7 +110,7 @@ class TranscriptDB(object):
         
         For example:
         
-        >>> tx_exons[0]['ac']
+        # tx_exons[0]['ac']
         'NM_000051.3'
         
         """
