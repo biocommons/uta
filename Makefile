@@ -10,6 +10,8 @@ SHELL:=/bin/bash -o pipefail
 SELF:=$(firstword $(MAKEFILE_LIST))
 export PYTHONPATH=lib/python
 
+PYPI_SERVICE:=-r invitae
+
 # make config in etc/uta.conf available within the Makefile
 -include .uta.conf.mk
 .uta.conf.mk: etc/uta.conf
@@ -50,6 +52,9 @@ setup-perl:
 ############################################################################
 #= UTILITY FUNCTIONS
 
+#=> lint -- run lint
+# TBD
+
 #=> test -- run tests
 test:
 	PYTHONPATH=lib/python nosetests --with-xunit
@@ -58,17 +63,13 @@ test:
 docs: build_sphinx
 
 #=> develop, build_sphinx, sdist, upload_sphinx
-build develop build_sphinx install sdist upload_sphinx: %:
+build build_sphinx develop install sdist upload_sphinx: %:
 	python setup.py $*
 
 #=> upload-<tag>
 upload-%:
-	hg up -r $*
-	python setup.py sdist upload
-invitae-upload-%:
-	hg up -r $*
-	python setup.py sdist upload -r invitae
-
+	[ -z "$$(hg st -admnr)" ] || { echo "Directory contains changes; aborting." 1>&2; hg st -admr; exit 1; }
+	R=$$(hg id -t); hg up -r $*; python setup.py sdist upload ${PYPI_SERVICE}; hg up -r $$R
 
 
 ############################################################################
@@ -80,12 +81,13 @@ clean:
 #=> cleaner: above, and remove generated files
 cleaner: clean
 	find . -name \*.pyc -print0 | xargs -0r /bin/rm -f
-	/bin/rm -fr distribute-* *.egg *.egg-info .uta.conf.mk
+	/bin/rm -fr distribute-* *.egg *.egg-info nosetests.xml
+	/bin/rm -fr .uta.conf.mk
 	make -C doc clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr build sdist ve dist bdist
+	/bin/rm -fr build bdist dist sdist ve
 #=> pristine: above, and delete anything unknown to mercurial
 pristine: cleanest
 	hg st -un0 | xargs -0r echo /bin/rm -fv
