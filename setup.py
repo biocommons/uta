@@ -11,7 +11,7 @@ with open('doc/description.rst') as f:
 pkg_dir = 'lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
-    author_email='reece.hart@invitae.com',
+    author_email='reece@invitae.com',
     license = 'MIT',
     long_description = long_description,
     name = "uta",
@@ -33,7 +33,7 @@ setup(
         ],
 
     dependency_links = [
-        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs@0.0.2#egg=hgvs-0.0.7',
+        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs@{v}#egg=hgvs-{v}'.format(v='0.0.7'),
     ],
 
     setup_requires = [

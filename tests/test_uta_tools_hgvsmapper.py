@@ -1,4 +1,4 @@
-import unittest
+import unittest, sys
 
 from uta.db.transcriptdb import TranscriptDB
 from uta.tools.hgvsmapper import HGVSMapper
@@ -9,15 +9,29 @@ class test_HGVSMapper(unittest.TestCase):
         self.hgvsmapper = HGVSMapper( db = TranscriptDB(),
                                       cache_transcripts = True )
 
-    def test_DNAH11(self):
+    def test_DNAH11_dbsnp(self):
         import csv
         tests_fn = 'tests/data/DNAH11.tsv'
         tests_in = csv.DictReader(open(tests_fn,'r'),delimiter='\t')
         for rec in tests_in:
-            if rec['rsid'].startswith('#'):
+            if rec['id'].startswith('#'):
+                continue
+            if rec['HGVSp'] == '':
                 continue
             if 'NM_003777.3' in rec['HGVSc']:
-                print(rec)
+                self.assertEqual(self.hgvsmapper.hgvs_to_genomic_coords(rec['HGVSg'])[:3],
+                                 self.hgvsmapper.hgvs_to_genomic_coords(rec['HGVSc'])[:3] )
+
+    def test_DNAH11_hgmd(self):
+        import csv
+        tests_fn = 'tests/data/DNAH11_HGMD_var.tsv'
+        tests_in = csv.DictReader(open(tests_fn,'r'),delimiter='\t')
+        for rec in tests_in:
+            if rec['id'].startswith('#'):
+                continue
+            if rec['HGVSp'] == '':
+                continue
+            if 'NM_003777.3' in rec['HGVSc']:
                 self.assertEqual(self.hgvsmapper.hgvs_to_genomic_coords(rec['HGVSg'])[:3],
                                  self.hgvsmapper.hgvs_to_genomic_coords(rec['HGVSc'])[:3] )
 

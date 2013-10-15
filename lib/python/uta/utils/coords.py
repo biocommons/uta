@@ -1,4 +1,4 @@
-def cds_to_ci(s,e=None):
+def human_to_ci(s,e=None):
     """convert start,end interval in inclusive, discontinuous HGVS coordinates
     (..,-2,-1,1,2,..) to continuous interbase (right-open) coordinates
     (..,-2,-1,0,1,..)"""
@@ -7,10 +7,13 @@ def cds_to_ci(s,e=None):
         return c-1 if c>0 else c
     return _cds_to_ci(s), None if e is None else _cds_to_ci(e)+1
 
-def ci_to_cds(s,e=None):
+def ci_to_human(s,e=None):
     """convert start,end interval in continuous interbase (right-open)
     coordinates (..,-2,-1,0,1,..) to discontinuous HGVS coordinates
     (..,-2,-1,1,2,..)"""
     def _ci_to_cds(c):
         return c+1 if c>=0 else c
     return _ci_to_cds(s), None if e is None else _ci_to_cds(e)-1
+
+cds_to_ci = human_to_ci
+ci_to_cds = ci_to_human

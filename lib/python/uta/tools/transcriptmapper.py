@@ -71,9 +71,11 @@ class TranscriptMapper(object):
         return cs+self.cds_start_i, ce+self.cds_start_i
 
     def g_to_c(self,gs,ge):
+        # TODO: allow intronic offsets
         return self.r_to_c( *self.g_to_r(gs,ge) )
         
     def c_to_g(self,cs,ce):
+        # TODO: allow intronic offsets
         return self.r_to_g( *self.c_to_r(cs,ce) )
 
     def _debug_info(self):
