@@ -143,8 +143,6 @@ def load_transcripts_seqgene(engine,session,opts,cf):
         else:
             t = resp.one()
 
-        import IPython; IPython.embed()
-
         chr_ac = uta.lut.chr_to_NC()
         es = usam.ExonSet(
             transcript_id = t.transcript_id,
