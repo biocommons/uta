@@ -29,7 +29,7 @@ help:
 #=> setup -- prepare python and perl environment for prequisites
 #=>> This is optional; the only requirement is that packages are discoverable
 #=>> in PYTHONPATH and PERL5LIB
-setup: setup-python setup-perl
+setup: setup-perl   # setup-python 
 
 #=> setup-python: create a virtualenv with base packages
 # NOTE: setup-python only makes the virtualenv. You must actvate it
@@ -58,7 +58,7 @@ test:
 docs: build_sphinx
 
 #=> develop, build_sphinx, sdist, upload_sphinx
-develop build_sphinx install sdist upload_sphinx: %:
+build develop build_sphinx install sdist upload_sphinx: %:
 	python setup.py $*
 
 #=> upload-<tag>
@@ -85,7 +85,7 @@ cleaner: clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr ve dist bdist
+	/bin/rm -fr build sdist ve dist bdist
 #=> pristine: above, and delete anything unknown to mercurial
 pristine: cleanest
 	hg st -un0 | xargs -0r echo /bin/rm -fv
