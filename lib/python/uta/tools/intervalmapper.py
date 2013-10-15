@@ -118,10 +118,10 @@ class IntervalMapper(object):
         """
         return IntervalMapper(cigar_to_intervalpairs(cigar))
 
-    def map_ref_to_tgt(self,start_i,end_i,max_extent=True):
+    def map_ref_to_tgt(self,start_i,end_i,max_extent=False):
         return self._map(self.ref_intervals, self.tgt_intervals, start_i, end_i, max_extent)
 
-    def map_tgt_to_ref(self,start_i,end_i,max_extent=True):
+    def map_tgt_to_ref(self,start_i,end_i,max_extent=False):
         return self._map(self.tgt_intervals, self.ref_intervals, start_i, end_i, max_extent)
 
     @staticmethod
