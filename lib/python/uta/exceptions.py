@@ -10,3 +10,5 @@ class InvalidTranscriptError(UTAError):
 class InvalidIntervalError(UTAError):
     pass
 
+class InvalidHGVSVariantError(UTAError):
+    pass

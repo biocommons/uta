@@ -3,8 +3,12 @@ import os,re,sys
 import ometa.runtime
 
 import hgvs.parser
+import hgvs.variant
+import hgvs.posedit
+import hgvs.location
 
 from uta.db.transcriptdb import TranscriptDB
+from uta.exceptions import *
 from uta.tools.transcriptmapper import TranscriptMapper
 import uta.exceptions
 import uta.utils.coords as uuc
@@ -67,3 +71,44 @@ class HGVSMapper(object):
             return (tm.tx_info['chr'],g1_pos[0], g1_pos[1],tm)
 
         raise RuntimeError("Can't map {var.seqref}:{var.type} variants".format(var=var))
+
+
+    def hgvsg_to_hgvsc(self,hgvs_g,ac,ref='GRCh37.p10'):
+        """Given a genomic (g.) HGVS variant, return a transcript (c.) variant on the specified transcript.
+
+        hgvs must be an HGVS-formatted variant or variant position.
+        Certain InVitae variants are also permitted.
+        """
+
+        # InVitae: we use dupN, which is not part of the HGVS spec; strip N from dupN
+        hgvs_g = dup_re.sub('\\1',hgvs_g)
+        var_g = self.hgvs_parser.parse(hgvs_g)
+        
+        if not (var_g.seqref.startswith('NC_') and var_g.type == 'g'):
+            raise InvalidHGVSVariantError('Expected a genomic (g.) variant on an NC sequence reference; got '+hgvs_g)
+
+        chrom = gu.NC_to_chr[var_g.seqref]
+        tm = self.fetch_TranscriptMapper(ac=ac,ref=ref)
+        if not (chrom == tm.tx_info['chr']):
+            raise InvalidTranscriptError('{hgvs_g} is on chromosome {chrom_g} but tried to map to transcript {ac} on chromosome {chrom_c}'.format(
+                hgvs_g=hgvs_g, chrom_g=chrom, ac=ac, chrom_c=tm.tx_info['chr']))
+
+        cse_i = tm.g_to_c( *uuc.human_to_ci(var_g.posedit.pos.start,var_g.posedit.pos.end) )
+        cse_h = uuc.ci_to_human( *cse_i )
+        
+        # TODO: intronic offsets
+        # TODO: revcomp edit for -strand
+        var_c = hgvs.variant.Variant(seqref=ac,
+                                     type='c',
+                                     posedit=hgvs.posedit.PosEdit(
+                                         pos=hgvs.location.Interval(
+                                            start = hgvs.location.CDSPosition(base=cse_h[0],offset=0),
+                                            end   = hgvs.location.CDSPosition(base=cse_h[1],offset=0)),
+                                        edit=var_g.posedit.edit))
+        return str(var_c)
+
+        ## Add intron offsets
+        #if tm.tx_info['strand'] == 1:
+        #    g1_pos = (g0[0] + var.posedit.pos.start.offset+1, g0[1] + var.posedit.pos.end.offset  )
+        #else:
+        #    g1_pos = (g0[0] - var.posedit.pos.end.offset+1,   g0[1] - var.posedit.pos.start.offset)
