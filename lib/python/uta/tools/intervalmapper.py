@@ -135,6 +135,8 @@ class IntervalMapper(object):
             else:
                 sil = [ i for i,iv in enumerate(from_ivs) if iv.start_i <= from_start_i <= iv.end_i ]
                 eil = [ i for i,iv in enumerate(from_ivs) if iv.start_i <= from_end_i   <= iv.end_i ]
+                if len(sil) == 0 or len(eil) == 0:
+                    raise InvalidIntervalError('start or end or both are beyond the bounds of transcript record')
                 si,ei = (sil[0],eil[-1]) if max_extent else (sil[-1],eil[0])
             return si,ei
 
