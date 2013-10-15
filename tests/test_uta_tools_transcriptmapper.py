@@ -23,7 +23,7 @@ class Test_transcriptmapper(unittest.TestCase):
     #      ac      | ord | name | t_start_i | t_end_i |    ref     | g_start_i | g_end_i |    cigar    |                                                                                                                         
     # -------------+-----+------+-----------+---------+------------+-----------+---------+-------------+------------------------
     #  NM_033089.6 |   1 | 1    |         0 |    2759 | GRCh37.p10 |    278203 |  280965 | 484M3D2275M | GGAGGATGCTGGGAAGGAGGTAA
-    def test_transcriptmapper_TranscriptMapper_ZCCHC3(self):
+    def test_transcriptmapper_TranscriptMapper_1_ZCCHC3(self):
         ac = 'NM_033089.6'
         tm = TranscriptMapper(self.db,ac,self.ref)
 
@@ -69,7 +69,7 @@ class Test_transcriptmapper(unittest.TestCase):
     # -------------+-----+------+-----------+---------+------------+-----------+-----------+--------------+---------------------
     #  NM_182763.2 |   1 | 1b   |         0 |     896 | GRCh37.p10 | 150551318 | 150552214 | 896M         |
     #  NM_182763.2 |   2 | 3    |       896 |    3841 | GRCh37.p10 | 150547026 | 150549967 | 1077M4I1864M | GATGGGTTTGTGGAGTTCTT
-    def test_transcriptmapper_TranscriptMapper_MCL1(self):
+    def test_transcriptmapper_TranscriptMapper_2_MCL1(self):
         ac = 'NM_182763.2'
         tm = TranscriptMapper(self.db,ac,self.ref)
 

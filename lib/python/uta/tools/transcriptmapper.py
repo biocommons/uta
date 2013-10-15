@@ -46,7 +46,7 @@ class TranscriptMapper(object):
 
     def g_to_r(self,gs,ge):
         # frs, fre = (f)orward (r)na (s)tart & (e)nd; forward w.r.t. genome
-        frs,fre = self.im.map_ref_to_tgt(gs-self.gc_offset,ge-self.gc_offset)
+        frs,fre = self.im.map_ref_to_tgt(gs-self.gc_offset,ge-self.gc_offset,max_extent=False)
         if self.strand == 1:
             return frs,fre
         elif self.strand == -1:
@@ -61,7 +61,7 @@ class TranscriptMapper(object):
             frs, fre = self.im.tgt_len-re, self.im.tgt_len-rs
         else:
             raise UTAError("Code fell through strand check; shouldn't be here.")
-        gs,ge = self.im.map_tgt_to_ref(frs,fre)
+        gs,ge = self.im.map_tgt_to_ref(frs,fre,max_extent=False)
         return gs+self.gc_offset,ge+self.gc_offset
 
     def r_to_c(self,rs,re):
