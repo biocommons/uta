@@ -11,7 +11,8 @@ with open('doc/description.rst') as f:
 pkg_dir = 'lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
-    author_email='reece@invitae.com',
+    author_email='reece+uta@invitae.com',
+	description='Universal Transcript Archive',
     license = 'MIT',
     long_description = long_description,
     name = "uta",
