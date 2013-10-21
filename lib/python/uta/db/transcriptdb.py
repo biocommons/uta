@@ -47,22 +47,22 @@ class TranscriptDB(object):
     tx_exons_sql = 'select * from uta.tx_exons where ac=%(ac)s and ref=%(ref)s order by g_start_i'
 
     def __init__(self, host=None, user=None, password=None, database=None):
-        if 'UTA_DB_URL' in os.environ:
-            # eg localhost via socket, as user, database=username:
-            # UTA_DB_URL=postgresql:/// PYTHONPATH=lib/python nosetests lib/python/uta/db/transcriptdb.py
-            url = urlparse.urlparse(os.environ['UTA_DB_URL'])
-            assert url.scheme == 'postgresql'
-            host = url.hostname 
-            user = url.username
-            password = url.password
-            database = url.path[1:]
-
-        elif host is None and user is None and password is None and database is None:
-            # TODO: Pull this from a package default instead
-            host = host or 'db.locusdev.net'
-            user = user or 'PUBLIC'
-            database = database or 'reece'
-            
+        if host is None and user is None and password is None and database is None:
+            if 'UTA_DB_URL' in os.environ:
+                # eg localhost via socket, as user, database=username:
+                # UTA_DB_URL=postgresql:/// PYTHONPATH=lib/python nosetests lib/python/uta/db/transcriptdb.py
+                url = urlparse.urlparse(os.environ['UTA_DB_URL'])
+                assert url.scheme == 'postgresql'
+                host = url.hostname 
+                user = url.username
+                password = url.password
+                database = url.path[1:]
+                return self.__init__(host,user,password,database)
+            else:
+                # TODO: Pull this from a package default instead
+                host = host or 'db.locusdev.net'
+                user = user or 'PUBLIC'
+                database = database or 'reece'
         self.conn = psycopg2.connect(host = host, user = user, password = password, database = database)
         self.cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 

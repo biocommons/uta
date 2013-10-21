@@ -8,7 +8,9 @@
 
 SHELL:=/bin/bash -o pipefail
 SELF:=$(firstword $(MAKEFILE_LIST))
+
 export PYTHONPATH=lib/python
+export UTA_DB_URL=postgresql://localhost/
 
 PYPI_SERVICE:=-r invitae
 
@@ -57,7 +59,7 @@ setup-perl:
 
 #=> test -- run tests
 test:
-	PYTHONPATH=lib/python nosetests --with-xunit
+	nosetests --with-xunit
 
 #=> docs -- make sphinx docs
 docs: build_sphinx
