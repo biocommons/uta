@@ -1,6 +1,9 @@
 -*-outline-*-
 
-* document modules, classes, functions
+* documentation
+** modules, classes, functions
+** interbase coords & why
+** code layout
 
 * implement docttests
 
@@ -8,9 +11,15 @@
 
 * add protein-level annotation
 
+* webservice
+/uta/api/1/tools/hgvsmapper/
+/uta/api/1/tools/transcriptmapper/
+/uta/api/1/tools/transcriptprojector/
+/uta/api/1/db/txinfo/
+/uta/api/1/db/txexons/
 
+* tests
+DNAH11-HGMD: AssertionError: 'NM_003777.3:c.13552_13608del57' != 'NM_003777.3:c.13552_*36del57'
 
-* intro
-** interbase coords & why
-** code layout
-** 
+See comments in tests/data/*.tsv. Some HGMD variants are bogus, and some
+are legit but not handled by current code.
