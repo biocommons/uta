@@ -35,15 +35,9 @@ help:
 #=>> in PYTHONPATH and PERL5LIB
 setup: setup-perl   # setup-python 
 
-#=> setup-python: create a virtualenv with base packages
-# NOTE: setup-python only makes the virtualenv. You must actvate it
-# yourself (source ve/bin/activate)
-setup-python: ve
-	source ve/bin/activate; python setup.py develop
-ve: virtualenv.py
-	python $< --distribute ve
-virtualenv.py:
-	curl https://raw.github.com/pypa/virtualenv/master/virtualenv.py >$@
+#=> setup-python: run python setup.py
+setup-python:
+	python setup.py develop
 
 #=> setup-perl: install perl packages
 # TODO: consider perl brew instead
