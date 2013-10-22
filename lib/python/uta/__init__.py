@@ -1,1 +1,3 @@
-from version import __version__, hg_id
+import pkg_resources
+__version__ = pkg_resources.require('uta')[0].version
+hg_id = 'OBSOLETE'
