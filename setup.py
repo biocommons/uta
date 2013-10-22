@@ -12,7 +12,7 @@ pkg_dir = 'lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
     author_email='reece+uta@invitae.com',
-	description='Universal Transcript Archive',
+    description='Universal Transcript Archive',
     license = 'MIT',
     long_description = long_description,
     name = "uta",
@@ -24,13 +24,13 @@ setup(
 
     install_requires = [
         'docopt',
-	'flask',
-	'flask-RESTful',
+        'flask',
+        'flask-RESTful',
         'hgvs',
         'nose',
         'prettytable',
         'psycopg2',
-	'six',
+        'six',
         'sphinx',
         'sphinx-pypi-upload',
         'sqlalchemy',
