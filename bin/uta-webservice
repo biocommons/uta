@@ -30,18 +30,15 @@ app = Flask(__name__)
 api = restful.Api(app)
 
 parser = reqparse.RequestParser()
-# Args for UTA
-parser.add_argument('hgvsg', type=str, help='Missing HGVS location e.g. hgvsg=NC_000007.13:g.36561662C>T', required=True)
-parser.add_argument('ac', type=str, help='Missing accession e.g. ac=NM_001177507.1', required=True)
-parser.add_argument('ref', type=str, help='Missing genomic build reference e.g. ref=GRCh37.p10', required=True)
-
 hgvsmapper = HGVSMapper(db=TranscriptDB(), cache_transcripts=True)
 
 # RESTful interface using POST
 # POST is necessary to properly encode the transcript names
 class HGVSMapper(restful.Resource):
     def post(self):
-
+        parser.add_argument('hgvsg', type=str, help='Missing HGVS location e.g. hgvsg=NC_000007.13:g.36561662C>T', required=True)
+        parser.add_argument('ac', type=str, help='Missing accession e.g. ac=NM_001177507.1', required=True)
+        parser.add_argument('ref', type=str, help='Missing genomic build reference e.g. ref=GRCh37.p10', required=True)
         args = parser.parse_args()
 
         try:
