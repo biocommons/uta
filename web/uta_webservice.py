@@ -8,9 +8,11 @@ from uta.db.transcriptdb import TranscriptDB
 from uta.tools.hgvsmapper import HGVSMapper
 
 """
+Launch the webservice: gunicorn -w 4 -b 0.0.0.0:4000 uta_webservice:app
+
 Example usage and output:
 
-curl http://127.0.0.1:5000/uta/api/v1 -d "hgvsg=NC_000007.13:g.36561662C>T&ac=NM_001177507.1&ref=GRCh37.p10"
+curl http://127.0.0.1:5000/uta/api/v1/hgvs_to_hgvsc -d "hgvsg=NC_000007.13:g.36561662C>T&ac=NM_001177507.1&ref=GRCh37.p10"
 {
   "hgvsc": "NM_001177507.1:c.1486C>T",
   "hgvsp": "TBD",
@@ -70,7 +72,7 @@ class HGVSMapper_hgvs_to_hgvsc(restful.Resource):
 class HGVSMapper_hgvs_to_genomic_coords(restful.Resource):
     def __init__(self):
         self.parser = reqparse.RequestParser()
-        self.parser.add_argument('hgvsc', type=str, help='Missing HGVSC location e.g. hgvsc=NM_001177507.1:c.1486G>A',
+        self.parser.add_argument('hgvs', type=str, help='Missing HGVS location e.g. hgvs=NM_001177507.1:c.1486G>A',
                                  required=True)
         super(HGVSMapper_hgvs_to_genomic_coords, self).__init__()
 
@@ -78,9 +80,13 @@ class HGVSMapper_hgvs_to_genomic_coords(restful.Resource):
         args = self.parser.parse_args()
 
         try:
-            chrom, chr_start, chr_end, tm = hgvsmapper.hgvs_to_genomic_coords(args['hgvsc'])
+            chrom, chr_start, chr_end, tm = hgvsmapper.hgvs_to_genomic_coords(args['hgvs'])
         except Exception as error:
             return jsonify({'message': 'Bad Request to HGVSMapper. {0}'.format(error)})
+
+        strand = None
+        if tm is not None:
+            strand = tm.strand_pm
 
         uta_version = uta.__version__
         if uta_version is None:
@@ -89,7 +95,7 @@ class HGVSMapper_hgvs_to_genomic_coords(restful.Resource):
         return jsonify({'chrom': chrom,
                         'chr_start': chr_start,
                         'chr_end': chr_end,
-                        'strand': tm.strand_pm,
+                        'strand': strand,
                         'uta_version': uta_version})
 
 
