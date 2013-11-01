@@ -102,8 +102,8 @@ class HGVSMapper(object):
                                      type='c',
                                      posedit=hgvs.posedit.PosEdit(
                                          pos=hgvs.location.Interval(
-                                            start = hgvs.location.CDSPosition(base=cse_h[0],offset=0),
-                                            end   = hgvs.location.CDSPosition(base=cse_h[1],offset=0)),
+                                            start = hgvs.location.CDSPosition(base=cse_h[0],offset=cse_h[2]),
+                                            end   = hgvs.location.CDSPosition(base=cse_h[1],offset=cse_h[3])),
                                         edit=var_g.posedit.edit))
         return str(var_c)
 

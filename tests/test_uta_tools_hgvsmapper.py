@@ -46,12 +46,6 @@ class test_HGVSMapper(unittest.TestCase):
                 continue
             if rec['HGVSp'] == '':
                 continue
-
-            print '{one} = {two}'.format(
-                one=self.hgvsmapper.hgvsg_to_hgvsc(rec['HGVSg'], self.hgvsparser.parse(rec['HGVSc']).seqref, 'GRCh37.p10'),
-                two=rec['HGVSc']
-            )
-
             self.assertEqual(
                 self.hgvsmapper.hgvsg_to_hgvsc(
                     rec['HGVSg'],self.hgvsparser.parse(rec['HGVSc']).seqref,'GRCh37.p10'),

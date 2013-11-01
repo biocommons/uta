@@ -98,20 +98,20 @@ class Test_transcriptmapper(unittest.TestCase):
         self.assertEqual(tm.r_to_g(895, 896, 0, 0), (150551318, 150551319))
 
         # intron 1nt before exon 1
-        self.assertEqual(tm.g_to_r(150551317, 150551318), (896, 896, -1, 0))
-        self.assertEqual(tm.r_to_g(896, 896, -1, 0), (150551317, 150551318))
+        self.assertEqual(tm.g_to_r(150551317, 150551318), (896, 896, 0, 1))
+        self.assertEqual(tm.r_to_g(896, 896, 0, 1), (150551317, 150551318))
 
         # intron 3nts before exon 1
-        self.assertEqual(tm.g_to_r(150551315, 150551317), (896, 896, -3, -1))
-        self.assertEqual(tm.r_to_g(896, 896, -3, -1), (150551315, 150551317))
+        self.assertEqual(tm.g_to_r(150551315, 150551317), (896, 896, 1, 3))
+        self.assertEqual(tm.r_to_g(896, 896, 1, 3), (150551315, 150551317))
 
         # intron 3nts after exon 2
-        self.assertEqual(tm.g_to_r(150549968, 150549970), (896, 896, 1, 3))
-        self.assertEqual(tm.r_to_g(896, 896, 1, 3), (150549968, 150549970))
+        self.assertEqual(tm.g_to_r(150549968, 150549970), (896, 896, -3, -1))
+        self.assertEqual(tm.r_to_g(896, 896, -3, -1), (150549968, 150549970))
 
         # intron 1nt after exon 2
-        self.assertEqual(tm.g_to_r(150549967, 150549968), (896, 896, 0, 1))
-        self.assertEqual(tm.r_to_g(896, 896, 0, 1), (150549967, 150549968))
+        self.assertEqual(tm.g_to_r(150549967, 150549968), (896, 896, -1, 0))
+        self.assertEqual(tm.r_to_g(896, 896, -1, 0), (150549967, 150549968))
 
         # exon 2, 1nt at either end
         self.assertEqual(tm.g_to_r(150549966, 150549967), (896, 897, 0, 0))
@@ -149,6 +149,54 @@ class Test_transcriptmapper(unittest.TestCase):
         self.assertEquals(tm.c_to_g(1024 - 208, 1024 - 208), (150549967 - (1024 - 896), 150549967 - (1024 - 896)))
 
 
+        #reece=> select * from uta.tx_info where ac='NM_145249.2';
+        #  gene   | chr | strand |     ac      | cds_start_i | cds_end_i |                     descr                     | summary
+        #---------+-----+--------+-------------+-------------+-----------+-----------------------------------------------+---------
+        # IFI27L1 | 14  |      1 | NM_145249.2 |         254 |       569 | interferon, alpha-inducible protein 27-like 1 |
+        #(1 row)
+        # reece=>select * from uta.tx_exons where ac = 'NM_145249.2';
+        #
+        #      ac      | ord | name | t_start_i | t_end_i |    ref     | g_start_i | g_end_i  | g_cigar | g_seq_a | t_seq_a
+        # -------------+-----+------+-----------+---------+------------+-----------+----------+---------+---------+---------
+        #  NM_145249.2 |   1 | 1    |         0 |     157 | GRCh37.p10 |  94547638 | 94547795 | 157M    |         |
+        #  NM_145249.2 |   2 | 2a   |       157 |     282 | GRCh37.p10 |  94563186 | 94563311 | 125M    |         |
+        #  NM_145249.2 |   3 | 3    |       282 |     315 | GRCh37.p10 |  94567084 | 94567117 | 33M     |         |
+        #  NM_145249.2 |   4 | 4    |       315 |     477 | GRCh37.p10 |  94568159 | 94568321 | 162M    |         |
+        #  NM_145249.2 |   5 | 5    |       477 |     715 | GRCh37.p10 |  94568822 | 94569060 | 238M    |         |
+
+    def test_transcriptmapper_TranscriptMapper_3_IFI27L1(self):
+        ac = 'NM_145249.2'
+        tm = TranscriptMapper(self.db, ac, self.ref)
+
+        # some base cases
+        self.assertEqual(tm.r_to_g(0, 157, 0, 0), (94547638, 94547795))
+        self.assertEqual(tm.g_to_r(94547638, 94547795), (0, 157, 0, 0))
+
+        self.assertEqual(tm.r_to_g(157, 282, 0, 0), (94563186, 94563311))
+        self.assertEqual(tm.g_to_r(94563186, 94563311), (157, 282, 0, 0))
+
+        self.assertEqual(tm.r_to_g(477, 715), (94568822, 94569060))
+        self.assertEqual(tm.g_to_r(94568822, 94569060), (477, 715, 0, 0))
+
+        # intron 1nt after exon 1
+        self.assertEqual(tm.r_to_g(157, 157, 0, 1), (94547795, 94547796))
+        self.assertEqual(tm.g_to_r(94547795, 94547796), (157, 157, 0, 1))
+
+        # intron 1nt before exon 2
+        self.assertEqual(tm.r_to_g(157, 157, -1, 0), (94563185, 94563186))
+        self.assertEqual(tm.g_to_r(94563185, 94563186), (157, 157, -1, 0))
+
+        # intron in the middle between exon 1 and 2
+        self.assertEqual(tm.g_to_r(94555480, 94555500), (157, 157, 7685, -7686))
+        self.assertEqual(tm.r_to_g(157, 157, 7685, -7686), (94555480, 94555500))
+
+
+
+
+
+
+
+
         # reece=> select * from uta.tx_info where ac = 'NM_145171.3';
         #  gene  | strand |     ac      | cds_start_i | cds_end_i |            descr            | summary
         # -------+--------+-------------+-------------+-----------+-----------------------------+-----------------------------------
@@ -164,6 +212,8 @@ class Test_transcriptmapper(unittest.TestCase):
         #     ac = 'NM_145171.3'
         #     tm = TranscriptMapper(self.db,ac,self.ref)
         #     pass
+
+
 
 
 if __name__ == '__main__':

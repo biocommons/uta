@@ -62,6 +62,8 @@ class TranscriptMapper(object):
             # this range could be an intron bounds or just a genomic range
             grs, gre = self.r_to_g(frs, fre, 0, 0)
             rso, reo = self.intronic_offsets(gs, ge, grs, gre)
+            if self.strand == -1:
+                rso, reo = self.strand * reo, self.strand * rso
         else:
             rso = 0
             reo = 0
@@ -73,33 +75,25 @@ class TranscriptMapper(object):
             frs, fre = rs, re
         elif self.strand == -1:
             frs, fre = self.im.tgt_len - re, self.im.tgt_len - rs
+            rso, reo = self.strand * reo, self.strand * rso
         else:
             raise UTAError("Code fell through strand check; shouldn't be here.")
-
-        if reo < rso:
-            raise UTAError('End offset is less than start offset.')
 
         # returns the genomic range start (grs) and end (gre)
         grs, gre = self.im.map_tgt_to_ref(frs, fre, max_extent=False)
         grs, gre = grs + self.gc_offset, gre + self.gc_offset
 
-        # if there are no offsets then we just return the genomic range
-        # this range could be an intron bounds or just a genomic range
-        if rso == 0 and reo == 0:
-            gs = grs
-            ge = gre
-        else:
-            # accounts for negative offsets
-            if rso >= 0:
-                gs = grs + rso
-            else:
-                gs = gre + rso
-
-            if reo > 0:
-                ge = grs + reo
-            else:
-                ge = gre + reo
-
+        if rso == 0 and reo == 0:   # no offset
+            gs, ge = grs, gre
+        elif rso >= 0 and reo > 0:  # positive offset
+            gs = grs + rso
+            ge = grs + reo
+        elif rso < 0 and reo <= 0:  # negative offset
+            gs = gre + rso
+            ge = gre + reo
+        else:                       # positive and negative offset
+            gs = grs + rso
+            ge = gre + reo
 
         return gs, ge
 
@@ -187,7 +181,9 @@ def build_tx_cigar(exons, strand):
 
 
 if __name__ == '__main__':
+    from uta.db.transcriptdb import TranscriptDB
+
     ref = 'GRCh37.p10'
-    ac = 'NM_182763.2'
+    ac = 'NM_145249.2'
     db = TranscriptDB()
     tm = TranscriptMapper(db,ac,ref)
