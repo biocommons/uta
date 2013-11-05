@@ -103,7 +103,7 @@ class TranscriptMapper(object):
     def c_to_r(self, cs, ce, cso=0, ceo=0):
         return cs + self.cds_start_i, ce + self.cds_start_i, cso, ceo
 
-    def g_to_c(self, gs, ge):
+    def g_to_c(self, gs, ge, gso=0, geo=0):
         cs, ce, cso, cse = self.r_to_c(*self.g_to_r(gs, ge))
         return cs, ce, cso, cse
 

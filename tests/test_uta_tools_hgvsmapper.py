@@ -5,6 +5,7 @@ from uta.tools.hgvsmapper import HGVSMapper
 
 import hgvs.parser
 
+
 class test_HGVSMapper(unittest.TestCase):
 
     def setUp(self):
@@ -20,8 +21,8 @@ class test_HGVSMapper(unittest.TestCase):
         for rec in tests_in:
             if rec['id'].startswith('#'):
                 continue
-            if rec['HGVSp'] == '':
-                continue
+            #if rec['HGVSp'] == '':
+            #    continue
             self.assertEqual(
                 self.hgvsmapper.hgvs_to_genomic_coords(rec['HGVSg'])[:3],
                 self.hgvsmapper.hgvs_to_genomic_coords(rec['HGVSc'])[:3] )
@@ -44,8 +45,9 @@ class test_HGVSMapper(unittest.TestCase):
         for rec in tests_in:
             if rec['id'].startswith('#'):
                 continue
-            if rec['HGVSp'] == '':
-                continue
+            #if rec['HGVSp'] == '':
+            #    continue
+            print rec['id']
             self.assertEqual(
                 self.hgvsmapper.hgvsg_to_hgvsc(
                     rec['HGVSg'],self.hgvsparser.parse(rec['HGVSc']).seqref,'GRCh37.p10'),

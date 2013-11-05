@@ -95,7 +95,9 @@ class HGVSMapper(object):
 
         cse_i = tm.g_to_c( *uuc.human_to_ci(var_g.posedit.pos.start,var_g.posedit.pos.end) )
         cse_h = uuc.ci_to_human( *cse_i )
-        
+
+        print cse_h
+
         # TODO: intronic offsets
         # TODO: revcomp edit for -strand
         var_c = hgvs.variant.Variant(seqref=ac,
