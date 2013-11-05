@@ -47,11 +47,9 @@ class test_HGVSMapper(unittest.TestCase):
                 continue
             #if rec['HGVSp'] == '':
             #    continue
-            print rec['id']
             self.assertEqual(
                 self.hgvsmapper.hgvsg_to_hgvsc(
-                    rec['HGVSg'],self.hgvsparser.parse(rec['HGVSc']).seqref,'GRCh37.p10'),
-                rec['HGVSc'])
+                    rec['HGVSg'],self.hgvsparser.parse(rec['HGVSc']).seqref,'GRCh37.p10'), rec['HGVSc'])
 
     def test_hgvsg_to_hgvsc_DNAH11_hgmd(self):
         tests_fn = 'tests/data/DNAH11-HGMD.tsv'
@@ -63,8 +61,7 @@ class test_HGVSMapper(unittest.TestCase):
                 continue
             self.assertEqual(
                 self.hgvsmapper.hgvsg_to_hgvsc(
-                    rec['HGVSg'],self.hgvsparser.parse(rec['HGVSc']).seqref,'GRCh37.p10'),
-                rec['HGVSc'])
+                    rec['HGVSg'],self.hgvsparser.parse(rec['HGVSc']).seqref,'GRCh37.p10'), rec['HGVSc'])
 
     ########### NEFL TESTS ############
 

@@ -14,30 +14,43 @@ def human_to_ci(s,e=None, so=0, eo=0):
 
     # Extra explicit because things get more complicated when dealing with introns
     # so, eo = start offset, end offset
-    if so == 0:
-        s = s - 1
-        so = 0
-    elif so > 0:
-        s = s
-        so = so - 1
-    elif so < 0:
-        s = s - 1
-        so = so
-    else:
-        raise UTAError('Something went terribly wrong with the start offset coordinate mapping')
+    if s > 0:
+        if so == 0:
+            s = s - 1
+            so = 0
+        elif so > 0:
+            s = s
+            so = so - 1
+        elif so < 0:
+            s = s - 1
+            so = so
+        else:
+            raise UTAError('Something went terribly wrong with the start offset coordinate mapping')
 
-    if eo == 0:
-        e = e
-        eo = 0
-    elif eo > 0:
-        e = e
-        eo = eo
-    elif eo < 0:
-        assert e is not None, 'Human end coordinate cannot be none'
-        e = e - 1
-        eo = eo + 1
+        if eo == 0:
+            e = e
+            eo = 0
+        elif eo > 0:
+            e = e
+            eo = eo
+        elif eo < 0:
+            assert e is not None, 'Human end coordinate cannot be none'
+            e = e - 1
+            eo = eo + 1
+        else:
+            raise UTAError('Something went terribly wrong with the end offset coordinate mapping')
     else:
-        raise UTAError('Something went terribly wrong with the end offset coordinate mapping')
+        if so == 0:
+            s = s
+            so = 0
+        else:
+            raise UTAError('Not sure what to do here with start negative bases...')
+
+        if eo == 0:
+            e = e - 1
+            eo = 0
+        else:
+            raise UTAError('Not sure what to do here with end negative bases...')
 
     return s, e, so, eo
 
@@ -50,45 +63,42 @@ def ci_to_human(s,e=None, so=0, eo=0):
     #    return c+1 if c>=0 else c
     #return _ci_to_cds(s), None if e is None else _ci_to_cds(e)-1, so, eo
 
-    def _ci_to_cds(c):
-        return c+1 if c>=0 else c
-
     # Extra explicit because things get more complicated when dealing with introns
     # so, eo = start offset, end offset
-    if so == 0:
-        s = s + 1
-        so = 0
-    elif so > 0:
-        s = s
-        so = so + 1
-    elif so < 0:
-        s = s + 1
-        so = so
-    else:
-        raise UTAError('Something went terribly wrong with the start offset coordinate mapping')
 
-    if eo == 0:
-        # accounts for negative offsets in introns
-        if so >= 0:
+    in_intron = False
+    if s - e == 0:
+        in_intron = True
+
+    if s >= 0:
+        # positive bases
+        if not in_intron:
+            s = s + 1
+            so = 0
             e = e
-            eo = 0
-        else:
-            assert e is not None, 'Human end coordinate cannot be none'
-            e = e + 1
-            eo = eo - 1
-    elif eo > 0:
-        e = e
-        eo = eo
-    elif eo < 0:
-        assert e is not None, 'Human end coordinate cannot be none'
-        e = e + 1
-        eo = eo - 1
+            eo = eo
+        elif in_intron:
+            if so >= 0:
+                s = s
+                so = so + 1
+                e = e
+                eo = eo
+            if so < 0:
+                s = s + 1
+                so = so
+                assert e is not None, 'Human end coordinate cannot be none'
+                e = e + 1
+                eo = eo - 1
     else:
-        raise UTAError('Something went terribly wrong with the end offset coordinate mapping')
-
+        # negative bases
+        if so == 0:
+            s = s
+            so = 0
+            assert e is not None, 'Human end coordinate cannot be none'
+            e = e - 1
+            eo = 0
 
     return s, e, so, eo
-
 
 cds_to_ci = human_to_ci
 ci_to_cds = ci_to_human
