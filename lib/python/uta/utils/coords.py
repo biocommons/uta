@@ -47,7 +47,7 @@ def human_to_ci(s,e=None, so=0, eo=0):
             raise UTAError('Not sure what to do here with start negative bases...')
 
         if eo == 0:
-            e = e - 1
+            e = e + 1
             eo = 0
         else:
             raise UTAError('Not sure what to do here with end negative bases...')
