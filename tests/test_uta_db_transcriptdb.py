@@ -19,6 +19,10 @@ class Test_transcriptdb(unittest.TestCase):
         ti = self.db.get_tx_info('NM_001197320.1')
         self.assertEquals(ti['ac'], 'NM_001197320.1')
 
+    def Test_transcriptdb_get_tx_seq(self):
+        self.assertIsNone( self.db.get_tx_seq('bogus') )
+        self.assertTrue( self.db.get_tx_seq('NM_001197320.1').startswith('gcgcaaccctccggaag') )
+
     def Test_transcriptdb_get_tx_exons(self):
         self.assertEquals( self.db.get_tx_exons('bogus','GRCh37.p10')    , [])
         self.assertEquals( self.db.get_tx_exons('NM_001197320.1','bogus'), [] )
