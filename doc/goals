@@ -1,9 +1,16 @@
 -*-outline-*-
 
 * Goal
-Build a single database of transcripts that provides:
-1) sequence descrepancies with GRCh37, and
-2) equivalence with Ensembl transcripts (ENSTs, and perhaps LRGs later)
+Build a single database of transcripts and related tools that:
+- contains all transcripts, all sources (RefSeq, UCSC, E!, LRG), all versions
+- contains non-canonical and custom transcripts structures (e.g., BIC)
+- contains computed alignments of transcripts against multiple references
+- makes refagree data easily accssible (e.g., sequence descrepancies with GRCh37)
+- identifies equivalence with Ensembl transcripts (ENSTs, and perhaps LRGs later)
+- enables comparison of transcript alignments from UCSC and NCBI (not the same!)
+- enables liftover of variants and other features between sequences
+- provides an API and REST interface
+
 
 * Requirements
 - use NCBI RefSeq alignements specifically (ie., not UCSC, which use BLAT)
