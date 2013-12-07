@@ -5,7 +5,7 @@ import IPython
 
 class Transcript(
     collections.namedtuple('Transcript',(
-            'ac','cds_start','cds_end','exon_starts','exon_ends'))):
+            'gene','ac','cds_start','cds_end','exon_starts','exon_ends'))):
     @property
     def exon_se_list(self):
         "return a list of (start,end) pairs"
@@ -40,6 +40,7 @@ class GenomicTranscript(
         def _strand_sign_to_int(sign):
             return -1 if sign == '-' else 1
         return GenomicTranscript(
+            gene = row['geneName'],
             ac = row['ac'],
             chrom = row['chrom'],
             cds_start = row['cdsStart'],
@@ -81,18 +82,19 @@ if __name__ == '__main__':
                            db = 'hg19' )
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("""
-SELECT concat(acc,'.',version) as ac,chrom,strand,txStart,txEnd,
-	cdsStart,cdsEnd,exonStarts,exonEnds
+SELECT geneName,concat(acc,'.',version) as ac,chrom,strand,txStart,txEnd,
+	cdsStart,cdsEnd,exonCount,exonStarts,exonEnds
 FROM refFlat RF
 JOIN gbSeq GB on RF.name=GB.acc
 WHERE name like 'NM_%' and chrom not like '%\_%'
- and name in ('NM_144670','NM_017436')
 """)
+# and name in ('NM_144670','NM_017436')
     
     for row in cursor.fetchall():
         gt = GenomicTranscript.new_from_ucsc_row(row)
         se = gt.exon_se_list
-        print( '\t'.join([str(gt.ac), gt.chrom, str(gt.strand),
+        print( '\t'.join([str(gt.gene),
+                          str(gt.ac), gt.chrom, str(gt.strand),
                           '(%d,%d)' % (gt.cds_start,gt.cds_end),
                           str(len(gt.exon_se_list)), 
                           ';'.join(['(%d,%d)'%(se) for se in gt.exon_se_list])]) )
