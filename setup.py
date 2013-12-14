@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 from ez_setup import use_setuptools
 use_setuptools()
@@ -14,16 +15,18 @@ with open(os.path.join(root_dir, 'doc/description.rst')) as f:
 pkg_dir = 'lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
-    author_email='reece+uta@invitae.com',
-    description='Universal Transcript Archive',
     license = 'MIT',
     long_description = long_description,
+    use_hg_version = True,
+    zip_safe = True,
+
+    author_email='reece+uta@invitae.com',
+    description='Universal Transcript Archive',
     name = "uta",
     package_dir = {'': pkg_dir},
     packages = find_packages(pkg_dir),
     url = 'https://bitbucket.org/invitae/uta',
-    use_hg_version = True,
-    zip_safe = True,
+
 
     install_requires = [
         'docopt',
@@ -36,5 +39,5 @@ setup(
 
     setup_requires = [
         'hgtools',
-        ]
+        ],
 )
