@@ -10,7 +10,10 @@ SHELL:=/bin/bash -o pipefail
 SELF:=$(firstword $(MAKEFILE_LIST))
 
 export PYTHONPATH=lib/python
+
+ifdef LOCAL_UTA
 export UTA_DB_URL=postgresql://localhost/
+endif
 
 PYPI_SERVICE:=-r invitae
 
