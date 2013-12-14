@@ -1,11 +1,14 @@
 import os, sys
 
+from ez_setup import use_setuptools
+use_setuptools()
+
 from setuptools import setup, find_packages
 
-root_dir = os.path.dirname(__file__)
-sys.path[0:0] = [os.path.join(root_dir ,'lib','python')]
+# full path appears to be required for old (0.6.x?) versions of setuptools
+root_dir = os.path.dirname(os.path.abspath(__file__))
 
-with open('doc/description.rst') as f:
+with open(os.path.join(root_dir, 'doc/description.rst')) as f:
     long_description = f.read()
 
 pkg_dir = 'lib/python'
