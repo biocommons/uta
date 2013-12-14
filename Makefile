@@ -1,6 +1,3 @@
-# UTA -- Universal Transcript Archive Makefile
-# https://bitbucket.org/invitae/uta
-
 .SUFFIXES :
 .PRECIOUS :
 .PHONY : FORCE
@@ -66,23 +63,27 @@ setup-perl:
 ############################################################################
 #= UTILITY FUNCTIONS
 
-#=> lint -- run lint
-# TBD
+#=> develop, build_sphinx, sdist, upload_sphinx
+bdist bdist_egg build build_sphinx develop install sdist upload_sphinx: %:
+	python setup.py $*
 
 #=> test -- run tests
 test:
 	nosetests --with-xunit
 
-#=> ve-test -- build ve and test
-ve-test:
-	make ve; source ve/bin/activate; make install; make test
+#=> lint -- run lint, flake, etc
+# TBD
 
 #=> docs -- make sphinx docs
 docs: build_sphinx
 
-#=> develop, build_sphinx, sdist, upload_sphinx
-build build_sphinx develop install sdist upload_sphinx: %:
-	python setup.py $*
+#=> jenkins -- target for jenkins runs
+jenkins:
+	make ve \
+	&& source ve/bin/activate \
+	&& make install \
+	&& make test \
+	&& make docs
 
 #=> upload-<tag>
 upload-%:

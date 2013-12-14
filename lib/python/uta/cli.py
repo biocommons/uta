@@ -36,7 +36,7 @@ Examples:
 
 import ConfigParser, logging
 
-from Bio import SeqIO
+#from Bio import SeqIO
 from docopt import docopt
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
