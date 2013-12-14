@@ -36,6 +36,7 @@ sdist
 tmp
 ve
 virtualenv.py
+virtualenv-*
 workspace
 
 syntax: regexp
