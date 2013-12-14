@@ -24,21 +24,12 @@ setup(
 
     install_requires = [
         'docopt',
-        'flask',
-        'flask-RESTful',
-        'hgvs',
         'nose',
-        'prettytable',
         'psycopg2',
-        'six',
         'sphinx',
         'sphinx-pypi-upload',
         'sqlalchemy',
         ],
-
-    dependency_links = [
-        'hg+ssh://hg@bitbucket.org/locusdevelopment/hgvs#egg=hgvs-{v}'.format(v='tip'),
-    ],
 
     setup_requires = [
         'hgtools',

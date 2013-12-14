@@ -33,6 +33,21 @@ help:
 ############################################################################
 #= INSTALLATION/SETUP
 
+#=> ve -- create a virtualenv
+VE_DIR:=ve
+VE_MAJOR:=1
+VE_MINOR:=10
+VE_PY_DIR:=virtualenv-${VE_MAJOR}.${VE_MINOR}
+VE_PY:=${VE_PY_DIR}/virtualenv.py
+${VE_PY}:
+	curl -sO  https://pypi.python.org/packages/source/v/virtualenv/virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
+	tar -xvzf virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
+	rm -f virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
+${VE_DIR}: ${VE_PY} 
+	${SYSTEM_PYTHON} $< ${VE_DIR} 2>&1 | tee "$@.err"
+	/bin/mv "$@.err" "$@"
+
+
 #=> setup -- prepare python and perl environment for prequisites
 #=>> This is optional; the only requirement is that packages are discoverable
 #=>> in PYTHONPATH and PERL5LIB
@@ -58,6 +73,10 @@ setup-perl:
 test:
 	nosetests --with-xunit
 
+#=> ve-test -- build ve and test
+ve-test:
+	make ve; source ve/bin/activate; make install; make test
+
 #=> docs -- make sphinx docs
 docs: build_sphinx
 
@@ -69,6 +88,10 @@ build build_sphinx develop install sdist upload_sphinx: %:
 upload-%:
 	[ -z "$$(hg st -admnr)" ] || { echo "Directory contains changes; aborting." 1>&2; hg st -admr; exit 1; }
 	R=$$(hg id -t); hg up -r $*; python setup.py sdist upload ${PYPI_SERVICE}; hg up -r $$R
+
+#=> upload
+upload:
+	python setup.py bdist bdist_egg sdist upload ${PYPI_SERVICE}
 
 
 ############################################################################
@@ -86,7 +109,7 @@ cleaner: clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr build bdist dist sdist ve
+	/bin/rm -fr build bdist dist sdist ve virtualenv*
 #=> pristine: above, and delete anything unknown to mercurial
 pristine: cleanest
 	hg st -un0 | xargs -0r echo /bin/rm -fv
