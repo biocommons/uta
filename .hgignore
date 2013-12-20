@@ -11,6 +11,7 @@ syntax: glob
 *.pylint
 *.pyo
 *.sqlite3
+*.tar.gz
 *~
 .DS_Store
 .Python
@@ -33,6 +34,7 @@ parts
 patches
 prd
 sdist
+tests/data/multifastadb/d*/*fai
 tmp
 ve
 virtualenv.py

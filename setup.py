@@ -29,11 +29,14 @@ setup(
 
 
     install_requires = [
-        'docopt',
         'nose',
-        'psycopg2',
         'sphinx',
         'sphinx-pypi-upload',
+        'sphinx_rtd_theme',
+        'sphinxcontrib-httpdomain',
+
+        'docopt',
+        'psycopg2',
         'sqlalchemy',
         ],
 
