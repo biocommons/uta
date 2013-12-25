@@ -77,8 +77,8 @@ test:
 #=> docs -- make sphinx docs
 docs: build_sphinx
 
-#=> jenkins -- target for jenkins runs
-jenkins:
+#=> continuous integration tests -- target for jenkins (and now travis, drone, or other providers)
+ci-test jenkins:
 	make ve \
 	&& source ve/bin/activate \
 	&& make install \
