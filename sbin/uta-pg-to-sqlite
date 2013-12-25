@@ -1,0 +1,53 @@
+#!/bin/bash -e
+# make a sqlite database from uta0
+# use: uta-pg-to-sqlite <sqlite-db-name>
+
+if [ $# -ne 1 ]; then
+	echo "$0: need (non-existant) sqlite db file name" 1>&2
+	exit 1
+fi
+sqlite_fn="$1"
+
+
+cleanup () {
+	[ -n "$data_tmpfn" ] && rm -fv "$data_tmpfn"
+}
+trap cleanup EXIT
+data_tmpfn=$(mktemp /tmp/XXXXX.tsv)
+
+
+sqlite3 $sqlite_fn <<EOF
+create table meta (key text,value text);
+
+create table tx_info (gene  text, chr  text, strand  smallint, ac  text, cds_start_i  integer, cds_end_i  integer, descr  text, summary  text);
+create index tx_info_gene on tx_info(gene);
+create index tx_info_ac on tx_info(ac);
+
+create table tx_exons (ac text, ord smallint, name text, t_start_i integer, t_end_i integer, ref text, g_start_i integer, g_end_i integer, g_cigar text, g_seq_a text, t_seq_a text);
+create index tx_exons_ac on tx_exons(ac);
+
+create table transcript (ac text, gene text, cds_start_i int, cds_end_i int, added timestamp with time zone, seq text);
+create index transcript_ac on transcript(ac);
+create index transcript_gene on transcript(gene);
+EOF
+
+
+psql -AtX -F$'\t' -c 'select gene, chr, strand, ac, cds_start_i, cds_end_i, descr, summary from uta.tx_info order by gene,ac'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlite_fn" ".import $data_tmpfn tx_info"
+printf "%d/%d rows loaded into tx_info\n" $(sqlite3 "$sqlite_fn" 'select count(*) from tx_info') $(wc -l <$data_tmpfn)
+
+psql -AtX -F$'\t' -c 'select ac, ord, name, t_start_i, t_end_i, ref, g_start_i, g_end_i, g_cigar, g_seq_a, t_seq_a from uta.tx_exons order by ac,ord'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlite_fn" ".import $data_tmpfn tx_exons"
+printf "%d/%d rows loaded into tx_exons\n" $(sqlite3 "$sqlite_fn" 'select count(*) from tx_exons') $(wc -l <$data_tmpfn)
+
+psql -AtX -F$'\t' -c 'select ac,gene,cds_start_i,cds_end_i,added,seq from transcripts.transcript order by ac'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlite_fn" ".import $data_tmpfn transcript"
+printf "%d/%d rows loaded into transcript\n" $(sqlite3 "$sqlite_fn" 'select count(*) from transcript') $(wc -l <$data_tmpfn)
+
+
+sqlite3 $sqlite_fn <<EOF
+insert into meta (key,value) values ('version','0.2');
+insert into meta (key,value) values ('license','CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/deed.en_US)');
+insert into meta (key,value) values ('contact','Reece Hart <reece+uta@invitae.com>');
+insert into meta (key,value) values ('exported',strftime('%Y-%m-%d %H:%M:%SZ'));
+EOF
