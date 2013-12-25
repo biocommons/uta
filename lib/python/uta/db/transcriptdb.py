@@ -63,7 +63,7 @@ class TranscriptDB(object):
                 # TODO: Pull this from a package default instead
                 host = host or 'db.locusdev.net'
                 user = user or 'PUBLIC'
-                database = database or 'reece'
+                database = database or 'uta0'
         self.conn = psycopg2.connect(host = host, user = user, password = password, database = database)
         self.cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
