@@ -2,11 +2,8 @@
 # make a sqlite database from uta0
 # use: uta-pg-to-sqlite <sqlite-db-name>
 
-if [ $# -ne 1 ]; then
-	echo "$0: need (non-existant) sqlite db file name" 1>&2
-	exit 1
-fi
-sqlite_fn="$1"
+version="0.0.4"
+sqlite_fn="/tmp/uta-$version.db"
 
 
 cleanup () {
@@ -46,8 +43,11 @@ printf "%d/%d rows loaded into transcript\n" $(sqlite3 "$sqlite_fn" 'select coun
 
 
 sqlite3 $sqlite_fn <<EOF
-insert into meta (key,value) values ('version','0.2');
+insert into meta (key,value) values ('version','$version');
 insert into meta (key,value) values ('license','CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/deed.en_US)');
 insert into meta (key,value) values ('contact','Reece Hart <reece+uta@invitae.com>');
 insert into meta (key,value) values ('exported',strftime('%Y-%m-%d %H:%M:%SZ'));
 EOF
+
+echo "wrote database to $sqlite_fn"
+/bin/ls -l "$sqlite_fn"
