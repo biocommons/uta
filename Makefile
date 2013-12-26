@@ -9,7 +9,7 @@ SELF:=$(firstword $(MAKEFILE_LIST))
 export PYTHONPATH=lib/python
 
 ifdef LOCAL_UTA
-export UTA_DB_URL=postgresql://localhost/
+export UTA_DB_URL=postgresql://localhost/uta
 endif
 
 PYPI_SERVICE:=-r invitae
