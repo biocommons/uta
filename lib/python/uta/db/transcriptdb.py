@@ -19,8 +19,40 @@ Example
     # 'ATM'
 """
 
-import psycopg2, psycopg2.extras, os, urlparse, sys
+import logging
+import os
+import sys
+
+import psycopg2
+import psycopg2.extras
 from psycopg2 import OperationalError
+
+
+if 'UTA_DB_URL' in os.environ:
+    # Use UTA_DB_URL for connection information, if available
+    # Examples:
+    # UTA_DB_URL=postgresql:///     -- localhost via socket, as user, database=username:
+    import urlparse
+    url = urlparse.urlparse(os.environ['UTA_DB_URL'])
+    assert url.scheme == 'postgresql', "only the postgresql scheme is currently supported"
+    uta_connection_defaults = {
+        'host': url.hostname,
+        'port': url.port or 5432,
+        'database': url.path[1:],
+        'user': url.username,
+        'password': url.password,
+    }
+else:
+    uta_connection_defaults = {
+        # Invitae-hosted public instance
+        'host': 'uta.cj7o8ef9mt4v.us-east-1.rds.amazonaws.com',
+        'port': 5432,
+        'database': 'uta',
+        'user': 'uta_public',
+        'password': 'uta_public',
+    }
+
+
 
 class TranscriptDB(object):
     """
@@ -42,30 +74,25 @@ class TranscriptDB(object):
     # create view uta.tx_info as select G.gene,G.chr,G.strand,T.ac,T.cds_start_i,T.cds_end_i,G.descr,G.summary from transcripts.gene G join transcripts1.transcript T on G.gene=T.gene;
     # create view uta.tx_exons as select TE.ac,TE.ord,TE.name,TE.start_i as t_start_i,TE.end_i as t_end_i,'GRCh37.p10'::text as ref,GE.start_i as g_start_i,GE.end_i as g_end_i,GA.cigar as g_cigar,GA.g_seq_a,GA.t_seq_a from transcripts1.gtx_alignment GA join transcripts1.transcript_exon TE on GA.transcript_exon_id=TE.transcript_exon_id join transcripts1.genomic_exon GE on GA.genomic_exon_id=GE.genomic_exon_id;
     # grant usage on schema uta to PUBLIC; grant select on uta.tx_info to PUBLIC; grant select on uta.tx_exons to PUBLIC;
-    tx_seq_sql = 'select gene,ac,seq from transcripts.transcript where ac=%(ac)s'
-    tx_info_sql = 'select * from uta.tx_info where ac=%(ac)s'
-    tx_for_gene_sql = 'select * from uta.tx_info where gene=%(gene)s order by cds_end_i-cds_start_i desc'
-    tx_exons_sql = 'select * from uta.tx_exons where ac=%(ac)s and ref=%(ref)s order by g_start_i'
+    tx_seq_sql = 'select gene,ac,seq from uta0.transcript where ac=%(ac)s'
+    tx_info_sql = 'select * from uta0.tx_info_v where ac=%(ac)s'
+    tx_for_gene_sql = 'select * from uta0.tx_info_v where gene=%(gene)s order by cds_end_i-cds_start_i desc'
+    tx_exons_sql = 'select * from uta0.tx_exons_v where ac=%(ac)s and ref=%(ref)s order by g_start_i'
 
-    def __init__(self, host=None, user=None, password=None, database=None):
-        if host is None and user is None and password is None and database is None:
-            if 'UTA_DB_URL' in os.environ:
-                # eg localhost via socket, as user, database=username:
-                # UTA_DB_URL=postgresql:/// PYTHONPATH=lib/python nosetests lib/python/uta/db/transcriptdb.py
-                url = urlparse.urlparse(os.environ['UTA_DB_URL'])
-                assert url.scheme == 'postgresql'
-                host = url.hostname 
-                user = url.username
-                password = url.password
-                database = url.path[1:]
-                return self.__init__(host,user,password,database)
-            else:
-                # TODO: Pull this from a package default instead
-                host = host or 'db.locusdev.net'
-                user = user or 'PUBLIC'
-                database = database or 'uta0'
-        self.conn = psycopg2.connect(host = host, user = user, password = password, database = database)
+    def __init__(self,
+                 host=uta_connection_defaults['host'],
+                 port=uta_connection_defaults['port'],
+                 database=uta_connection_defaults['database'],
+                 user=uta_connection_defaults['user'],
+                 password=uta_connection_defaults['password'],
+                 ):
+        self.logger = logging.getLogger(__name__)
+        self.logger.info('connectinto to (host={host}, port={port}, database={database}, user={user}, password={password})...'.format(
+            host=host, port=port, database=database, user=user, password=password, ))
+        self.conn = psycopg2.connect(host=host, port=port, database=database, user=user, password=password)
         self.cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+
 
     def get_tx_info(self,ac):
         """return transcript info for supplied accession (ac), or None if not found
