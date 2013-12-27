@@ -5,7 +5,6 @@ UTA -- Universal Transcript Archive
 *bringing smiles to transcript users since 2013*
 
 
-
 Overview
 --------
 
@@ -20,11 +19,13 @@ It will facilitate the following:
 * identifying regions where transcript and reference genome sequence
   assemblies disagree
 * characterizing transcripts of the same gene across transcript sources
-* projecting ("lifting over") variants from one transcript to another
 * identifying transcripts and genomic regions with ambiguous alignments
   that may affect clinical interpretation
 * querying for multiple transcript sources through a single
   interface
+
+UTA is used by the `hgvs`_ package to map variants between genomic,
+transcript, and protein coordinates.
 
 
 Installation
@@ -73,6 +74,7 @@ To develop UTA, follow these steps.
   to a populated Invitae database.
 
 
+.. _hgvs: https://bitbucket.org/locusdevelopment/hgvs
 .. _virtualenv: https://pypi.python.org/pypi/virtualenv
 .. _virtualenvwrapper: http://virtualenvwrapper.readthedocs.org/en/latest/install.html
 
