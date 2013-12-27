@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+
+import IPython
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+import uta.db.transcriptdb
+
+uta = uta.db.transcriptdb.TranscriptDB()
+
+
+IPython.embed()
