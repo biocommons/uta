@@ -31,7 +31,8 @@ from psycopg2 import OperationalError
 if 'UTA_DB_URL' in os.environ:
     # Use UTA_DB_URL for connection information, if available
     # Examples:
-    # UTA_DB_URL=postgresql:///     -- localhost via socket, as user, database=username:
+    # UTA_DB_URL=postgresql://uta_public:uta_public@uta.invitae.com/uta -- same as default
+    # UTA_DB_URL=postgresql://localhost/uta                             -- localhost via socket, as user, database=username:
     import urlparse
     url = urlparse.urlparse(os.environ['UTA_DB_URL'])
     assert url.scheme == 'postgresql', "only the postgresql scheme is currently supported"
@@ -45,7 +46,7 @@ if 'UTA_DB_URL' in os.environ:
 else:
     uta_connection_defaults = {
         # Invitae-hosted public instance
-        'host': 'uta.cj7o8ef9mt4v.us-east-1.rds.amazonaws.com',
+        'host': 'uta.invitae.com',
         'port': 5432,
         'database': 'uta',
         'user': 'uta_public',
@@ -87,7 +88,7 @@ class TranscriptDB(object):
                  password=uta_connection_defaults['password'],
                  ):
         self.logger = logging.getLogger(__name__)
-        self.logger.info('connectinto to (host={host}, port={port}, database={database}, user={user}, password={password})...'.format(
+        self.logger.info('connecting to to (host={host}, port={port}, database={database}, user={user}, password={password})...'.format(
             host=host, port=port, database=database, user=user, password=password, ))
         self.conn = psycopg2.connect(host=host, port=port, database=database, user=user, password=password)
         self.cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -169,3 +170,11 @@ class TranscriptDB(object):
         """
         self.cur.execute(self.tx_for_gene_sql,{'gene': gene})
         return self.cur.fetchall()
+
+
+if __name__ == '__main__':
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    uta_conn = TranscriptDB()
+    tx = uta_conn.get_tx_for_gene('VHL')
+    print(tx)
