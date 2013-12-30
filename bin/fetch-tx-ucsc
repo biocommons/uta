@@ -98,3 +98,19 @@ WHERE name like 'NM_%' and chrom not like '%\_%'
                           '(%d,%d)' % (gt.cds_start,gt.cds_end),
                           str(len(gt.exon_se_list)), 
                           ';'.join(['(%d,%d)'%(se) for se in gt.exon_se_list])]) )
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
