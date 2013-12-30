@@ -15,7 +15,7 @@ with open(os.path.join(root_dir, 'doc/description.rst')) as f:
 pkg_dir = 'lib/python'
 setup(
     author = 'InVitae Keyboard Monkeys',
-    license = 'MIT',
+    license = 'Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
     long_description = long_description,
     use_hg_version = True,
     zip_safe = True,
