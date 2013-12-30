@@ -33,11 +33,11 @@ Installation
 
 Tested on Ubuntu 13.04, Python 2.7.5::
 
-  $ pip install hg+ssh://hg@bitbucket.org/locusdevelopment/uta
+  $ pip install hg+ssh://hg@bitbucket.org/invitae/uta
 
 Alternatively, you may clone and install::
 
-  $ pip clone hg+ssh://hg@bitbucket.org/locusdevelopment/uta
+  $ pip clone hg+ssh://hg@bitbucket.org/invitae/uta
   $ cd uta
   $ make install
   (or, equivalently, python setup.py install)
@@ -62,7 +62,7 @@ To develop UTA, follow these steps.
 
 2. Clone UTA.::
 
-    hg clone ssh://hg@bitbucket.org/locusdevelopment/uta
+    hg clone ssh://hg@bitbucket.org/invitae/uta
     cd uta
     make develop
 
@@ -74,7 +74,7 @@ To develop UTA, follow these steps.
   to a populated Invitae database.
 
 
-.. _hgvs: https://bitbucket.org/locusdevelopment/hgvs
+.. _hgvs: https://bitbucket.org/invitae/hgvs
 .. _virtualenv: https://pypi.python.org/pypi/virtualenv
 .. _virtualenvwrapper: http://virtualenvwrapper.readthedocs.org/en/latest/install.html
 
