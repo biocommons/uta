@@ -29,12 +29,6 @@ setup(
 
 
     install_requires = [
-        'nose',
-        'sphinx',
-        'sphinx-pypi-upload',
-        'sphinx_rtd_theme',
-        'sphinxcontrib-httpdomain',
-
         'docopt',
         'psycopg2',
         'sqlalchemy',
@@ -42,6 +36,15 @@ setup(
 
     setup_requires = [
         'hgtools',
+        'sphinx',
+        'sphinx-pypi-upload',
+        'sphinx_rtd_theme',
+        'sphinxcontrib-httpdomain',
+        ],
+
+    tests_require = [
+        'coverage',
+        'nose',
         ],
 )
 
