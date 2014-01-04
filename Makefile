@@ -75,7 +75,7 @@ docs: build_sphinx
 
 #=> upload
 upload:
-	python setup.py bdist bdist_egg sdist upload ${PYPI_SERVICE}
+	python setup.py bdist_egg sdist upload ${PYPI_SERVICE}
 
 
 #=> lint -- run lint, flake, etc
