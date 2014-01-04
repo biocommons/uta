@@ -5,6 +5,7 @@ UTA -- Universal Transcript Archive
 *bringing smiles to transcript users since 2013*
 
 .. image:: https://drone.io/bitbucket.org/invitae/uta/status.png
+  :target: https://drone.io/bitbucket.org/invitae/uta
 
 Overview
 --------
