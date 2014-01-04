@@ -12,7 +12,7 @@ ifdef LOCAL_UTA
 export UTA_DB_URL=postgresql://localhost/uta
 endif
 
-PYPI_SERVICE:=-r invitae
+# PYPI_SERVICE:=-r invitae
 
 # make config in etc/uta.conf available within the Makefile
 -include .uta.conf.mk
@@ -61,14 +61,26 @@ setup-perl:
 
 
 ############################################################################
-#= UTILITY FUNCTIONS
+#= UTILITY TARGETS
 
 #=> develop, build_sphinx, sdist, upload_sphinx
-bdist bdist_egg build build_sphinx develop install sdist upload_sphinx: %:
+bdist bdist_egg build build_sphinx develop install sdist upload_docs: %:
 	python setup.py $*
 
-upload_sphinx: build_sphinx
-build_sphinx: install
+# sphinx docs needs to be able to import packages
+build_sphinx: develop
+
+#=> docs -- make sphinx docs
+docs: build_sphinx
+
+#=> upload
+upload:
+	python setup.py bdist bdist_egg sdist upload ${PYPI_SERVICE}
+
+
+#=> lint -- run lint, flake, etc
+# TBD
+
 
 #=> test-setup -- prepare to run tests
 test-setup:
@@ -77,12 +89,6 @@ test-setup:
 test:
 	nosetests --with-xunit
 
-#=> lint -- run lint, flake, etc
-# TBD
-
-#=> docs -- make sphinx docs
-docs: build_sphinx
-
 #=> continuous integration tests -- target for jenkins (and now travis, drone, or other providers)
 ci-test jenkins:
 	make ve \
@@ -90,15 +96,6 @@ ci-test jenkins:
 	&& make install \
 	&& make test \
 	&& make docs
-
-#=> upload-<tag>
-upload-%:
-	[ -z "$$(hg st -admnr)" ] || { echo "Directory contains changes; aborting." 1>&2; hg st -admr; exit 1; }
-	R=$$(hg id -t); hg up -r $*; python setup.py sdist upload ${PYPI_SERVICE}; hg up -r $$R
-
-#=> upload
-upload:
-	python setup.py bdist bdist_egg sdist upload ${PYPI_SERVICE}
 
 
 ############################################################################
