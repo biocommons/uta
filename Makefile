@@ -86,8 +86,8 @@ upload:
 test-setup:
 
 #=> test -- run tests
-test:
-	nosetests --with-xunit
+test: install
+	python setup.py nosetests --with-xunit
 
 #=> continuous integration tests -- target for jenkins (and now travis, drone, or other providers)
 ci-test jenkins:
