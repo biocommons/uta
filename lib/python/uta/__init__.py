@@ -1,6 +1,5 @@
 import pkg_resources
 __version__ = pkg_resources.require('uta')[0].version
-hg_id = 'OBSOLETE'
 
 ## <LICENSE>
 ## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
