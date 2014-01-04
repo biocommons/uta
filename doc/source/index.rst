@@ -4,7 +4,7 @@
 UTA -- Universal Transcript Archive
 ===================================
 
-.. include description.rst
+.. include:: description.rst
 
 Contents
 --------
@@ -15,7 +15,7 @@ Contents
    overview
    examples
    
-   quick-start
+   getting_started
    installation
    
    database

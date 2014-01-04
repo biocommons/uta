@@ -30,6 +30,7 @@ setup(
 
     install_requires = [
         'docopt',
+        'nose',
         'psycopg2',
         'sqlalchemy',
         ],
