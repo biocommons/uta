@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 # full path appears to be required for old (0.6.x?) versions of setuptools
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
-with open(os.path.join(root_dir, 'doc/description.rst')) as f:
+with open(os.path.join(root_dir, 'doc/source/description.rst')) as f:
     long_description = f.read()
 
 pkg_dir = 'lib/python'
@@ -18,7 +18,7 @@ setup(
     license = 'Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
     long_description = long_description,
     use_hg_version = True,
-    zip_safe = True,
+    zip_safe = False,
 
     author_email='reece+uta@invitae.com',
     description='Universal Transcript Archive',
@@ -37,7 +37,6 @@ setup(
     setup_requires = [
         'hgtools',
         'sphinx',
-        'sphinx-pypi-upload',
         'sphinx_rtd_theme',
         'sphinxcontrib-httpdomain',
         ],
