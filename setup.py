@@ -14,12 +14,12 @@ with open(os.path.join(root_dir, 'doc/source/description.rst')) as f:
 
 pkg_dir = 'lib/python'
 setup(
-    author = 'InVitae Keyboard Monkeys',
     license = 'Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
     long_description = long_description,
     use_hg_version = True,
     zip_safe = False,
 
+    author = 'UTA Contributors',
     author_email='reece+uta@invitae.com',
     description='Universal Transcript Archive',
     name = "uta",

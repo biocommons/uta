@@ -4,8 +4,8 @@ UTA -- Universal Transcript Archive
 
 *bringing smiles to transcript users since 2013*
 
-.. image:: https://drone.io/bitbucket.org/invitae/uta/status.png
-  :target: https://drone.io/bitbucket.org/invitae/uta
+`Docs <http://uta.readthedocs.org/>`_ | `PyPI <https://pypi.python.org/pypi/uta>`_ | |build_status|
+
 
 Overview
 --------
@@ -81,3 +81,6 @@ To develop UTA, follow these steps.
 .. _virtualenvwrapper: http://virtualenvwrapper.readthedocs.org/en/latest/install.html
 
 
+.. |build_status| image:: https://drone.io/bitbucket.org/invitae/uta/status.png
+  :target: https://drone.io/bitbucket.org/invitae/uta
+  :align: middle
