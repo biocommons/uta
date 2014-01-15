@@ -10,7 +10,7 @@ import uta.luts
 
 def create_schema(engine,session,opts,cf):
     """Create and populate initial schema"""
-    if opts['--drop-current']:
+    if opts['--drop-current'] and usam.schema_name is not '':
         session.execute('drop schema if exists '+usam.schema_name+' cascade')
         session.execute('create schema '+usam.schema_name)
         session.execute('alter database uta set search_path = '+usam.schema_name)

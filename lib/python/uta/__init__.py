@@ -1,5 +1,11 @@
 import pkg_resources
-__version__ = pkg_resources.require('uta')[0].version
+import warnings
+
+try:
+    __version__ = pkg_resources.get_distribution(__package__).version
+except pkg_resources.DistributionNotFound as e:
+    warnings.warn("can't get __version__ because %s package isn't installed" % __package__,Warning)
+    __version__ = None
 
 ## <LICENSE>
 ## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)

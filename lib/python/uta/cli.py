@@ -18,6 +18,8 @@ Options:
 
 Examples:
 
+  $ ./bin/uta --conf etc/uta.conf create-schema --drop-current
+
 """
 
 ## Examples:
@@ -52,14 +54,14 @@ def run(argv=None):
         ('load-transcripts-seqgene', 	ul.load_transcripts_seqgene),
         ]
 
-    opts = docopt(__doc__, argv=argv, version=uta.version.hg_id)
+    opts = docopt(__doc__, argv=argv, version=uta.__version__)
 
     logging.basicConfig(level=logging.INFO)
 
     cf = ConfigParser.SafeConfigParser()
     cf.readfp( open(opts['--conf']) )
 
-    engine = create_engine(cf.get('uta','db_url_loading')) #, echo=True)
+    engine = create_engine(cf.get('uta','db_loading_url')) #, echo=True)
     Session = sessionmaker(bind=engine) 
     session = Session()
 
