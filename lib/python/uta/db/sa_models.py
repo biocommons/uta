@@ -10,19 +10,20 @@ import sqlalchemy as sa
 import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
-schema_version = '0'
-schema_name = 'uta'+schema_version
-schema_qual = schema_name + '.'
 
-Base = saed.declarative_base()
+schema_name = None
+if True:
+    schema_version = '1'
+    schema_name = 'uta'+schema_version
+
+Base = saed.declarative_base(
+    metadata = sa.MetaData(schema=schema_name)
+    )
+
 
 class UTABase(object):
     def __str__(self):
-        try:
-            return self.__unsafe_str__()
-        except AttributeError:
-            return '{self.__class__.__name__}<incomplete record>'.format(
-                self = self)
+        return unicode(self).encode('utf-8')
 
 
 class Meta(Base,UTABase):
@@ -49,16 +50,52 @@ class Origin(Base,UTABase):
     url_ac_fmt = sa.Column(sa.String, nullable = True)
 
     # methods:
-    def __unsafe_str__(self):
+    def __unicode__(self):
         return '{self.__class__.__name__}<name={self.name}; updated={self.updated}; url={self.url}>'.format(
             self = self)
 
 
-class Gene(Base,UTABase):
-    # strand is really a property of ExonSet; however it is so commonly
-    # used in the context of a gene and maploc, that I'm adding it to Gene
-    # as well
+class DNASeq(Base,UTABase):
+    def _seq_hash(context):
+        seq = context.current_parameters['seq']
+        return None if seq is None else hashlib.md5(seq).hexdigest()
 
+    __tablename__ = 'dnaseq'
+    __table_args__ = (
+        {'schema' : schema_name},
+        )
+
+    # columns:
+    dnaseq_id = sa.Column(sa.Integer, sa.Sequence('dnaseq_id_seq'), primary_key = True, index = True)
+    md5 = sa.Column(sa.String, nullable = True, default =_seq_hash)
+    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
+    seq = sa.Column(sa.String, nullable = True)
+
+    # methods:
+    def __unicode__(self):
+        return '{self.__class__.__name__}<ac={self.ac}; seq({len})={self.seq}>'.format(
+            self = self,len = len(self.seq) if self.seq else '?')
+
+
+class DNASeqOriginAlias(Base,UTABase):
+    __tablename__ = 'dnaseq_origin_alias'
+    __table_args__ = (
+        {'schema' : schema_name},
+        )
+
+    # columns:
+    dnaseq_origin_alias_id = sa.Column(sa.Integer, sa.Sequence('dnaseq_origin_alias_seq'), primary_key = True, index = True)
+    dnaseq_id = sa.Column(sa.Integer, sa.ForeignKey('dnaseq.dnaseq_id'))
+    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable = False)
+    alias = sa.Column(sa.Text, index = True)
+    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
+
+    # relationships:
+    origin = sao.relationship('Origin', backref = 'dnaseq_origin_aliases')
+    dnaseq = sao.relationship('DNASeq', backref = 'dnaseq_origin_aliases')
+
+
+class Gene(Base,UTABase):
     __tablename__ = 'gene'
     __table_args__ = (
         sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
@@ -66,14 +103,14 @@ class Gene(Base,UTABase):
         )
 
     # columns:
-    gene_id = sa.Column(sa.Integer, primary_key = True, index = True)
-    origin_id = sa.Column(sa.Integer, index = True)
-    name = sa.Column(sa.String, index = True, unique = True, nullable = False)
-    strand = sa.Column(sa.SmallInteger, nullable = False)
+    gene_id = sa.Column(sa.Integer, sa.Sequence('gene_seq'), primary_key = True, index = True)
+    hgnc = sa.Column(sa.String, index = True, unique = True, nullable = False)
     maploc = sa.Column(sa.String)
-    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
+    strand = sa.Column(sa.SmallInteger, nullable = False)
     descr = sa.Column(sa.String)
     summary = sa.Column(sa.String)
+    aliases = sa.Column(sa.Text)
+    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
 
     # properties:
     @property
@@ -81,62 +118,37 @@ class Gene(Base,UTABase):
         return '' if self.strand is None else '-' if self.strand == -1 else '+'
 
     # methods:
-    def __unsafe_str__(self):
+    def __unicode__(self):
         return '{self.__class__.__name__}<gene={self.name}; maploc={self.strand_pm}{self.maploc}; descr={self.descr}>'.format(
             self = self)
 
 
-class NSeq(Base,UTABase):
-    def _seq_hash(context):
-        seq = context.current_parameters['seq']
-        if seq is not None:
-            return hashlib.md5(seq).hexdigest() 
-        return None 
-
-    __tablename__ = 'nseq'
-    __table_args__ = (
-        {'schema' : schema_name},
-        )
-
-    # columns:
-    nseq_id = sa.Column(sa.Integer, sa.Sequence('nseq_id_seq'), primary_key = True, index = True)
-    origin_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'origin.origin_id'), nullable = False)
-    ac = sa.Column(sa.String, nullable = False)
-    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
-    md5 = sa.Column(sa.String, nullable = True, default =_seq_hash)
-    seq = sa.Column(sa.String, nullable = True)
-
-    # relationships:
-    origin = sao.relationship('Origin', backref = 'nseqs')
-
-    # methods:
-    def __unsafe_str__(self):
-        return '{self.__class__.__name__}<ac={self.ac}; seq({len})={self.seq}>'.format(
-            self = self,len = len(self.seq) if self.seq else '?')
-    
-
 class Transcript(Base,UTABase):
     __tablename__ = 'transcript'
     __table_args__ = (
+        sa.CheckConstraint('cds_start_i <= cds_end_i', 'cds_start_i_must_be_le_cds_end_i'),
         sa.Index('ac_unique_in_origin', 'origin_id', 'ac', unique = True),
         {'schema' : schema_name},
         )
 
     # columns:
     transcript_id = sa.Column(sa.Integer, sa.Sequence('transcript_id_seq'), primary_key = True, index = True)
-    origin_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'origin.origin_id'), nullable = False)
+    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable = False)
     ac = sa.Column(sa.String, nullable = False)
-    nseq_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'nseq.nseq_id'))
-    gene_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'gene.gene_id'))
+    gene_id = sa.Column(sa.Integer, sa.ForeignKey('gene.gene_id'))
+    dnaseq_id = sa.Column(sa.Integer, sa.ForeignKey('dnaseq.dnaseq_id'))
+    strand = sa.Column(sa.SmallInteger, nullable = False)
+    cds_start_i = sa.Column(sa.Integer, nullable = False)
+    cds_end_i = sa.Column(sa.Integer, nullable = False)
     added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
 
     # relationships:
     origin = sao.relationship('Origin', backref = 'transcripts')
-    nseq = sao.relationship('NSeq')
     gene = sao.relationship('Gene', backref = 'transcripts')
+    dnaseq = sao.relationship('DNASeq')
 
     # methods:
-    def __unsafe_str__(self):
+    def __unicode__(self):
         return '{self.__class__.__name__}<origin={self.origin.name},ac={self.ac},gene={self.gene.name}>'.format(
             self = self)
 
@@ -144,24 +156,22 @@ class Transcript(Base,UTABase):
 class ExonSet(Base,UTABase):
     __tablename__ = 'exon_set'
     __table_args__ = (
-        sa.CheckConstraint('cds_start_i < cds_end_i', 'cds_start_i_must_be_lt_cds_end_i'),
-        sa.UniqueConstraint('transcript_id','ref_nseq_id',name='transcript_on_ref_nseq_must_be_unique'),
+        sa.UniqueConstraint('transcript_id','ref_dnaseq_id',name='transcript_on_ref_dnaseq_must_be_unique'),
         {'schema' : schema_name},
         )
     
     # columns:
     exon_set_id = sa.Column(sa.Integer, sa.Sequence('exon_set_id_seq'), primary_key = True, index = True)
-    transcript_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'transcript.transcript_id'), nullable = False)
-    ref_nseq_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'nseq.nseq_id'), nullable = False)
-    origin_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'origin.origin_id'), nullable = False)
+    transcript_id = sa.Column(sa.Integer, sa.ForeignKey('transcript.transcript_id'), nullable = False)
+    ref_dnaseq_id = sa.Column(sa.Integer, sa.ForeignKey('dnaseq.dnaseq_id'), nullable = False)
+    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable = False)
     strand = sa.Column(sa.SmallInteger, nullable = False)
-    cds_start_i = sa.Column(sa.Integer, nullable = False)
-    cds_end_i = sa.Column(sa.Integer, nullable = False)
+    method = sa.Column(sa.Text, nullable = False)
     added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
     
     # relationships:
     transcript = sao.relationship('Transcript', backref = 'exon_sets')
-    ref_nseq = sao.relationship('NSeq', backref = 'exon_sets')
+    target_dnaseq = sao.relationship('DNASeq', backref = 'exon_sets')
     origin = sao.relationship('Origin', backref = 'exon_sets')
 
     # properties:
@@ -171,11 +181,11 @@ class ExonSet(Base,UTABase):
     # def exon_end_i(self):
     @property
     def is_primary(self):
-        return self.ref_nseq_id == self.transcript.nseq_id
+        return self.ref_dnaseq_id == self.transcript.dnaseq_id
 
     # methods:
-    def __unsafe_str__(self):
-        return '{self.__class__.__name__}<origin={self.origin.name},transcript={self.transcript.ac},ref={self.ref_nseq.ac},primary={self.is_primary},exons={nexons}>'.format(
+    def __unicode__(self):
+        return '{self.__class__.__name__}<origin={self.origin.name},transcript={self.transcript.ac},ref={self.ref_dnaseq.ac},primary={self.is_primary},exons={nexons}>'.format(
             self = self, nexons = len(self.exons))
 
 
@@ -190,18 +200,20 @@ class Exon(Base,UTABase):
 
     # columns:
     exon_id = sa.Column(sa.Integer, sa.Sequence('exon_id_seq'), primary_key = True, index = True)
-    exon_set_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'exon_set.exon_set_id'), nullable = False)
+    exon_set_id = sa.Column(sa.Integer, sa.ForeignKey('exon_set.exon_set_id'), nullable = False)
     start_i = sa.Column(sa.Integer, nullable = False)
     end_i = sa.Column(sa.Integer, nullable = False)
     name = sa.Column(sa.String)
-    seq = sa.Column(sa.String)
 
     # relationships:
     exon_set = sao.relationship('ExonSet', backref = 'exons')
 
+    # properties:
+    # def seq():
+
     # methods:
-    def __unsafe_str__(self):
-        return '{self.__class__.__name__}<{self.exon_set.transcript.ac},{self.name},@{self.exon_set.ref_nseq.ac}:[{self.start_i}:{self.end_i}]>'.format(
+    def __unicode__(self):
+        return '{self.__class__.__name__}<{self.exon_set.transcript.ac},{self.name},@{self.exon_set.ref_dnaseq.ac}:[{self.start_i}:{self.end_i}]>'.format(
             self = self)
 
 
@@ -209,24 +221,22 @@ class ExonAlignment(Base,UTABase):
     __tablename__ = 'exon_alignment'
     __table_args__ = (
         {'schema' : schema_name},
-        #sa.CheckConstraint('exon_id1 < exon_id2'),
         )
 
     # columns:
     exon_alignment_id = sa.Column(sa.Integer, sa.Sequence('exon_alignment_id_seq'), primary_key = True, index = True)
-    tx_exon_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'exon.exon_id'), nullable = False)
-    ref_exon_id = sa.Column(sa.Integer, sa.ForeignKey(schema_qual+'exon.exon_id'), nullable = False)
+    tx_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable = False)
+    ref_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable = False)
     cigar = sa.Column(sa.String, nullable = False)
-    alignment = sa.Column(sa.String, nullable = True)
     url = sa.Column(sa.String, nullable = True)
     added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
 
     # relationships:
-    tx_exon = sao.relationship('Exon', backref = 'r_alignments', foreign_keys = [tx_exon_id])
-    ref_exon = sao.relationship('Exon', backref = 'q_alignments', foreign_keys = [ref_exon_id])
+    tx_exon = sao.relationship('Exon', backref = 'tx_alignment', foreign_keys = [tx_exon_id])
+    ref_exon = sao.relationship('Exon', backref = 'ref_alignment', foreign_keys = [ref_exon_id])
 
     # methods:
-    def __unsafe_str__(self):
+    def __unicode__(self):
         return '{self.__class__.__name__}<{self.tx_exon} ~ {self.ref_exon}>'.format(self = self)
 
 ## <LICENSE>
