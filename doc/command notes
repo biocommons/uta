@@ -12,3 +12,12 @@ begin;
 TRUNCATE transcript_table_mv;
 insert into transcript_table_mv select * from transcript_table_v;
 commit;
+
+
+
+
+
+
+Loading
+./bin/uta --conf etc/uta.conf create-schema --drop-current
+PYTHONPATH=lib/python ./bin/uta --conf etc/uta.conf load-gene ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz

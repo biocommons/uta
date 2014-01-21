@@ -12,15 +12,17 @@ def create_schema(engine,session,opts,cf):
     """Create and populate initial schema"""
     if opts['--drop-current'] and usam.schema_name is not '':
         session.execute('drop schema if exists '+usam.schema_name+' cascade')
-        session.execute('create schema '+usam.schema_name)
-        session.execute('alter database uta set search_path = '+usam.schema_name)
         session.commit()
+
+    #if usam.schema_name is not None and not str(engine.url).startswith('sqlite:'):
+    #    session.execute('create schema '+usam.schema_name)
+    #    session.execute('alter database uta set search_path = '+usam.schema_name)
+    #    session.commit()
 
     usam.Base.metadata.create_all(engine)
 
     session.add(usam.Meta(
             key='schema_version', value=usam.schema_version))
-
 
     session.add(
         usam.Origin(name='NCBI Gene',
@@ -41,7 +43,44 @@ def create_schema(engine,session,opts,cf):
     
 ############################################################################
 
-def load_gene(engine,session,opts,cf):
+def load_eutils_by_gene(engine,session,opts,cf):
+    """
+    load eutils, starting with a list of genes
+    """
+    import eutils.client
+    
+    ec = eutils.client.Client()
+    egene_o = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI Gene').one()
+
+    for hgnc in opts['GENES']:
+        # add the gene
+        egene = ec.fetch_gene_by_hgnc(hgnc)
+        ugene = usam.Gene(
+            gene_id = egene.gene_id,
+            hgnc = egene.hgnc,
+            maploc = egene.maploc,
+            descr = egene.description,
+            summary = egene.summary,
+            aliases = ','.join(egene.synonyms),
+            )
+        session.add(ugene)
+        logging.info("* Gene: added {ugene.hgnc} ({ugene.descr})".format(ugene=ugene))
+        continue
+
+        for eref in egene.references:
+            for eprd in eref.products:
+                egbseq = ec.fetch_gbseq_by_ac(eprd.acv)
+                gc = eprd.genomic_coords
+                # add the "product" (transcript)
+                for exon in gc.intervals:
+                    pass
+                logging.info("** Transcript: added {eref.acv}~{eprd.acv}; {n_exons}".format(
+                    eref=eref,eprd=eprd,n_exons=len(gc.intervals)))
+
+    session.commit()
+############################################################################
+
+def load_gene_info(engine,session,opts,cf):
     """
     import data as downloaded (by you) from 
     ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
@@ -55,13 +94,14 @@ def load_gene(engine,session,opts,cf):
             continue
         g = usam.Gene(
             gene_id = gi['GeneID'],
-            origin_id = o.origin_id,
-            descr = gi['Full_name_from_nomenclature_authority'],
+            hgnc = gi['Symbol_from_nomenclature_authority'],
             maploc = gi['map_location'],
-            name = gi['Symbol_from_nomenclature_authority'], 
+            descr = gi['Full_name_from_nomenclature_authority'],
+            aliases = gi['Synonyms'],
+            strand = gi[''],
             )
         session.add(g)
-        logging.info('loaded gene {g.name} ({g.descr})'.format(g=g))
+        logging.info('loaded gene {g.hgnc} ({g.descr})'.format(g=g))
     session.commit()
 
 ############################################################################

@@ -17,8 +17,8 @@ cp.readfp( open( os.path.join(data_dir,'test.conf') ) )
 class Test_uta_sa_models(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        print( "testing against " + cp.get('uta','url') )
-        engine = sa.create_engine(cp.get('uta','url'))
+        print( "testing against " + cp.get('uta','db_url') )
+        engine = sa.create_engine(cp.get('uta','db_url'))
         engine.execute('DROP SCHEMA IF EXISTS ' + usam.schema_name + ' CASCADE')
         engine.execute(sas.CreateSchema(usam.schema_name))
 
@@ -39,8 +39,7 @@ class Test_uta_sa_models(unittest.TestCase):
         # http://www.ncbi.nlm.nih.gov/nuccore/NM_033304.2
 
         g = usam.Gene(
-            origin_id = o.origin_id,
-            name = 'ADRA1A',
+            hgnc = 'ADRA1A',
             maploc = '8p21.2',
             strand = -1,
             descr   = 'adrenoceptor alpha 1A',
@@ -57,12 +56,16 @@ class Test_uta_sa_models(unittest.TestCase):
             )
         self.session.add(g)
 
-        chr8_n = usam.NSeq(
-            ac = 'NC_000008.10',
+        chr8_n = usam.DNASeq(
             seq = None,
-            origin = o,
             )
         self.session.add(chr8_n)
+
+        dsoa_n = usam.DNASeqOriginAlias(
+            dnaseq_id = chr8_n,
+            origin = o,
+            alias = 'NC_000008.10',
+            )
 
         transcripts = {
             'NM_000680.2': {
@@ -100,8 +103,7 @@ class Test_uta_sa_models(unittest.TestCase):
             }
 
         for ac,tx_info in transcripts.iteritems():
-            n = usam.NSeq(
-                ac = ac,
+            n = usam.DNASeq(
                 seq = tx_info['seq']
                 )
             n.origin = o
@@ -110,21 +112,23 @@ class Test_uta_sa_models(unittest.TestCase):
             t = usam.Transcript(
                 ac = ac,
                 gene_id = g.gene_id,
+                strand = 1,
+                cds_start_i = tx_info['t_cds_start_i'],
+                cds_end_i = tx_info['t_cds_end_i'],
                 )
             t.origin = o
-            t.nseq = n
+            t.dnaseq = n
             t.gene = g
             self.session.add(t)
 
             # ExonSet and Exons on Transcript seq
             t_es = usam.ExonSet(
+                origin = o,
+                transcript = t,
                 strand = 1,
-                cds_start_i = tx_info['t_cds_start_i'],
-                cds_end_i = tx_info['t_cds_end_i'],
+                method = 'test',
                 )
-            t_es.origin = o
-            t_es.transcript = t
-            t_es.ref_nseq = n
+            t_es.ref_dnaseq = n
             self.session.add(t_es)
 
             for se in zip(tx_info['t_starts_i'],tx_info['t_ends_i'],tx_info['names']):
@@ -141,10 +145,10 @@ class Test_uta_sa_models(unittest.TestCase):
                 strand = tx_info['g_strand'],
                 cds_start_i = tx_info['g_cds_start_i'],
                 cds_end_i = tx_info['g_cds_end_i'],
+                origin = o,
+                transcript = t,
+                ref_dnaseq = chr8_n,
                 )
-            g_es.origin = o
-            g_es.transcript = t
-            g_es.ref_nseq = chr8_n
             self.session.add(g_es)
 
             for se in zip(tx_info['g_starts_i'],tx_info['g_ends_i']):
@@ -168,7 +172,7 @@ class Test_uta_sa_models(unittest.TestCase):
         self.assertEquals(o.url_ac_fmt, 'http://bogus.com/{ac}')
 
         self.assertEqual( len(o.transcripts), 4 ) ## NM_000680.2, NM_033302.2, NM_033303.3, NM_033304.2
-        self.assertEqual( len(o.nseqs)      , 5 ) ## NC_000008.10, + transcripts
+        self.assertEqual( len(o.dnaseqs)      , 5 ) ## NC_000008.10, + transcripts
         self.assertEqual( len(o.exon_sets)  , 8 ) ## 4 transcripts * {genomic,transcript}
 
     def test_gene(self):
@@ -183,17 +187,17 @@ class Test_uta_sa_models(unittest.TestCase):
         self.assertEqual( len(g.transcripts), 4 )
         self.assertTrue( g.summary.startswith('Alpha-1-adrenergic receptors (alpha-1-ARs) are') )
 
-    def test_nseq(self):
-        all_nseqs = self.session.query(usam.NSeq).all()
-        self.assertEqual( len(all_nseqs), 5 )
+    def test_dnaseq(self):
+        all_dnaseqs = self.session.query(usam.DNASeq).all()
+        self.assertEqual( len(all_dnaseqs), 5 )
         
-        n = self.session.query(usam.NSeq).filter(usam.NSeq.ac == 'NC_000008.10').one()
+        n = self.session.query(usam.DNASeq).filter(usam.DNASeq.ac == 'NC_000008.10').one()
         self.assertEquals(n.ac, u'NC_000008.10')
         self.assertTrue(len(n.exon_sets),2)
         self.assertRegexpMatches(n.origin.name, '^Testing')
         #self.assertEquals(len(n.transcripts), 0)
 
-        n = self.session.query(usam.NSeq).filter(usam.NSeq.ac == 'NM_000680.2').one()
+        n = self.session.query(usam.DNASeq).filter(usam.DNASeq.ac == 'NM_000680.2').one()
         self.assertEquals(n.ac, u'NM_000680.2')
         self.assertTrue(len(n.exon_sets),1)
         self.assertEquals(n.md5, u'829f098bb244c1370befd6d448b6c9ad')
@@ -204,7 +208,7 @@ class Test_uta_sa_models(unittest.TestCase):
         #self.assertEquals(len(n.transcripts), 1)
         
     def test_exon_set(self):
-        all_exon_sets = self.session.query(usam.NSeq).all()
+        all_exon_sets = self.session.query(usam.DNASeq).all()
         self.assertTrue(len(all_exon_sets),8)
         
         exon_sets = self.session.query(usam.Transcript).filter(usam.Transcript.ac=='NM_000680.2').one().exon_sets
@@ -214,7 +218,7 @@ class Test_uta_sa_models(unittest.TestCase):
         self.assertEquals( (es.cds_start_i,es.cds_end_i), (436, 1837) )
         self.assertEquals( len(es.exons), 2 )
         self.assertEquals( es.is_primary, True )
-        self.assertEquals( es.ref_nseq.ac, 'NM_000680.2' )
+        self.assertEquals( es.ref_dnaseq.ac, 'NM_000680.2' )
         self.assertEquals( es.strand, 1 )
         self.assertEquals( es.transcript.ac, 'NM_000680.2' )
 
@@ -227,7 +231,7 @@ class Test_uta_sa_models(unittest.TestCase):
         self.assertEquals( (es.cds_start_i,es.cds_end_i), (26627665, 26722486) )
         self.assertEquals( len(es.exons), 2 )
         self.assertEquals( es.is_primary, False )
-        self.assertEquals( es.ref_nseq.ac, 'NC_000008.10' )
+        self.assertEquals( es.ref_dnaseq.ac, 'NC_000008.10' )
         self.assertEquals( es.strand, -1 )
         self.assertEquals( es.transcript.ac, 'NM_000680.2' )
 

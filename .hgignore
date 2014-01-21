@@ -15,6 +15,7 @@ syntax: glob
 *~
 .DS_Store
 .Python
+.coverage
 .idea
 .installed.cfg
 .uta.conf.mk
@@ -25,6 +26,7 @@ dist
 distribute-*
 doc/build
 hgtools-*
+lib/python/cover
 lib/python/uta/_release.py
 misc/data
 misc/exon-str-cmp
@@ -37,8 +39,8 @@ sdist
 tests/data/multifastadb/d*/*fai
 tmp
 ve
-virtualenv.py
 virtualenv-*
+virtualenv.py
 workspace
 
 syntax: regexp

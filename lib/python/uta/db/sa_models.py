@@ -11,9 +11,9 @@ import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
 
+schema_version = '1'
 schema_name = None
-if True:
-    schema_version = '1'
+if False:
     schema_name = 'uta'+schema_version
 
 Base = saed.declarative_base(
@@ -21,10 +21,12 @@ Base = saed.declarative_base(
     )
 
 
+############################################################################
+## Tables
+
 class UTABase(object):
     def __str__(self):
         return unicode(self).encode('utf-8')
-
 
 class Meta(Base,UTABase):
     __tablename__ = 'meta'
@@ -98,7 +100,7 @@ class DNASeqOriginAlias(Base,UTABase):
 class Gene(Base,UTABase):
     __tablename__ = 'gene'
     __table_args__ = (
-        sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
+        #sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
         {'schema' : schema_name},
         )
 
@@ -106,20 +108,15 @@ class Gene(Base,UTABase):
     gene_id = sa.Column(sa.Integer, sa.Sequence('gene_seq'), primary_key = True, index = True)
     hgnc = sa.Column(sa.String, index = True, unique = True, nullable = False)
     maploc = sa.Column(sa.String)
-    strand = sa.Column(sa.SmallInteger, nullable = False)
+    #strand = sa.Column(sa.SmallInteger, nullable = False)
     descr = sa.Column(sa.String)
     summary = sa.Column(sa.String)
     aliases = sa.Column(sa.Text)
     added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
 
-    # properties:
-    @property
-    def strand_pm(self):
-        return '' if self.strand is None else '-' if self.strand == -1 else '+'
-
     # methods:
     def __unicode__(self):
-        return '{self.__class__.__name__}<gene={self.name}; maploc={self.strand_pm}{self.maploc}; descr={self.descr}>'.format(
+        return '{self.__class__.__name__}<gene={self.name}; maploc={self.maploc}; descr={self.descr}>'.format(
             self = self)
 
 
@@ -163,9 +160,9 @@ class ExonSet(Base,UTABase):
     # columns:
     exon_set_id = sa.Column(sa.Integer, sa.Sequence('exon_set_id_seq'), primary_key = True, index = True)
     transcript_id = sa.Column(sa.Integer, sa.ForeignKey('transcript.transcript_id'), nullable = False)
-    ref_dnaseq_id = sa.Column(sa.Integer, sa.ForeignKey('dnaseq.dnaseq_id'), nullable = False)
     origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable = False)
-    strand = sa.Column(sa.SmallInteger, nullable = False)
+    ref_dnaseq_id = sa.Column(sa.Integer, sa.ForeignKey('dnaseq.dnaseq_id'), nullable = False)
+    ref_strand = sa.Column(sa.SmallInteger, nullable = False)
     method = sa.Column(sa.Text, nullable = False)
     added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
     
@@ -238,6 +235,15 @@ class ExonAlignment(Base,UTABase):
     # methods:
     def __unicode__(self):
         return '{self.__class__.__name__}<{self.tx_exon} ~ {self.ref_exon}>'.format(self = self)
+
+
+
+def strand_pm(strand):
+    if strand is None: return ''
+    elif strand == 1: return '+'
+    elif strand == -1: return '-'
+    else: return '?'
+
 
 ## <LICENSE>
 ## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
