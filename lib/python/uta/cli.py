@@ -8,11 +8,13 @@ Usage:
   uta ( -h | --help )
   uta --version
   uta [options] create-schema [--drop-current]
-  uta [options] load-gene FILE
+  uta [options] load-eutils-by-gene GENES ...
+  uta [options] load-gene-info FILE
   uta [options] load-transcripts-gbff FILE
   uta [options] load-transcripts-seqgene FILE
 
 Options:
+
   -C CONF, --conf CONF	Configuration to read (required)
 
 
@@ -48,10 +50,11 @@ import uta.db.loading as ul
 
 def run(argv=None):
     dispatch_table = [
-        ('create-schema', 		ul.create_schema),
-        ('load-gene', 			ul.load_gene),
-        ('load-transcripts-gbff', 	ul.load_transcripts_gbff),
-        ('load-transcripts-seqgene', 	ul.load_transcripts_seqgene),
+        ('create-schema',               ul.create_schema),
+        ('load-eutils-by-gene',         ul.load_eutils_by_gene),
+        ('load-gene-info',              ul.load_gene_info),
+        ('load-transcripts-gbff',       ul.load_transcripts_gbff),
+        ('load-transcripts-seqgene',    ul.load_transcripts_seqgene),
         ]
 
     opts = docopt(__doc__, argv=argv, version=uta.__version__)
@@ -73,6 +76,7 @@ def run(argv=None):
     if sub is None:
         raise UTAError('No valid actions specified')
     sub(engine,session,opts,cf)
+
 
 ## <LICENSE>
 ## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
