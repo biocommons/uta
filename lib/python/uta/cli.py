@@ -8,6 +8,7 @@ Usage:
   uta ( -h | --help )
   uta --version
   uta [options] create-schema [--drop-current]
+  uta [options] load-dnaseq --origin=ORIGIN FASTA_FILE
   uta [options] load-eutils-by-gene GENES ...
   uta [options] load-gene-info FILE
   uta [options] load-transcripts-gbff FILE
@@ -38,7 +39,8 @@ Examples:
 
 ############################################################################
 
-import ConfigParser, logging
+import ConfigParser
+import logging
 
 #from Bio import SeqIO
 from docopt import docopt
@@ -51,6 +53,7 @@ import uta.db.loading as ul
 def run(argv=None):
     dispatch_table = [
         ('create-schema',               ul.create_schema),
+        ('load-dnaseq',                 ul.load_dnaseq),
         ('load-eutils-by-gene',         ul.load_eutils_by_gene),
         ('load-gene-info',              ul.load_gene_info),
         ('load-transcripts-gbff',       ul.load_transcripts_gbff),

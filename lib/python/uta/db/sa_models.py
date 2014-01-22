@@ -11,18 +11,22 @@ import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
 
+# also see etc/uta.conf
 schema_version = '1'
-schema_name = None
-if False:
+use_schema = True
+if use_schema:
     schema_name = 'uta'+schema_version
+    schema_name_dot = schema_name + '.'
+else:
+    schema_name = None
+    schema_name_dot = ''
+
+
+############################################################################
 
 Base = saed.declarative_base(
     metadata = sa.MetaData(schema=schema_name)
     )
-
-
-############################################################################
-## Tables
 
 class UTABase(object):
     def __str__(self):
@@ -46,7 +50,6 @@ class Origin(Base,UTABase):
     # columns:
     origin_id = sa.Column(sa.Integer, sa.Sequence('origin_id_seq'), primary_key = True, index = True)
     name = sa.Column(sa.String, nullable = False, unique = True)
-    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
     updated = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now(), onupdate = datetime.datetime.now() )
     url = sa.Column(sa.String, nullable = True)
     url_ac_fmt = sa.Column(sa.String, nullable = True)
@@ -58,19 +61,18 @@ class Origin(Base,UTABase):
 
 
 class DNASeq(Base,UTABase):
-    def _seq_hash(context):
-        seq = context.current_parameters['seq']
-        return None if seq is None else hashlib.md5(seq).hexdigest()
-
     __tablename__ = 'dnaseq'
     __table_args__ = (
         {'schema' : schema_name},
         )
 
+    def _seq_hash(context):
+        seq = context.current_parameters['seq']
+        return None if seq is None else hashlib.md5(seq).hexdigest()
+
     # columns:
     dnaseq_id = sa.Column(sa.Integer, sa.Sequence('dnaseq_id_seq'), primary_key = True, index = True)
-    md5 = sa.Column(sa.String, nullable = True, default =_seq_hash)
-    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
+    md5 = sa.Column(sa.String, nullable=True, unique=True, default=_seq_hash)
     seq = sa.Column(sa.String, nullable = True)
 
     # methods:
@@ -82,6 +84,7 @@ class DNASeq(Base,UTABase):
 class DNASeqOriginAlias(Base,UTABase):
     __tablename__ = 'dnaseq_origin_alias'
     __table_args__ = (
+        sa.Index('dnaseqoriginalias_ac_unique_in_origin', 'origin_id', 'alias', unique = True),
         {'schema' : schema_name},
         )
 
@@ -93,14 +96,13 @@ class DNASeqOriginAlias(Base,UTABase):
     added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
 
     # relationships:
-    origin = sao.relationship('Origin', backref = 'dnaseq_origin_aliases')
-    dnaseq = sao.relationship('DNASeq', backref = 'dnaseq_origin_aliases')
+    origin = sao.relationship('Origin', backref = 'aliases')
+    dnaseq = sao.relationship('DNASeq', backref = 'aliases')
 
 
 class Gene(Base,UTABase):
     __tablename__ = 'gene'
     __table_args__ = (
-        #sa.CheckConstraint('strand = -1 or strand = 1', 'strand_is_plus_or_minus_1'),
         {'schema' : schema_name},
         )
 
@@ -108,7 +110,6 @@ class Gene(Base,UTABase):
     gene_id = sa.Column(sa.Integer, sa.Sequence('gene_seq'), primary_key = True, index = True)
     hgnc = sa.Column(sa.String, index = True, unique = True, nullable = False)
     maploc = sa.Column(sa.String)
-    #strand = sa.Column(sa.SmallInteger, nullable = False)
     descr = sa.Column(sa.String)
     summary = sa.Column(sa.String)
     aliases = sa.Column(sa.Text)
@@ -124,7 +125,7 @@ class Transcript(Base,UTABase):
     __tablename__ = 'transcript'
     __table_args__ = (
         sa.CheckConstraint('cds_start_i <= cds_end_i', 'cds_start_i_must_be_le_cds_end_i'),
-        sa.Index('ac_unique_in_origin', 'origin_id', 'ac', unique = True),
+        sa.Index('transcript_ac_unique_in_origin', 'origin_id', 'ac', unique = True),
         {'schema' : schema_name},
         )
 
