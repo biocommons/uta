@@ -7,10 +7,13 @@ __doc__ = """UTA -- Universal Transcript Archive
 Usage:
   uta ( -h | --help )
   uta --version
-  uta [options] create-schema [--drop-current]
-  uta [options] load-dnaseq --origin=ORIGIN FASTA_FILE
-  uta [options] load-eutils-by-gene GENES ...
+  uta [options] drop-schema
+  uta [options] create-schema
+  uta [options] initialize-schema
+  uta [options] load-eutils-genes [--with-transcripts] GENES ...
+  uta [options] load-eutils-transcripts TRANSCRIPTS ...
   uta [options] load-gene-info FILE
+  uta [options] load-seq-aliases --origin=ORIGIN FILE
   uta [options] load-transcripts-gbff FILE
   uta [options] load-transcripts-seqgene FILE
 
@@ -52,10 +55,15 @@ import uta.db.loading as ul
 
 def run(argv=None):
     dispatch_table = [
+        ('drop-schema',                 ul.drop_schema),
         ('create-schema',               ul.create_schema),
-        ('load-dnaseq',                 ul.load_dnaseq),
+        ('initialize-schema',           ul.initialize_schema),
+
+        ('load-eutils-genes',           ul.load_eutils_genes),
+
         ('load-eutils-by-gene',         ul.load_eutils_by_gene),
         ('load-gene-info',              ul.load_gene_info),
+        ('load-seq-aliases',            ul.load_seq_aliases),
         ('load-transcripts-gbff',       ul.load_transcripts_gbff),
         ('load-transcripts-seqgene',    ul.load_transcripts_seqgene),
         ]
@@ -63,13 +71,16 @@ def run(argv=None):
     opts = docopt(__doc__, argv=argv, version=uta.__version__)
 
     logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__package__)
 
     cf = ConfigParser.SafeConfigParser()
     cf.readfp( open(opts['--conf']) )
 
-    engine = create_engine(cf.get('uta','db_loading_url')) #, echo=True)
+    db_url = cf.get('uta','db_loading_url')
+    engine = create_engine(db_url) #, echo=True)
     Session = sessionmaker(bind=engine) 
     session = Session()
+    logger.info('connected to '+db_url)
 
     sub = None
     for cmd,func in dispatch_table:

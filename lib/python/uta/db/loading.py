@@ -3,12 +3,19 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import csv
 import datetime
 import gzip
+import hashlib
 import itertools
 import logging
 
 import uta
 import uta.db.sa_models as usam
 import uta.luts
+
+############################################################################
+
+def drop_schema(engine,session,opts,cf):
+    if engine.url.drivername == 'postgresql' and usam.use_schema:
+        session.execute('drop schema if exists '+usam.schema_name+' cascade')
 
 ############################################################################
 
@@ -30,6 +37,15 @@ def create_schema(engine,session,opts,cf):
     session.add(usam.Meta( key='schema_version', value=usam.schema_version ))
     session.add(usam.Meta( key='created', value=datetime.datetime.now().isoformat() ))
 
+############################################################################
+
+def initialize_schema(engine,session,opts,cf):
+    """Create and populate initial schema"""
+
+    session.add(
+        usam.Origin(name='NCBI',
+                    url = 'http://www.ncbi.nlm.nih.gov/',
+                    ))
     session.add(
         usam.Origin(name='NCBI Gene',
                     url = 'http://www.ncbi.nlm.nih.gov/gene/',
@@ -46,23 +62,87 @@ def create_schema(engine,session,opts,cf):
                     ))
     
     session.commit()
-    
+
+
 ############################################################################
 
-def load_dnaseq(engine,session,opts,cf):
-    """load DNASeq entries with accessions from fasta file"""
-    raise RuntimeError("THIS ISN'T FINISHED")
-
-    from pysam import Fastafile
+def load_seq_aliases(engine,session,opts,cf):
+    """load Seq entries with accessions from fasta file"""
 
     logger = logging.getLogger(__package__)
+
     ori = session.query(usam.Origin).filter(usam.Origin.name == opts['--origin']).one()
 
-    fa = Fastafile(opts['FASTA_FILE'])
-    
+    fh = gzip.open(opts['FILE'],'r') if opts['FILE'].endswith('.gz') else open(opts['FILE'])
+    seqinfo = csv.DictReader(fh, delimiter=b'\t')
+    for i_row,row in enumerate(seqinfo):
+        seq = session.query(usam.Seq).filter(usam.Seq.seq_id == row['md5']).first()
+        if seq is None:
+            seq = usam.Seq(seq_id=row['md5'],len=row['len'])
+            session.add(seq)
 
+        for alias in row['aliases'].split(','):
+            soa = session.query(usam.SeqOriginAlias).filter(
+                usam.SeqOriginAlias.origin_id == ori.origin_id,
+                usam.SeqOriginAlias.alias == alias,
+                ).first()
+            if soa is None:
+                soa = usam.SeqOriginAlias(
+                    seq = seq,
+                    origin = ori,
+                    alias = alias
+                    )
+                session.add(soa)
+        if i_row % 250 == 0:
+            session.commit()
+            logger.info('commited @ row '+str(i_row))
+    session.commit()
 
 ############################################################################
+
+def load_eutils_genes(engine,session,opts,cf):
+    """
+    load genes via eutils
+
+    This is preferred over data in ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/ because
+    we get summaries with eutils.
+    """
+    import eutils.client
+    
+    logger = logging.getLogger(__package__)
+
+    ec = eutils.client.Client()
+    u_ori_gene = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI Gene').one()
+
+    for hgnc in opts['GENES']:
+        try:
+            e_gene = ec.fetch_gene_by_hgnc(hgnc)
+        except eutils.exceptions.EutilsError as e:
+            logger.exception(e)
+            continue
+
+        u_gene = session.query(usam.Gene).filter(usam.Gene.hgnc == hgnc).first()
+        if u_gene is None:
+            u_gene = usam.Gene(
+                gene_id = e_gene.gene_id,
+                hgnc = e_gene.hgnc,
+                maploc = e_gene.maploc,
+                descr = e_gene.description,
+                summary = e_gene.summary,
+                aliases = ','.join(e_gene.synonyms),
+                )
+            session.merge(u_gene)
+            u_ori_gene.tickle_update()
+            session.commit()
+            logger.info("Gene: added {u_gene.gene_id} ({u_gene.hgnc}; {u_gene.descr})".format(u_gene=u_gene))
+
+    session.commit()
+
+
+
+def load_eutils_transcripts(engine,session,opts,cf):
+    pass
+
 
 def load_eutils_by_gene(engine,session,opts,cf):
     """
@@ -73,100 +153,114 @@ def load_eutils_by_gene(engine,session,opts,cf):
     logger = logging.getLogger(__package__)
 
     ec = eutils.client.Client()
-    uori_gene = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI Gene').one()
-    uori_nt = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI RefSeq').one()
+    u_ori_gene = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI Gene').one()
+    u_ori_nt = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI RefSeq').one()
 
     for hgnc in opts['GENES']:
-        # Gene
-        egene = ec.fetch_gene_by_hgnc(hgnc)
-        ugene = usam.Gene(
-            gene_id = egene.gene_id,
-            hgnc = egene.hgnc,
-            maploc = egene.maploc,
-            descr = egene.description,
-            summary = egene.summary,
-            aliases = ','.join(egene.synonyms),
-            )
-        session.merge(ugene)
-        session.commit()
-        logger.info("Gene: added {ugene.hgnc} ({ugene.descr})".format(ugene=ugene))
+        e_gene = ec.fetch_gene_by_hgnc(hgnc)
 
-        for eref in egene.references:
-            # Reference sequence (NC, NG, NT)
-            urefseq = session.query(usam.DNASeq).join(usam.DNASeqOriginAlias).filter(
-                usam.DNASeqOriginAlias.alias == eref.acv).first()
-            if urefseq is None:
-                urefseq = usam.DNASeq()
-                session.add(urefseq)
-                urefalias = usam.DNASeqOriginAlias(
-                    origin=uori_nt,
-                    dnaseq=urefseq,
-                    alias=eref.acv)
-                session.add(urefalias)
-                session.commit()
-                logger.info("DNASeq: added {urefseq.dnaseq_id} for alias {urefalias.alias} ({eref.label})".format(
-                    urefseq=urefseq, urefalias=urefalias, eref=eref))
+        u_gene = session.query(usam.Gene).filter(usam.Gene.hgnc == hgnc).first()
+        if u_gene is None:
+            u_gene = usam.Gene(
+                gene_id = e_gene.gene_id,
+                hgnc = e_gene.hgnc,
+                maploc = e_gene.maploc,
+                descr = e_gene.description,
+                summary = e_gene.summary,
+                aliases = ','.join(e_gene.synonyms),
+                )
+            session.add(u_gene)
+            session.commit()
+            logger.info("Gene: added {u_gene.gene_id} ({u_gene.hgnc}; {u_gene.descr})".format(u_gene=u_gene))
+
+        for e_ref in e_gene.references:
+            # Reference sequence (e.g., NC, NG, NT)
+
+            u_ref_seq = session.query(usam.Seq).join(usam.SeqOriginAlias).filter(
+                usam.SeqOriginAlias.alias == e_ref.acv).first()
+
+            if u_ref_seq is None:
+                logging.warning("reference sequence {e_ref.acv} ({e_ref.heading}) is not loaded; skipping".format(
+                    e_ref=e_ref))
+                continue
             
-            for eprd in eref.products:
-                egbseq = ec.fetch_gbseq_by_ac(eprd.acv)
+            # loop over transcripts ("products")
+            for e_prd in e_ref.products:
 
-                # Transcript sequence (NM, XM)
-                utxseq = session.query(usam.DNASeq).join(usam.DNASeqOriginAlias).filter(
-                    usam.DNASeqOriginAlias.alias == eprd.acv).first()
-                if utxseq is None:
-                    utxseq = usam.DNASeq()
-                    session.add(utxseq)
-                    utxseqalias = usam.DNASeqOriginAlias(
-                        origin=uori_nt,
-                        dnaseq=utxseq,
-                        alias=eprd.acv,
-                        seq=egbseq.sequence,
+                raise RuntimeError('BROKEN HERE')
+                # Check ExonSet, not Transcript
+                q = session.query(usam.Transcript).filter(usam.Transcript.ac == e_prd.acv)
+                if session.query(q.exists()):
+                    logger.info("Transcript {e_prd.acv} already exists; skipping".format(e_prd=e_prd))
+                    continue
+
+                # fetch RefSeq corresponding to this transcript, or create
+                # *based on transcript sequence  md5, not accession*
+                e_gbseq = ec.fetch_gbseq_by_ac(e_prd.acv)
+                seq_md5 = hashlib.md5(e_gbseq.seq.upper()).hexdigest()
+                u_tx_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == seq_md5).first()
+                if u_tx_seq is None:
+                    u_tx_seq = usam.Seq(
+                        seq = e_gbseq.seq.upper()
                         )
-                    session.add(utxseqalias)
+                    assert u_tx_seq.seq_id == seq_md5
+                    session.add(u_tx_seq)
+                    logger.info("Seq: added seq_id {u_tx_seq.seq_id} for alias {e_gbseq.acv} ({e_gbseq.summary})".format(
+                        u_ref_seq=u_ref_seq, u_refalias=u_refalias, e_gbseq=e_gbseq))
+
+                # fetch seq_origin_alias record, or create it
+                u_tx_seq_alias = session.query(usam.SeqOriginAlias).filter(
+                    usam.Seq.seq_id == seq_md5,
+                    usam.SeqOriginAlias.alias == e_gbseq.acv).first()
+                if u_tx_seq_alias is None:
+                    u_tx_seq_alias = usam.SeqOriginAlias(
+                        origin=u_ori_nt,
+                        seq_id=seq_md5,
+                        alias=e_prd.acv,
+                        descr=e_gbseq.definition,)
+                    session.add(u_tx_seq_alias)
                     session.commit()
-                    logger.info("DNASeq: added {utxseq.dnaseq_id} for alias {utxseqalias.alias} ({egbseq.summary})".format(
-                        urefseq=urefseq, urefalias=urefalias, egbseq=egbseq))
+                    logger.info("SeqOriginAlias: added alias {u_tx_seq_alias.alias} ({u_tx_seq_alias.descr}) for seq_id {u_tx_seq_alias.seq_id}".format(
+                        u_tx_seq_alias=u_tx_seq_alias))
 
-                # Transcript (NM)
-                utx = usam.Transcript(
-                    origin=ori_nt,
-                    ac=eprd.acv,
-                    gene_id=egene.gene_id,
-                    dnaseq=utxseq,
-                    cds_start_i=egbseq.cds_start_i,
-                    cds_end_id=egbseq.cds_end_i,
+                # we already know that the Transcript doesn't exist 
+                u_tx = usam.Transcript(
+                    origin=u_ori_nt,
+                    gene_id=e_gene.gene_id,
+                    seq=u_tx_seq,
+                    ac=e_prd.acv,
+                    cds_start_i=e_gbseq.cds.start_i,
+                    cds_end_id=e_gbseq.cds.end_i,
                     )
-                session.merge(utx)
-                session.commit()
-                logger.info("Transcript: added {utx.ac} for gene {utx.gene} w/ DNASeq {utx.dnaseq_id}".format(
-                        utx=utx))
+                session.add(u_tx)
+                logger.info("Transcript: added {u_tx.ac} for gene {u_tx.gene} w/ Seq {u_tx.seq_id}".format(
+                        u_tx=u_tx))
 
-                # Self ExonSet
-                utxes = usam.ExonSet(
-                    transcript = utx,
-                    ref_dnaseq = utxseq,
-                    origin = uori_nt,
+                # Add transcript exon set
+                u_tx_es = usam.ExonSet(
+                    transcript = u_tx,
+                    ref_seq = u_tx_seq,
+                    origin = u_ori_nt,
                     method = None,
                     strand = 1)           # by definition
-                session.merge(utxes)
-                session.commit()
-                logger.info("ExonSet: added {ues.ac} for <{utx.ac}~{utxex.ref_dnaseq.aliases}, {utxes.origin.name}, {utxes.method}>".format(
-                    ues=ues, utx=utx, eref=eref))
+                session.add(u_tx_es)
+                logger.info("ExonSet: added {ues.ac} for <{u_tx.ac}~{utxex.ref_seq.aliases}, {u_tx_es.origin.name}, {u_tx_es.method}>".format(
+                    ues=ues, u_tx=u_tx, e_ref=e_ref))
+
+                import IPython; IPython.embed()
 
                 for exon in gbseq.intervals:
                     ue = usam.Exon(
-                        exonset = utxes,
+                        exonset = u_tx_es,
                         start_i = exon.start_i,
                         end_i = exon.end_i)
-                    session.merge(ue)
-#############                    
+                    session.add(ue)
 
-                gc = eprd.genomic_coords
+                #gc = e_prd.genomic_coords
 
-
-
-                logger.info("** Transcript: added {eref.acv}~{eprd.acv}; {n_exons} exons".format(
-                    eref=eref,eprd=eprd,n_exons=len(gc.intervals)))
+                session.commit()
+                logger.info("** Transcript: added {e_ref.acv}~{e_prd.acv}; {n_exons} exons".format(
+                    e_ref=e_ref,e_prd=e_prd,n_exons=len(gc.intervals)))
 
     session.commit()
 ############################################################################
