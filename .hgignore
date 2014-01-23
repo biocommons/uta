@@ -31,6 +31,7 @@ lib/python/uta/_release.py
 misc/data
 misc/exon-str-cmp
 misc/tests
+misc/seq-info
 nosetests.xml
 parts
 patches
