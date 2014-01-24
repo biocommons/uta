@@ -19,5 +19,9 @@ commit;
 
 
 Loading
-./bin/uta --conf etc/uta.conf create-schema --drop-current
-PYTHONPATH=lib/python ./bin/uta --conf etc/uta.conf load-gene ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
+export PYTHONPATH=lib/python
+./bin/uta --conf=etc/uta.conf drop-schema
+./bin/uta --conf=etc/uta.conf create-schema
+./bin/uta --conf=etc/uta.conf initialize-schema
+./bin/uta --conf=etc/uta.conf load-seq-info --origin NCBI data/core-rest-2014-01.seqinfo.gz
+./bin/uta --conf etc/uta.conf load-eutils-gene --with-transcripts VHL
