@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 ############################################################################
 
-__doc__ = """UTA -- Universal Transcript Archive
+__doc__ = """uta -- Universal Transcript Archive command line tool
 
 Usage:
   uta ( -h | --help )
@@ -10,20 +10,17 @@ Usage:
   uta [options] drop-schema
   uta [options] create-schema
   uta [options] initialize-schema
+  uta [options] load-seq-info --origin=ORIGIN [--fast] FILE
   uta [options] load-eutils-genes [--with-transcripts] GENES ...
   uta [options] load-eutils-transcripts TRANSCRIPTS ...
   uta [options] load-gene-info FILE
-  uta [options] load-seq-aliases --origin=ORIGIN FILE
   uta [options] load-transcripts-gbff FILE
   uta [options] load-transcripts-seqgene FILE
 
 Options:
-
   -C CONF, --conf CONF	Configuration to read (required)
 
-
 Examples:
-
   $ ./bin/uta --conf etc/uta.conf create-schema --drop-current
 
 """
@@ -44,6 +41,7 @@ Examples:
 
 import ConfigParser
 import logging
+import time
 
 #from Bio import SeqIO
 from docopt import docopt
@@ -59,11 +57,10 @@ def run(argv=None):
         ('create-schema',               ul.create_schema),
         ('initialize-schema',           ul.initialize_schema),
 
+        ('load-seq-info',               ul.load_seq_info),
         ('load-eutils-genes',           ul.load_eutils_genes),
 
-        ('load-eutils-by-gene',         ul.load_eutils_by_gene),
         ('load-gene-info',              ul.load_gene_info),
-        ('load-seq-aliases',            ul.load_seq_aliases),
         ('load-transcripts-gbff',       ul.load_transcripts_gbff),
         ('load-transcripts-seqgene',    ul.load_transcripts_seqgene),
         ]
@@ -71,7 +68,7 @@ def run(argv=None):
     opts = docopt(__doc__, argv=argv, version=uta.__version__)
 
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__package__)
+    logger = logging.getLogger(__name__)
 
     cf = ConfigParser.SafeConfigParser()
     cf.readfp( open(opts['--conf']) )
@@ -89,7 +86,9 @@ def run(argv=None):
             break
     if sub is None:
         raise UTAError('No valid actions specified')
+    t0 = time.time()
     sub(engine,session,opts,cf)
+    logger.info("{cmd}: {elapsed:.1f}s elapsed".format(cmd=cmd,elapsed=time.time()-t0))
 
 
 ## <LICENSE>
