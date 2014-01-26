@@ -12,7 +12,6 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(root_dir, 'doc/source/description.rst')) as f:
     long_description = f.read()
 
-pkg_dir = 'lib/python'
 setup(
     license = 'Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
     long_description = long_description,
@@ -23,8 +22,7 @@ setup(
     author_email='reece+uta@invitae.com',
     description='Universal Transcript Archive',
     name = "uta",
-    package_dir = {'': pkg_dir},
-    packages = find_packages(pkg_dir),
+    packages = find_packages(),
     url = 'https://bitbucket.org/invitae/uta',
 
 
