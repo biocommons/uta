@@ -1,0 +1,41 @@
+#!/usr/bin/perl
+# perl-module-install -- install module at specified directory
+
+use strict;
+use warnings;
+
+use CPAN;
+use Getopt::Long qw(:config gnu_getopt);
+
+my %opts = ();
+
+GetOptions( \%opts,
+			'install-base-dir|d=s' )
+  or die("$!");
+
+exists $opts{'install-base-dir'}
+  or die("$0: --install-base-dir is required");
+
+eval 'use local::lib $opts{"install-base-dir"}';
+die($@) if ($@);
+
+for my $pkg (@ARGV) {
+  CPAN::install($pkg);
+}
+
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>

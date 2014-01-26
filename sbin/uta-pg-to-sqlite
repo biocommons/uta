@@ -1,0 +1,89 @@
+#!/bin/bash -e
+# make a sqlite database from uta0
+# use: uta-pg-to-sqlite <sqlite-db-name>
+
+
+psql_do () {
+	psql -d uta -AtX -F$'\t' -c "$@";
+}
+
+cleanup () {
+	action="rm -fv"
+	[ -n "$data_tmpfn" ] && $action "$data_tmpfn"
+	[ -n "$sqlitedb_tmpfn" ] && $action "$sqlitedb_tmpfn"
+}
+trap cleanup EXIT
+data_tmpfn=$(mktemp /tmp/XXXXX.tsv)
+sqlitedb_tmpfn=$(mktemp /tmp/XXXXX.db)
+
+
+schema_version=$(psql_do "select value from uta0.meta where key='schema_version'")
+version=$schema_version
+sqlite_fn="/tmp/uta-$version.db"
+
+
+sqlite3 $sqlitedb_tmpfn <<EOF
+create table meta (key text,value text);
+
+create table protein_hash (ac text primary key, md5 text not null, seguid text not null);
+create index protein_hash_md5 on protein_hash(md5);
+create index protein_hash_seguid on protein_hash(seguid);
+
+create table transcript (ac text, gene text, cds_start_i int, cds_end_i int, added timestamp with time zone, seq text);
+create index transcript_ac on transcript(ac);
+create index transcript_gene on transcript(gene);
+
+create table tx_exons (ac text, ord smallint, name text, t_start_i integer, t_end_i integer, ref text, g_start_i integer, g_end_i integer, g_cigar text, g_seq_a text, t_seq_a text);
+create index tx_exons_ac on tx_exons(ac);
+
+create table tx_info (gene  text, chr  text, strand  smallint, ac  text, cds_start_i  integer, cds_end_i  integer, descr  text, summary  text);
+create index tx_info_gene on tx_info(gene);
+create index tx_info_ac on tx_info(ac);
+EOF
+
+
+psql_do 'select key,value from uta0.meta'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn meta"
+printf "%d/%d rows loaded into meta\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from meta') $(wc -l <$data_tmpfn)
+
+psql_do 'select ac,md5,seguid from uta0.protein_hash'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn protein_hash"
+printf "%d/%d rows loaded into protein_hash\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from protein_hash') $(wc -l <$data_tmpfn)
+
+psql_do 'select ac,gene,cds_start_i,cds_end_i,added,seq from uta0.transcript order by ac'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn transcript"
+printf "%d/%d rows loaded into transcript\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from transcript') $(wc -l <$data_tmpfn)
+
+psql_do 'select ac, ord, name, t_start_i, t_end_i, ref, g_start_i, g_end_i, g_cigar, g_seq_a, t_seq_a from uta0.tx_exons order by ac,ord'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn tx_exons"
+printf "%d/%d rows loaded into tx_exons\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from tx_exons') $(wc -l <$data_tmpfn)
+
+psql_do 'select gene, chr, strand, ac, cds_start_i, cds_end_i, descr, summary from uta0.tx_info order by gene,ac'  >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn tx_info"
+printf "%d/%d rows loaded into tx_info\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from tx_info') $(wc -l <$data_tmpfn)
+
+
+sqlite3 $sqlitedb_tmpfn <<EOF
+insert into meta (key,value) values ('exported',strftime('%Y-%m-%d %H:%M:%SZ'));
+insert into meta (key,value) values ('exported by','$0');
+EOF
+
+/bin/mv -v "$sqlitedb_tmpfn" "$sqlite_fn"
+echo "wrote database to $sqlite_fn"
+/bin/ls -l "$sqlite_fn"
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
