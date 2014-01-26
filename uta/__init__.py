@@ -1,14 +1,21 @@
 import pkg_resources
+import logging
+import os
 import warnings
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from uta.exceptions import *
+from uta import models
+
 
 try:
     __version__ = pkg_resources.get_distribution(__package__).version
 except pkg_resources.DistributionNotFound as e:
     warnings.warn("can't get __version__ because %s package isn't installed" % __package__,Warning)
     __version__ = None
+
 
 public_db_url = 'postgresql://uta_public:uta_public@uta.invitae.com/uta'
 default_db_url = os.environ.get('UTA_DB_URL',public_db_url)

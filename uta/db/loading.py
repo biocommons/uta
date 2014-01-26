@@ -10,15 +10,15 @@ import logging
 import eutils.client
     
 import uta
-import uta.db.sa_models as usam
 import uta.luts
+usam = uta.models                         # backward compatibility
 
 logger = logging.getLogger(__name__)
 
 ############################################################################
 
-def drop_schema(engine,session,opts,cf):
-    if engine.url.drivername == 'postgresql' and usam.use_schema:
+def drop_schema(session,opts,cf):
+    if session.bind.name == 'postgresql' and usam.use_schema:
         ddl = 'drop schema if exists '+usam.schema_name+' cascade'
         session.execute(ddl)
         session.commit()
@@ -26,17 +26,17 @@ def drop_schema(engine,session,opts,cf):
 
 ############################################################################
 
-def create_schema(engine,session,opts,cf):
+def create_schema(session,opts,cf):
     """Create and populate initial schema"""
 
-    if engine.url.drivername == 'postgresql' and usam.use_schema:
+    if session.bind.name == 'postgresql' and usam.use_schema:
         session.execute('create schema '+usam.schema_name)
         session.execute('alter database {db} set search_path = {search_path}'.format(
-            db=engine.url.database, search_path=usam.schema_name))
+            db=session.bind.url.database, search_path=usam.schema_name))
         session.execute('set search_path = '+usam.schema_name)
         session.commit()
 
-    usam.Base.metadata.create_all(engine)
+    usam.Base.metadata.create_all(session.bind)
     session.add(usam.Meta( key='schema_version', value=usam.schema_version ))
     session.add(usam.Meta( key='created', value=datetime.datetime.now().isoformat() ))
     session.commit()
@@ -44,7 +44,7 @@ def create_schema(engine,session,opts,cf):
 
 ############################################################################
 
-def initialize_schema(engine,session,opts,cf):
+def initialize_schema(session,opts,cf):
     """Create and populate initial schema"""
 
     session.add(
@@ -72,7 +72,7 @@ def initialize_schema(engine,session,opts,cf):
 
 ############################################################################
 
-def load_seq_info(engine,session,opts,cf):
+def load_seq_info(session,opts,cf):
     """load Seq entries with accessions from fasta file
     see uta/sbin/fasta-seq-info
     """
@@ -86,11 +86,11 @@ def load_seq_info(engine,session,opts,cf):
         logger.info('using fast(er) seq_origin_alias loader')
         data = list(seqinfo)
         unique_md5_lens = set([ (d['md5'],int(d['len'])) for d in data ])
-        engine.execute(
+        session.execute(
             usam.Seq.__table__.insert(),
             [ {'seq_id':md5, 'len':len} for md5,len in unique_md5_lens ]
             )
-        engine.execute(
+        session.execute(
             usam.SeqOriginAlias.__table__.insert(),
             [ {'origin_id': ori.origin_id,'seq_id':d['md5'],'alias':a} for d in data for a in d['aliases'].split(',') ]
             )
@@ -122,7 +122,7 @@ def load_seq_info(engine,session,opts,cf):
 
 ############################################################################
 
-def load_eutils_genes(engine,session,opts,cf):
+def load_eutils_genes(session,opts,cf):
     """
     load genes via eutils
 
@@ -297,7 +297,7 @@ def load_eutils_genes(engine,session,opts,cf):
 
 ############################################################################
 
-def load_gene_info(engine,session,opts,cf):
+def load_gene_info(session,opts,cf):
     """
     import data as downloaded (by you) from 
     ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
@@ -324,7 +324,7 @@ def load_gene_info(engine,session,opts,cf):
     
 ############################################################################
 
-def load_transcripts_seqgene(engine,session,opts,cf):
+def load_transcripts_seqgene(session,opts,cf):
     """
     import data as downloaded (by you) as from
     ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz

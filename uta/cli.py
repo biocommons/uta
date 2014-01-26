@@ -47,11 +47,10 @@ import docopt
 
 import uta
 import uta.db.loading as ul
+usam = uta.models                         # backward compatibility
 
 
-
-def shell(engine,session,opts,cf):
-    import uta.db.sa_models as usam
+def shell(session,opts,cf):
     import IPython; IPython.embed()
 
 def run(argv=None):
@@ -77,13 +76,7 @@ def run(argv=None):
     cf = ConfigParser.SafeConfigParser()
     cf.readfp( open(opts['--conf']) )
     db_url = cf.get('uta','db_loading_url')
-
-    uta.connect(
-
-    engine = create_engine(db_url) #, echo=True)
-    Session = sessionmaker(bind=engine) 
-    session = Session()
-    logger.info('connected to '+db_url)
+    session = uta.connect(db_url)
 
     sub = None
     for cmd,func in dispatch_table:
@@ -93,7 +86,7 @@ def run(argv=None):
     if sub is None:
         raise UTAError('No valid actions specified')
     t0 = time.time()
-    sub(engine,session,opts,cf)
+    sub(session,opts,cf)
     logger.info("{cmd}: {elapsed:.1f}s elapsed".format(cmd=cmd,elapsed=time.time()-t0))
 
 
