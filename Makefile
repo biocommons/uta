@@ -65,7 +65,7 @@ test-setup: develop
 
 #=> test, test-with-coverage -- per-commit test target for CI
 test test-with-coverage: test-setup
-	python setup.py nosetests --with-xunit --with-coverage --cover-erase --cover-package=hgvs --cover-html 
+	python setup.py nosetests --with-xunit --with-coverage --cover-erase --cover-html 
 
 #=> ci-test-nightly -- per-commit test target for CI
 ci-test jenkins:
