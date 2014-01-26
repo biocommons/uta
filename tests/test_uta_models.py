@@ -2,30 +2,20 @@ import ConfigParser
 import os
 import unittest
 
-import sqlalchemy as sa
-import sqlalchemy.schema as sas
-import sqlalchemy.orm as sao
-import sqlalchemy.ext.declarative as saed
+import uta
+usam = uta.models                         # backward compatibility
 
-import uta.db.sa_models as usam
 
 data_dir = os.path.realpath(os.path.realpath( os.path.join(__file__,'../data')))
 cp = ConfigParser.SafeConfigParser()
 cp.readfp( open( os.path.join(data_dir,'test.conf') ) )
 
 
-class Test_uta_sa_models(unittest.TestCase):
+class Test_uta_models(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        print( "testing against " + cp.get('uta','db_url') )
-        engine = sa.create_engine(cp.get('uta','db_url'))
-        engine.execute('DROP SCHEMA IF EXISTS ' + usam.schema_name + ' CASCADE')
-        engine.execute(sas.CreateSchema(usam.schema_name))
-
-        Session = sao.sessionmaker(bind = engine)
-        self.session = Session()
-
-        usam.Base.metadata.create_all(engine) 
+        self.session = uta.connect(cp.get('uta','db_url'))
+        usam.Base.metadata.create_all(self.session.bind) 
         self.session.commit()
 
         o = usam.Origin(
@@ -41,7 +31,6 @@ class Test_uta_sa_models(unittest.TestCase):
         g = usam.Gene(
             hgnc = 'ADRA1A',
             maploc = '8p21.2',
-            strand = -1,
             descr   = 'adrenoceptor alpha 1A',
             summary = '''Alpha-1-adrenergic receptors (alpha-1-ARs) are
             members of the G protein-coupled receptor superfamily. They
@@ -56,13 +45,13 @@ class Test_uta_sa_models(unittest.TestCase):
             )
         self.session.add(g)
 
-        chr8_n = usam.DNASeq(
+        chr8_n = usam.Seq(
             seq = None,
             )
         self.session.add(chr8_n)
 
-        dsoa_n = usam.DNASeqOriginAlias(
-            dnaseq_id = chr8_n,
+        dsoa_n = usam.SeqOriginAlias(
+            seq_id = chr8_n,
             origin = o,
             alias = 'NC_000008.10',
             )
@@ -103,7 +92,7 @@ class Test_uta_sa_models(unittest.TestCase):
             }
 
         for ac,tx_info in transcripts.iteritems():
-            n = usam.DNASeq(
+            n = usam.Seq(
                 seq = tx_info['seq']
                 )
             n.origin = o
@@ -112,7 +101,6 @@ class Test_uta_sa_models(unittest.TestCase):
             t = usam.Transcript(
                 ac = ac,
                 gene_id = g.gene_id,
-                strand = 1,
                 cds_start_i = tx_info['t_cds_start_i'],
                 cds_end_i = tx_info['t_cds_end_i'],
                 )
@@ -188,16 +176,16 @@ class Test_uta_sa_models(unittest.TestCase):
         self.assertTrue( g.summary.startswith('Alpha-1-adrenergic receptors (alpha-1-ARs) are') )
 
     def test_dnaseq(self):
-        all_dnaseqs = self.session.query(usam.DNASeq).all()
+        all_dnaseqs = self.session.query(usam.Seq).all()
         self.assertEqual( len(all_dnaseqs), 5 )
         
-        n = self.session.query(usam.DNASeq).filter(usam.DNASeq.ac == 'NC_000008.10').one()
+        n = self.session.query(usam.Seq).filter(usam.Seq.ac == 'NC_000008.10').one()
         self.assertEquals(n.ac, u'NC_000008.10')
         self.assertTrue(len(n.exon_sets),2)
         self.assertRegexpMatches(n.origin.name, '^Testing')
         #self.assertEquals(len(n.transcripts), 0)
 
-        n = self.session.query(usam.DNASeq).filter(usam.DNASeq.ac == 'NM_000680.2').one()
+        n = self.session.query(usam.Seq).filter(usam.Seq.ac == 'NM_000680.2').one()
         self.assertEquals(n.ac, u'NM_000680.2')
         self.assertTrue(len(n.exon_sets),1)
         self.assertEquals(n.md5, u'829f098bb244c1370befd6d448b6c9ad')
@@ -208,7 +196,7 @@ class Test_uta_sa_models(unittest.TestCase):
         #self.assertEquals(len(n.transcripts), 1)
         
     def test_exon_set(self):
-        all_exon_sets = self.session.query(usam.DNASeq).all()
+        all_exon_sets = self.session.query(usam.Seq).all()
         self.assertTrue(len(all_exon_sets),8)
         
         exon_sets = self.session.query(usam.Transcript).filter(usam.Transcript.ac=='NM_000680.2').one().exon_sets
