@@ -11,11 +11,11 @@ Usage:
   uta [options] create-schema
   uta [options] initialize-schema
   uta [options] load-seq-info --origin=ORIGIN [--fast] FILE
-  uta [options] load-eutils-genes [--with-transcripts] GENES ...
+  uta [options] load-eutils-genes [--with-transcripts] ([--all|-a] | [GENES]...)
   uta [options] load-eutils-transcripts TRANSCRIPTS ...
   uta [options] load-gene-info FILE
-  uta [options] load-transcripts-gbff FILE
   uta [options] load-transcripts-seqgene FILE
+  uta [options] shell
 
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
@@ -51,6 +51,10 @@ from sqlalchemy.orm import sessionmaker
 import uta
 import uta.db.loading as ul
 
+def shell(engine,session,opts,cf):
+    import uta.db.sa_models as usam
+    import IPython; IPython.embed()
+
 def run(argv=None):
     dispatch_table = [
         ('drop-schema',                 ul.drop_schema),
@@ -61,8 +65,9 @@ def run(argv=None):
         ('load-eutils-genes',           ul.load_eutils_genes),
 
         ('load-gene-info',              ul.load_gene_info),
-        ('load-transcripts-gbff',       ul.load_transcripts_gbff),
         ('load-transcripts-seqgene',    ul.load_transcripts_seqgene),
+
+        ('shell',                       shell),
         ]
 
     opts = docopt(__doc__, argv=argv, version=uta.__version__)

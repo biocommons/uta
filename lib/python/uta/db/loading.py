@@ -188,25 +188,8 @@ def load_eutils_genes(engine,session,opts,cf):
             cds_end_i=e_tx.cds.end_i,
             )
         session.add(u_tx)
-        logger.info('created Transcript '+str(u_tx.transcript_id))
+        logger.info('created Transcript '+str(u_tx.ac))
         return u_tx,True
-
-##                 # fetch seq_origin_alias record, or create it
-##                 u_tx_seq_alias = session.query(usam.SeqOriginAlias).filter(
-##                     usam.Seq.seq_id == seq_md5,
-##                     usam.SeqOriginAlias.alias == e_gbseq.acv).first()
-##                 if u_tx_seq_alias is None:
-##                     u_tx_seq_alias = usam.SeqOriginAlias(
-##                         origin=u_ori_nt,
-##                         seq_id=seq_md5,
-##                         alias=e_prd.acv,
-##                         descr=e_gbseq.definition,)
-##                     session.add(u_tx_seq_alias)
-##                     session.commit()
-##                     logger.info("SeqOriginAlias: added alias {u_tx_seq_alias.alias} ({u_tx_seq_alias.descr}) for seq_id {u_tx_seq_alias.seq_id}".format(
-##                         u_tx_seq_alias=u_tx_seq_alias))
-
-
 
     def _get_or_create_tx_exon_set(u_tx,e_tx=None):
         logger.debug("***** _get_or_create_tx_exon_set({u_tx},{e_tx})".format(u_tx=u_tx,e_tx=e_tx))
@@ -220,7 +203,6 @@ def load_eutils_genes(engine,session,opts,cf):
             return u_es,False
         if e_tx is None:
             e_tx = ec.fetch_nuccore_by_ac(u_tx.ac)
-        import IPython; IPython.embed()
         u_es = usam.ExonSet(
             transcript_id = u_tx.transcript_id,
             ref_seq_id = u_tx.seq_id,
@@ -247,7 +229,6 @@ def load_eutils_genes(engine,session,opts,cf):
             ).first()
         if u_es is not None:
             return u_es,False
-        import IPython; IPython.embed()
         u_es = usam.ExonSet(
             transcript = u_tx,
             ref_seq = u_ref_seq,
@@ -256,27 +237,39 @@ def load_eutils_genes(engine,session,opts,cf):
             ref_strand = e_prd.genomic_coords.strand,
             )
         session.add(u_es)
-        for ex in sorted(e_prd.genomic_coords.intervals):
-            session.add( usam.Exon(exon_set = u_es, start_i = ex.start_i, end_i = ex.end_i) )
+        for s,e in sorted(e_prd.genomic_coords.intervals):
+            session.add( usam.Exon(exon_set = u_es, start_i = s, end_i = e) )
         session.commit()
         return u_es,True
 
     ############################################################################
     # TODO: switch to esr = ec.esearch(db='gene',term='human[orgn] AND "current only"[Filter]')
-    hgncs = opts['GENES']
-    for i_hgnc,hgnc in enumerate(hgncs):
-        logger.info("="*70+"\n{i_hgnc}/{n_hgncs} ({p_hgnc:.1f}%): {hgnc}...".format(
-            i_hgnc=i_hgnc, n_hgncs=len(hgncs), hgnc=hgnc,
-            p_hgnc=(i_hgnc+1)/len(hgncs)*100))
-
+    if opts['--all']:
+        def e_gene_iterator():
+            query = 'human[orgn] AND "current only"[Filter]';
+            esr = ec.esearch(db='gene',term=query)
+            n = esr.count
+            for i,id in enumerate(esr.ids):
+                e_gene = ec.efetch(db='gene',id=id)
+                logger.info("="*70+"\n{i}/{n} ({p:.1f}%): {e_gene.hgnc}...".format(
+                    i=i, n=n, p=(i+1)/n*100, e_gene=e_gene))
+                yield e_gene
+    else:
+        def e_gene_iterator():
+            hgncs = opts['GENES']
+            for i_hgnc,hgnc in enumerate(hgncs):
+                e_gene = ec.fetch_gene_by_hgnc(hgnc)
+                logger.info("="*70+"\n{i}/{n} ({p:.1f}%): {hgnc}...".format(
+                    i=i, n=n, p=(i+1)/n*100, e_gene=e_gene))
+                yield e_gene
+    
+    for e_gene in e_gene_iterator():
         try:
-            e_gene = ec.fetch_gene_by_hgnc(hgnc)
-
             if e_gene.type != 'protein-coding':
                 logging.warning("Skipping {e_gene.hgnc} (not protein coding)".format(e_gene=e_gene))
                 continue
 
-            u_gene,_ = _get_or_create_gene(hgnc,e_gene)
+            u_gene,_ = _get_or_create_gene(e_gene.hgnc,e_gene)
             if opts['--with-transcripts']:
                 for i_e_ref,e_ref in enumerate(e_gene.references):
                     u_ref_seq = session.query(usam.Seq).join(usam.SeqOriginAlias).filter(
@@ -296,7 +289,8 @@ def load_eutils_genes(engine,session,opts,cf):
                         u_g_es,_ = _get_or_create_g_exon_set(u_tx,e_ref,e_prd)
             session.commit()
 
-        except eutils.exceptions.EutilsError as e:
+        #except eutils.exceptions.EutilsError as e:
+        except Exception as e:
             logger.exception(e)
             continue
 
@@ -327,24 +321,6 @@ def load_gene_info(engine,session,opts,cf):
         logging.info('loaded gene {g.hgnc} ({g.descr})'.format(g=g))
     session.commit()
 
-############################################################################
-
-def load_transcripts_gbff(engine,session,opts,cf):
-    """
-    import data as downloaded (by you) from 
-    ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/human.rna.gbff.gz
-    """
-    for rec in SeqIO.parse(gzip.open(opts['FILE']),'genbank'):
-        if not rec.id.startswith('NM_'):
-                continue
-        #nseq_id = 
-        #t = usam.Transcript(
-        #    origin_id = 
-        #    nseq_id =
-        #    gene_id = 
-        #    cds_start_i = STOPPED HERE
-        #    )
-        #import IPython; IPython.embed();
     
 ############################################################################
 

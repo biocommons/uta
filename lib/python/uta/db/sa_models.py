@@ -195,12 +195,13 @@ class ExonSet(Base,UTABase):
     ref_seq = sao.relationship('Seq', backref = 'exon_sets')
     origin = sao.relationship('Origin')
 
-    # properties:
-    # def tx_md5 = 
-    # def cds_md5 = 
-    # def exon_start_i(self):
-    # def exon_end_i(self):
+    
+    def exons_se(self,transcript_order=False):
+        """return exon [start_i,end_i) pairs in reference sequence order, or transcript order if requested"""
+        rev = transcript_order and self.ref_strand == -1
+        return sorted([(e.start_i,e.end_i) for e in self.exons], reverse=rev)
 
+    
     @property
     def is_primary(self):
         return self.ref_seq_id == self.transcript.seq_id
@@ -221,6 +222,9 @@ class Exon(Base,UTABase):
         {'schema' : schema_name},
         )
 
+    def __unicode___(self):
+        return "[{self.start_i},{self.end_i})".format(self=self)
+
     # columns:
     exon_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
     exon_set_id = sa.Column(sa.Integer, sa.ForeignKey('exon_set.exon_set_id'), nullable = False)
@@ -235,11 +239,6 @@ class Exon(Base,UTABase):
     def seq(self):
         seq = self.exon_set.ref_seq.seq
         return None if seq is None else seq[self.start_i:self.end_i]
-
-    # methods:
-#    def __unicode__(self):
-#        return '{self.__class__.__name__}<{self.exon_set.transcript.ac},{self.name},@{self.exon_set.ref_seq.ac}:[{self.start_i}:{self.end_i}]>'.format(
-#            self = self)
 
 
 class ExonAlignment(Base,UTABase):
