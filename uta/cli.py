@@ -43,13 +43,12 @@ import ConfigParser
 import logging
 import time
 
-#from Bio import SeqIO
-from docopt import docopt
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import docopt
 
 import uta
 import uta.db.loading as ul
+
+
 
 def shell(engine,session,opts,cf):
     import uta.db.sa_models as usam
@@ -70,15 +69,17 @@ def run(argv=None):
         ('shell',                       shell),
         ]
 
-    opts = docopt(__doc__, argv=argv, version=uta.__version__)
+    opts = docopt.docopt(__doc__, argv=argv, version=uta.__version__)
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
     cf = ConfigParser.SafeConfigParser()
     cf.readfp( open(opts['--conf']) )
-
     db_url = cf.get('uta','db_loading_url')
+
+    uta.connect(
+
     engine = create_engine(db_url) #, echo=True)
     Session = sessionmaker(bind=engine) 
     session = Session()
