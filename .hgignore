@@ -22,6 +22,7 @@ syntax: glob
 archive
 bdist
 build
+cover
 dist
 distribute-*
 doc/build

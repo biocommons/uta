@@ -1,3 +1,5 @@
+# Python project Makefile
+
 .SUFFIXES :
 .PRECIOUS :
 .PHONY : FORCE
@@ -6,90 +8,66 @@
 SHELL:=/bin/bash -o pipefail
 SELF:=$(firstword $(MAKEFILE_LIST))
 
-export PYTHONPATH=lib/python
-
-ifdef LOCAL_UTA
-export UTA_DB_URL=postgresql://localhost/uta
-endif
-
-# PYPI_SERVICE:=-r invitae
-
-# make config in etc/uta.conf available within the Makefile
--include .uta.conf.mk
-.uta.conf.mk: etc/uta.conf
-	./sbin/conf-to-vars $< >$@
+UTA_DB_URL=postgresql://uta_public:uta_public@uta.invitae.com/uta
+#UTA_DB_URL=sqlite:///tmp/uta-0.0.5.db
+#UTA_DB_URL=postgresql://localhost/uta
 
 ############################################################################
 #= BASIC USAGE
 default: help
 
 #=> help -- display this help message
-help:
+help: config
 	@sbin/extract-makefile-documentation "${SELF}"
 
-############################################################################
-#= INSTALLATION/SETUP
-
-#=> ve -- create a virtualenv
-VE_DIR:=ve
-VE_MAJOR:=1
-VE_MINOR:=10
-VE_PY_DIR:=virtualenv-${VE_MAJOR}.${VE_MINOR}
-VE_PY:=${VE_PY_DIR}/virtualenv.py
-${VE_PY}:
-	curl -sO  https://pypi.python.org/packages/source/v/virtualenv/virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
-	tar -xvzf virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
-	rm -f virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
-${VE_DIR}: ${VE_PY} 
-	${SYSTEM_PYTHON} $< ${VE_DIR} 2>&1 | tee "$@.err"
-	/bin/mv "$@.err" "$@"
-
-
-#=> setup -- prepare python and perl environment for prequisites
-#=>> This is optional; the only requirement is that packages are discoverable
-#=>> in PYTHONPATH and PERL5LIB
-setup: setup-perl   # setup-python 
-
-#=> setup-python: run python setup.py
-setup-python:
-	python setup.py develop
-
-#=> setup-perl: install perl packages
-# TODO: consider perl brew instead
-setup-perl:
-	./sbin/perl-module-install --install-base ve   Log::Log4perl
+config:
+	@echo CONFIGURATION
+	@echo "  UTA_DB_URL=${UTA_DB_URL}"
 
 
 ############################################################################
-#= UTILITY TARGETS
+#= SETUP, INSTALLATION, PACKAGING
 
-#=> develop, build_sphinx, sdist, upload_sphinx
-bdist bdist_egg build build_sphinx develop install sdist upload_docs: %:
-	python setup.py $*
+# => setup
+setup: requirements.txt #build
+	pip install -r $<
 
+#=> docs -- make sphinx docs
+docs: setup build_sphinx
+
+#=> build_sphinx
 # sphinx docs needs to be able to import packages
 build_sphinx: develop
 
-#=> docs -- make sphinx docs
-docs: build_sphinx
-
 #=> upload
 upload:
-	python setup.py bdist_egg sdist upload ${PYPI_SERVICE}
+	python setup.py bdist_egg sdist upload
+
+#=> upload_iv: upload to invitae (internal) pypi
+# This requires an invitae config stanza in ~/.pypirc
+upload_iv:
+	python setup.py bdist_egg sdist upload upload -r invitae
+
+#=> upload_all: upload, upload_iv, and upload_docs
+upload_all: upload upload_iv upload_docs
+
+#=> develop, build_sphinx, sdist, upload_sphinx
+bdist bdist_egg build build_sphinx develop install sdist upload_sphinx upload_docs: %:
+	python setup.py $*
 
 
-#=> lint -- run lint, flake, etc
-# TBD
 
-
-#=> test-setup -- prepare to run tests
-test-setup:
+############################################################################
+#= TESTING
 
 #=> test -- run tests
-test: install
-	python setup.py nosetests -w ../../tests --with-xunit --with-coverage --cover-erase --cover-package=uta --cover-html
+test-setup: develop
 
-#=> continuous integration tests -- target for jenkins (and now travis, drone, or other providers)
+#=> test, test-with-coverage -- per-commit test target for CI
+test test-with-coverage: test-setup
+	python setup.py nosetests --with-xunit --with-coverage --cover-erase --cover-package=hgvs --cover-html 
+
+#=> ci-test-nightly -- per-commit test target for CI
 ci-test jenkins:
 	make ve \
 	&& source ve/bin/activate \
@@ -107,13 +85,12 @@ clean:
 #=> cleaner: above, and remove generated files
 cleaner: clean
 	find . -name \*.pyc -print0 | xargs -0r /bin/rm -f
-	/bin/rm -fr distribute-* *.egg *.egg-info *.tar.gz nosetests.xml
-	/bin/rm -fr .uta.conf.mk
-	make -C doc clean
+	/bin/rm -fr build bdist dist sdist ve virtualenv*
+	-make -C doc clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr build bdist dist sdist ve virtualenv*
+	/bin/rm -fr distribute-* *.egg *.egg-info *.tar.gz nosetests.xml
 #=> pristine: above, and delete anything unknown to mercurial
 pristine: cleanest
 	hg st -un0 | xargs -0r echo /bin/rm -fv
