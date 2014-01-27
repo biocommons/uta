@@ -74,17 +74,17 @@ def initialize_schema(session,opts,cf):
             ))
     
     session.add(
-        usam.AlignMethod(
+        usam.AlnMethod(
             name='transcript',
             descr='exons defined in transcript source',
             ))
     session.add(
-        usam.AlignMethod(
+        usam.AlnMethod(
             name='splign',
             descr='coordinates as obtained from NCBI via eutils, exon sequences realigned with needle',
             ))
     session.add(
-        usam.AlignMethod(
+        usam.AlnMethod(
             name='blat',
             descr='coordinates obtained from UCSC via mysql interface, exon sequences realigned with needle',
             ))
@@ -152,8 +152,8 @@ def load_eutils_genes(session,opts,cf):
     This is preferred over data in ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/ because
     we get summaries with eutils.
     """
-    align_method = 'splign'
-    self_align_method = 'identity'
+    aln_method = 'splign'
+    self_aln_method = 'identity'
 
     ec = eutils.client.Client()
     u_ori_gene = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI Gene').one()
@@ -220,7 +220,7 @@ def load_eutils_genes(session,opts,cf):
             usam.ExonSet.transcript_id == u_tx.transcript_id,
             usam.ExonSet.ref_seq_id == u_tx.seq_id,
             usam.ExonSet.origin_id == u_tx.origin_id,
-            usam.ExonSet.method == self_align_method,
+            usam.ExonSet.method == self_aln_method,
             ).first()
         if u_es is not None:
             return u_es,False
@@ -230,7 +230,7 @@ def load_eutils_genes(session,opts,cf):
             transcript_id = u_tx.transcript_id,
             ref_seq_id = u_tx.seq_id,
             origin_id = u_tx.origin_id,
-            method = self_align_method,
+            method = self_aln_method,
             ref_strand = 1,
             )
         session.add(u_es)
@@ -248,7 +248,7 @@ def load_eutils_genes(session,opts,cf):
             usam.ExonSet.transcript == u_tx,
             usam.ExonSet.ref_seq == u_ref_seq,
             usam.ExonSet.origin == u_ori_gene,
-            usam.ExonSet.method == align_method,
+            usam.ExonSet.method == aln_method,
             ).first()
         if u_es is not None:
             return u_es,False
@@ -256,7 +256,7 @@ def load_eutils_genes(session,opts,cf):
             transcript = u_tx,
             ref_seq = u_ref_seq,
             origin = u_ori_gene,
-            method = align_method,
+            method = aln_method,
             ref_strand = e_prd.genomic_coords.strand,
             )
         session.add(u_es)

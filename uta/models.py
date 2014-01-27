@@ -144,7 +144,7 @@ class Transcript(Base,UTABase):
     origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
     gene_id = sa.Column(sa.Integer, sa.ForeignKey('gene.gene_id'))
     seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
-    tx_md5 = sa.Column(sa.Text, nullable=False, unique=True)
+    transcript_md5 = sa.Column(sa.Text, nullable=False, unique=True)
     cds_md5 = sa.Column(sa.Text, nullable=False)
     preferred_seqanno_id = sa.Column(sa.Integer, sa.ForeignKey('seqanno.seqanno_id'), nullable=True)
     cds_start_i = sa.Column(sa.Integer, nullable=False)
@@ -156,14 +156,15 @@ class Transcript(Base,UTABase):
     gene = sao.relationship('Gene', backref='transcripts')
     seq = sao.relationship('Seq')
 
+    
 
-class AlignMethod(Base,UTABase):
-    __tablename__ = 'align_method'
+class AlnMethod(Base,UTABase):
+    __tablename__ = 'aln_method'
     __table_args__ = (
         {'schema' : schema_name},
         )
 
-    align_method_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    aln_method_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
     name = sa.Column(sa.Text, unique=True)
     descr = sa.Column(sa.Text)
 
@@ -171,7 +172,7 @@ class AlignMethod(Base,UTABase):
 class ExonSet(Base,UTABase):
     __tablename__ = 'exon_set'
     __table_args__ = (
-        sa.UniqueConstraint('transcript_id','align_seq_id','align_method_id',
+        sa.UniqueConstraint('transcript_id','alt_seq_id','alt_aln_method_id',
                             name='<transcript,reference,origin,method> must be unique'),
         {'schema' : schema_name},
         )
@@ -179,15 +180,15 @@ class ExonSet(Base,UTABase):
     # columns:
     exon_set_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
     transcript_id = sa.Column(sa.Integer, sa.ForeignKey('transcript.transcript_id'), nullable=False)
-    align_seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'), nullable=False)
-    align_strand = sa.Column(sa.SmallInteger, nullable=False)
-    align_method_id = sa.Column(sa.Integer, sa.ForeignKey('align_method.align_method_id'), nullable=False)
+    alt_seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'), nullable=False)
+    alt_strand = sa.Column(sa.SmallInteger, nullable=False)
+    alt_aln_method_id = sa.Column(sa.Integer, sa.ForeignKey('aln_method.aln_method_id'), nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
     
     # relationships:
     transcript = sao.relationship('Transcript', backref='exon_sets')
-    ref_seq = sao.relationship('Seq', backref='exon_sets')
-    #align_method = sao.relation('AlignMethod')
+    alt_seq = sao.relationship('Seq', backref='exon_sets')
+    alt_aln_method = sao.relation('AlnMethod')
     
     def exons_se(self,transcript_order=False):
         """return exon [start_i,end_i) pairs in reference sequence order, or transcript order if requested"""
@@ -220,22 +221,22 @@ class Exon(Base,UTABase):
     exon_set = sao.relationship('ExonSet', backref='exons')
 
 
-class ExonAlignment(Base,UTABase):
-    __tablename__ = 'exon_alignment'
+class ExonAln(Base,UTABase):
+    __tablename__ = 'exon_aln'
     __table_args__ = (
         {'schema' : schema_name},
         )
 
     # columns:
-    exon_alignment_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
-    transcript_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
-    align_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
+    exon_aln_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    tx_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
+    alt_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
     cigar = sa.Column(sa.Text, nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
 
     # relationships:
-    transcript_exon = sao.relationship('Exon', backref='tx_alignment', foreign_keys=[transcript_exon_id])
-    align_exon = sao.relationship('Exon', backref='ref_alignment', foreign_keys=[align_exon_id])
+    tx_exon = sao.relationship('Exon', backref='tx_aln', foreign_keys=[tx_exon_id])
+    alt_exon = sao.relationship('Exon', backref='alt_aln', foreign_keys=[alt_exon_id])
 
     # methods:
 
