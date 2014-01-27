@@ -7,6 +7,8 @@ import sqlalchemy as sa
 import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
+from uta.utils import strand_pm
+
 
 ############################################################################
 ## Implmentation notes
@@ -32,7 +34,7 @@ else:
 ############################################################################
 
 Base = saed.declarative_base(
-    metadata = sa.MetaData(schema=schema_name)
+    metadata=sa.MetaData(schema=schema_name)
     )
 
 
@@ -58,17 +60,14 @@ class Origin(Base,UTABase):
         )
 
     # columns:
-    origin_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
-    name = sa.Column(sa.Text, nullable = False, unique = True)
-    updated = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now(), onupdate = datetime.datetime.now() )
-    url = sa.Column(sa.Text, nullable = True)
-    url_ac_fmt = sa.Column(sa.Text, nullable = True)
+    origin_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    name = sa.Column(sa.Text, nullable=False, unique=True)
+    descr = sa.Column(sa.Text)
+    updated = sa.Column(sa.DateTime, nullable=False, default=datetime.datetime.now(), onupdate=datetime.datetime.now() )
+    url = sa.Column(sa.Text, nullable=True)
+    url_accn_fmt = sa.Column(sa.Text, nullable=True)
 
     # methods:
-#    def __unicode__(self):
-#        return '{self.__class__.__name__}<name={self.name}; updated={self.updated}; url={self.url}>'.format(
-#            self = self)
-
     def tickle_update(self):
         self.updated = datetime.datetime.now()
 
@@ -87,34 +86,32 @@ class Seq(Base,UTABase):
         return None if seq is None else len(seq)
 
     # columns:
-    seq_id = sa.Column(sa.Text, default=_seq_hash, primary_key = True)
-    len = sa.Column(sa.Integer, default=_seq_len, nullable = False)
-    seq = sa.Column(sa.Text, nullable = True)
+    seq_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    seq_id = sa.Column(sa.Text, default=_seq_hash, primary_key=True)
+    len = sa.Column(sa.Integer, default=_seq_len, nullable=False)
+    seq = sa.Column(sa.Text, nullable=True)
 
     # methods:
-#    def __unicode__(self):
-#        return '{self.__class__.__name__}<ac={self.ac}; seq({len})={self.seq}>'.format(
-#            self = self,len = len(self.seq) if self.seq else '?')
 
 
-class SeqOriginAlias(Base,UTABase):
-    __tablename__ = 'seq_origin_alias'
+class SeqAnno(Base,UTABase):
+    __tablename__ = 'seqanno'
     __table_args__ = (
-        sa.Index('seqoriginalias_ac_unique_in_origin', 'origin_id', 'alias', unique = True),
+        sa.Index('seqanno_accn_unique_in_origin', 'origin_id', 'accn', unique=True),
         {'schema' : schema_name},
         )
 
     # columns:
-    seq_origin_alias_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
+    seqanno_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
-    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable = False)
-    alias = sa.Column(sa.Text, index = True)
+    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
+    accn = sa.Column(sa.Text, index=True)
     descr = sa.Column(sa.Text)
-    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
+    added = sa.Column(sa.DateTime, nullable=False, default=datetime.datetime.now() )
 
     # relationships:
-    origin = sao.relationship('Origin', backref = 'aliases')
-    seq = sao.relationship('Seq', backref = 'aliases')
+    origin = sao.relationship('Origin', backref='aliases')
+    seq = sao.relationship('Seq', backref='aliases')
 
 
 class Gene(Base,UTABase):
@@ -124,99 +121,86 @@ class Gene(Base,UTABase):
         )
 
     # columns:
-    gene_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
-    hgnc = sa.Column(sa.Text, index = True, unique = True, nullable = False)
+    gene_id = sa.Column(sa.Integer, primary_key=True)   # must be assigned -- use NCBI gene
+    hgnc = sa.Column(sa.Text, index=True, unique=True, nullable=False)
     maploc = sa.Column(sa.Text)
     descr = sa.Column(sa.Text)
     summary = sa.Column(sa.Text)
     aliases = sa.Column(sa.Text)
-    added = sa.Column(sa.DateTime, nullable = False, default = datetime.datetime.now() )
+    added = sa.Column(sa.DateTime, nullable=False, default=datetime.datetime.now() )
 
     # methods:
-#    def __unicode__(self):
-#        return '{self.__class__.__name__}<gene={self.name}; maploc={self.maploc}; descr={self.descr}>'.format(
-#            self = self)
 
 
 class Transcript(Base,UTABase):
     __tablename__ = 'transcript'
     __table_args__ = (
         sa.CheckConstraint('cds_start_i <= cds_end_i', 'cds_start_i_must_be_le_cds_end_i'),
-        sa.Index('transcript_ac_unique_in_origin', 'origin_id', 'ac', unique = True),
         {'schema' : schema_name},
         )
 
-#    def __unicode__(self):
-#        return "Transcript<{tx.transcript_id}; {tx.gene.hgnc}, {tx.seq_id}, [{tx.cds_start_i},{tx.cds_end_i}]>".format(tx=self)
-
     # columns:
-    transcript_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
-    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable = False)
+    transcript_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
     gene_id = sa.Column(sa.Integer, sa.ForeignKey('gene.gene_id'))
     seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
-    cds_start_i = sa.Column(sa.Integer, nullable = False)
-    cds_end_i = sa.Column(sa.Integer, nullable = False)
-    ac = sa.Column(sa.Text, nullable = False)
-    added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
+    tx_md5 = sa.Column(sa.Text, nullable=False, unique=True)
+    cds_md5 = sa.Column(sa.Text, nullable=False)
+    preferred_seqanno_id = sa.Column(sa.Integer, sa.ForeignKey('seqanno.seqanno_id'), nullable=True)
+    cds_start_i = sa.Column(sa.Integer, nullable=False)
+    cds_end_i = sa.Column(sa.Integer, nullable=False)
+    added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
 
     # relationships:
-    origin = sao.relationship('Origin', backref = 'transcripts')
-    gene = sao.relationship('Gene', backref = 'transcripts')
+    origin = sao.relationship('Origin', backref='transcripts')
+    gene = sao.relationship('Gene', backref='transcripts')
     seq = sao.relationship('Seq')
 
-    # methods:
-#    def __unicode__(self):
-#        return '{self.__class__.__name__}<origin={self.origin.name},ac={self.ac},gene={self.gene.name}>'.format(
-#            self = self)
+
+class AlignMethod(Base,UTABase):
+    __tablename__ = 'align_method'
+    __table_args__ = (
+        {'schema' : schema_name},
+        )
+
+    align_method_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    name = sa.Column(sa.Text, unique=True)
+    descr = sa.Column(sa.Text)
 
 
 class ExonSet(Base,UTABase):
     __tablename__ = 'exon_set'
     __table_args__ = (
-        sa.UniqueConstraint('transcript_id','ref_seq_id','origin_id','method',name='<transcript,reference,origin,method> must be unique'),
+        sa.UniqueConstraint('transcript_id','align_seq_id','align_method_id',
+                            name='<transcript,reference,origin,method> must be unique'),
         {'schema' : schema_name},
         )
 
-#    def __unicode__(self):
-#        return "ExonSet<{es.exon_set_id}; {es.transcript_id},{es.ref_seq_id},{es.origin_id},{es.method}>".format(es=self)
-
-    
     # columns:
-    exon_set_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
-    transcript_id = sa.Column(sa.Integer, sa.ForeignKey('transcript.transcript_id'), nullable = False)
-    ref_seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'), nullable = False)
-    ref_strand = sa.Column(sa.SmallInteger, nullable = False)
-    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable = False)
-    method = sa.Column(sa.Text, nullable = False)
-    added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
+    exon_set_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    transcript_id = sa.Column(sa.Integer, sa.ForeignKey('transcript.transcript_id'), nullable=False)
+    align_seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'), nullable=False)
+    align_strand = sa.Column(sa.SmallInteger, nullable=False)
+    align_method_id = sa.Column(sa.Integer, sa.ForeignKey('align_method.align_method_id'), nullable=False)
+    added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
     
     # relationships:
-    transcript = sao.relationship('Transcript', backref = 'exon_sets')
-    ref_seq = sao.relationship('Seq', backref = 'exon_sets')
-    origin = sao.relationship('Origin')
-
+    transcript = sao.relationship('Transcript', backref='exon_sets')
+    ref_seq = sao.relationship('Seq', backref='exon_sets')
+    #align_method = sao.relation('AlignMethod')
     
     def exons_se(self,transcript_order=False):
         """return exon [start_i,end_i) pairs in reference sequence order, or transcript order if requested"""
         rev = transcript_order and self.ref_strand == -1
         return sorted([(e.start_i,e.end_i) for e in self.exons], reverse=rev)
 
-    
-    @property
-    def is_primary(self):
-        return self.ref_seq_id == self.transcript.seq_id
-
     # methods:
-#    def __unicode__(self):
-#        return '{self.__class__.__name__}<origin={self.origin.name},transcript={self.transcript.ac},ref={self.ref_seq.ac},primary={self.is_primary},exons={nexons}>'.format(
-#            self = self, nexons = len(self.exons))
 
 
 class Exon(Base,UTABase):
     __tablename__ = 'exon'
     __table_args__ = (
         sa.CheckConstraint('start_i < end_i', 'exon_start_i_must_be_lt_end_i'),
-        # TODO: Figure out how to implement no-overlapping constraint
         sa.UniqueConstraint('exon_set_id','start_i',name='start_i_must_be_unique_in_exon_set'),
         sa.UniqueConstraint('exon_set_id','end_i',name='end_i_must_be_unique_in_exon_set'),
         {'schema' : schema_name},
@@ -226,19 +210,14 @@ class Exon(Base,UTABase):
         return "[{self.start_i},{self.end_i})".format(self=self)
 
     # columns:
-    exon_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
-    exon_set_id = sa.Column(sa.Integer, sa.ForeignKey('exon_set.exon_set_id'), nullable = False)
-    start_i = sa.Column(sa.Integer, nullable = False)
-    end_i = sa.Column(sa.Integer, nullable = False)
+    exon_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    exon_set_id = sa.Column(sa.Integer, sa.ForeignKey('exon_set.exon_set_id'), nullable=False)
+    start_i = sa.Column(sa.Integer, nullable=False)
+    end_i = sa.Column(sa.Integer, nullable=False)
     name = sa.Column(sa.Text)
 
     # relationships:
-    exon_set = sao.relationship('ExonSet', backref = 'exons')
-
-    @property
-    def seq(self):
-        seq = self.exon_set.ref_seq.seq
-        return None if seq is None else seq[self.start_i:self.end_i]
+    exon_set = sao.relationship('ExonSet', backref='exons')
 
 
 class ExonAlignment(Base,UTABase):
@@ -248,28 +227,18 @@ class ExonAlignment(Base,UTABase):
         )
 
     # columns:
-    exon_alignment_id = sa.Column(sa.Integer, autoincrement=True, primary_key = True)
-    tx_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable = False)
-    ref_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable = False)
-    cigar = sa.Column(sa.Text, nullable = False)
-    url = sa.Column(sa.Text, nullable = True)
-    added = sa.Column(sa.DateTime, default = datetime.datetime.now(), nullable = False)
+    exon_alignment_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    transcript_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
+    align_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
+    cigar = sa.Column(sa.Text, nullable=False)
+    added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
 
     # relationships:
-    tx_exon = sao.relationship('Exon', backref = 'tx_alignment', foreign_keys = [tx_exon_id])
-    ref_exon = sao.relationship('Exon', backref = 'ref_alignment', foreign_keys = [ref_exon_id])
+    transcript_exon = sao.relationship('Exon', backref='tx_alignment', foreign_keys=[transcript_exon_id])
+    align_exon = sao.relationship('Exon', backref='ref_alignment', foreign_keys=[align_exon_id])
 
     # methods:
-#    def __unicode__(self):
-#        return '{self.__class__.__name__}<{self.tx_exon} ~ {self.ref_exon}>'.format(self = self)
 
-
-
-def strand_pm(strand):
-    if strand is None: return ''
-    elif strand == 1: return '+'
-    elif strand == -1: return '-'
-    else: return '?'
 
 
 ## <LICENSE>
