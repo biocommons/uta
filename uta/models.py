@@ -7,7 +7,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
-from uta.utils import strand_pm
+import uta.utils
 
 
 ############################################################################
@@ -40,8 +40,8 @@ Base = saed.declarative_base(
 
 class UTABase(object):
     pass
-#    def __str__(self):
-#        return unicode(self).encode('utf-8')
+    #def __str__(self):
+    #    return unicode(self).encode('utf-8')
 
 
 class Meta(Base,UTABase):
@@ -65,7 +65,7 @@ class Origin(Base,UTABase):
     descr = sa.Column(sa.Text)
     updated = sa.Column(sa.DateTime, nullable=False, default=datetime.datetime.now(), onupdate=datetime.datetime.now() )
     url = sa.Column(sa.Text, nullable=True)
-    url_accn_fmt = sa.Column(sa.Text, nullable=True)
+    url_ac_fmt = sa.Column(sa.Text, nullable=True)
 
     # methods:
     def tickle_update(self):
@@ -86,8 +86,7 @@ class Seq(Base,UTABase):
         return None if seq is None else len(seq)
 
     # columns:
-    seq_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    seq_id = sa.Column(sa.Text, default=_seq_hash, primary_key=True)
+    seq_id = sa.Column(sa.Text, primary_key=True, default=_seq_hash)
     len = sa.Column(sa.Integer, default=_seq_len, nullable=False)
     seq = sa.Column(sa.Text, nullable=True)
 
@@ -95,17 +94,17 @@ class Seq(Base,UTABase):
 
 
 class SeqAnno(Base,UTABase):
-    __tablename__ = 'seqanno'
+    __tablename__ = 'seq_anno'
     __table_args__ = (
-        sa.Index('seqanno_accn_unique_in_origin', 'origin_id', 'accn', unique=True),
+        sa.Index('seq_anno_ac_unique_in_origin', 'origin_id', 'ac', unique=True),
         {'schema' : schema_name},
         )
 
     # columns:
-    seqanno_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    seq_anno_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
     origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
-    accn = sa.Column(sa.Text, index=True)
+    ac = sa.Column(sa.Text, index=True, nullable=False)
     descr = sa.Column(sa.Text)
     added = sa.Column(sa.DateTime, nullable=False, default=datetime.datetime.now() )
 
@@ -144,9 +143,6 @@ class Transcript(Base,UTABase):
     origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
     gene_id = sa.Column(sa.Integer, sa.ForeignKey('gene.gene_id'))
     seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
-    transcript_md5 = sa.Column(sa.Text, nullable=False, unique=True)
-    cds_md5 = sa.Column(sa.Text, nullable=False)
-    preferred_seqanno_id = sa.Column(sa.Integer, sa.ForeignKey('seqanno.seqanno_id'), nullable=True)
     cds_start_i = sa.Column(sa.Integer, nullable=False)
     cds_end_i = sa.Column(sa.Integer, nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
@@ -155,7 +151,10 @@ class Transcript(Base,UTABase):
     origin = sao.relationship('Origin', backref='transcripts')
     gene = sao.relationship('Gene', backref='transcripts')
     seq = sao.relationship('Seq')
-
+    annotations = sao.relationship('SeqAnno',
+                                   foreign_keys=[seq_id],
+                                   primaryjoin='Transcript.seq_id==SeqAnno.seq_id',
+                                   backref='transcripts',)
     
 
 class AlnMethod(Base,UTABase):
