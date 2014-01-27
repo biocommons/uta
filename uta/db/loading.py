@@ -48,24 +48,47 @@ def initialize_schema(session,opts,cf):
     """Create and populate initial schema"""
 
     session.add(
-        usam.Origin(name='NCBI',
-                    url = 'http://www.ncbi.nlm.nih.gov/',
-                    ))
+        usam.Origin(
+            name='NCBI',
+            url = 'http://www.ncbi.nlm.nih.gov/',
+            ))
     session.add(
-        usam.Origin(name='NCBI Gene',
-                    url = 'http://www.ncbi.nlm.nih.gov/gene/',
-                    url_ac_fmt = 'http://www.ncbi.nlm.nih.gov/gene/{ac}'
-                    ))
+        usam.Origin(
+            name='NCBI gene',
+            descr='NCBI gene repository',
+            url = 'http://www.ncbi.nlm.nih.gov/gene/',
+            url_accn_fmt = 'http://www.ncbi.nlm.nih.gov/gene/{accn}'
+            ))
     session.add(
-        usam.Origin(name='NCBI RefSeq',
-                    url = 'http://www.ncbi.nlm.nih.gov/refseq/',
-                    url_ac_fmt = 'http://www.ncbi.nlm.nih.gov/nuccore/{ac}'
-                    ))
+        usam.Origin(
+            name='NCBI nuccore',
+            descr='NCBI nuccore repository',
+            url = 'http://www.ncbi.nlm.nih.gov/refseq/',
+            url_accn_fmt = 'http://www.ncbi.nlm.nih.gov/nuccore/{accn}'
+            ))
     session.add(
-        usam.Origin(name='NCBI seq_gene',
-                    url = 'ftp://ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/',
-                    ))
+        usam.Origin(
+            name='NCBI seq_gene',
+            descr='NCBI "seq_gene" files from FTP site',
+            url = 'ftp://ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/',
+            ))
     
+    session.add(
+        usam.AlignMethod(
+            name='transcript',
+            descr='exons defined in transcript source',
+            ))
+    session.add(
+        usam.AlignMethod(
+            name='splign',
+            descr='coordinates as obtained from NCBI via eutils, exon sequences realigned with needle',
+            ))
+    session.add(
+        usam.AlignMethod(
+            name='blat',
+            descr='coordinates obtained from UCSC via mysql interface, exon sequences realigned with needle',
+            ))
+
     session.commit()
     logging.info('initialized schema')
 
