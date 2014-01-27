@@ -10,6 +10,7 @@ Usage:
   uta [options] drop-schema
   uta [options] create-schema
   uta [options] initialize-schema
+  uta [options] rebuild
   uta [options] load-seq-info --origin=ORIGIN [--fast] FILE
   uta [options] load-eutils-genes [--with-transcripts] ([--all|-a] | [GENES]...)
   uta [options] load-eutils-transcripts TRANSCRIPTS ...
@@ -53,11 +54,17 @@ usam = uta.models                         # backward compatibility
 def shell(session,opts,cf):
     import IPython; IPython.embed()
 
+def rebuild(*args):
+    ul.drop_schema(*args)
+    ul.create_schema(*args)
+    ul.initialize_schema(*args)
+
 def run(argv=None):
     dispatch_table = [
         ('drop-schema',                 ul.drop_schema),
         ('create-schema',               ul.create_schema),
         ('initialize-schema',           ul.initialize_schema),
+        ('rebuild',                     rebuild),
 
         ('load-seq-info',               ul.load_seq_info),
         ('load-eutils-genes',           ul.load_eutils_genes),
