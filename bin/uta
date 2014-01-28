@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+import logging.config
+import pkg_resources
+
+logging_conf_fn = pkg_resources.resource_filename('uta', 'etc/logging.conf')
+logging.config.fileConfig(logging_conf_fn)
 
 import uta.cli
 uta.cli.run()
