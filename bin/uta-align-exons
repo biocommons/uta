@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+
+import logging
+logging.basicConfig(level=logging.INFO)
+
+import psycopg2, psycopg2.extras
+import locus.utils.genomeutils as gu
+import IPython
+
+conn = psycopg2.connect("dbname=reece")
+sel_sql = '''
+SELECT GE.genomic_exon_id,TE.transcript_exon_id,
+  G.gene,T.ac,
+  G.chr,G.strand,GE.start_i as g_start_i,GE.end_i as g_end_i,
+  TE.start_i as t_start_i,TE.end_i as t_end_i,
+  TE.ord, TE.name,
+  substr(T.seq,TE.start_i+1,TE.end_i-TE.start_i) as t_seq
+FROM gene G
+JOIN transcript T on G.gene=T.gene
+JOIN genomic_exon GE on T.ac=GE.ac
+JOIN transcript_exon TE on GE.ac=TE.ac and GE.ord=TE.ord
+WHERE NOT EXISTS (SELECT * FROM gtx_alignment GA
+                  WHERE GA.genomic_exon_id=GE.genomic_exon_id AND
+                  GA.transcript_exon_id=TE.transcript_exon_id)
+'''
+
+ins_sql = """
+INSERT INTO gtx_alignment (genomic_exon_id,transcript_exon_id,cigar,seqviewer_url,g_seq_a,t_seq_a)
+VALUES (%(genomic_exon_id)s,%(transcript_exon_id)s,%(cigar)s,%(seqviewer_url)s,%(g_seq_a)s,%(t_seq_a)s)
+"""
+
+sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+ins_cur = conn.cursor()
+
+sel_cur.execute(sel_sql)
+logging.info('%d alignments to execute' % (sel_cur.rowcount))
+for row in sel_cur:
+    assert len(row['t_seq']) == row['t_end_i'] - row['t_start_i'], '%s exon %s: len(t_seq) != end_i-start_i' % (row['gene'],row['name'])
+    t_seq = row['t_seq']
+    g_seq = gu.fetch_genomic_sequence_interval_ucsc_websvc(
+        row['chr'],row['g_start_i'],row['g_end_i'])
+    if row['strand'] == -1:
+        g_seq = gu.reverse_complement(g_seq)
+    g_seq_a,t_seq_a = gu.align2(g_seq.upper(),t_seq.upper())
+    url = None if g_seq_a == t_seq_a \
+        else gu.url_for_slice(row['chr'],row['g_start_i']-25,row['g_end_i']+25)
+
+    cigar = gu.alignment_cigar_string(g_seq_a,t_seq_a)
+    ins_cur.execute(ins_sql, {
+            'genomic_exon_id': row['genomic_exon_id'],
+            'transcript_exon_id': row['transcript_exon_id'],
+            'cigar': cigar,
+            'seqviewer_url': url,
+            'g_seq_a': g_seq_a,
+            't_seq_a': t_seq_a,
+            })
+    conn.commit()
+
+    logging.info("gene %s, transcript %s, exon %s, %s" % (
+            row['gene'],row['ac'],row['name'],cigar))
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
