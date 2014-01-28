@@ -132,6 +132,8 @@ class Gene(Base,UTABase):
 
 
 class Transcript(Base,UTABase):
+    """class representing unique transcripts, as defined by unique <seq_id,cds_se,exons_se_i>
+    """
     __tablename__ = 'transcript'
     __table_args__ = (
         sa.CheckConstraint('cds_start_i <= cds_end_i', 'cds_start_i_must_be_le_cds_end_i'),
@@ -139,7 +141,7 @@ class Transcript(Base,UTABase):
         )
 
     # columns:
-    transcript_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    transcript_id = sa.Column(sa.Text, primary_key=True)
     origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
     gene_id = sa.Column(sa.Integer, sa.ForeignKey('gene.gene_id'))
     seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
@@ -155,7 +157,7 @@ class Transcript(Base,UTABase):
                                    foreign_keys=[seq_id],
                                    primaryjoin='Transcript.seq_id==SeqAnno.seq_id',
                                    backref='transcripts',)
-    
+
 
 class AlnMethod(Base,UTABase):
     __tablename__ = 'aln_method'
@@ -178,7 +180,7 @@ class ExonSet(Base,UTABase):
 
     # columns:
     exon_set_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
-    transcript_id = sa.Column(sa.Integer, sa.ForeignKey('transcript.transcript_id'), nullable=False)
+    transcript_id = sa.Column(sa.Text, sa.ForeignKey('transcript.transcript_id'), nullable=False)
     alt_seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'), nullable=False)
     alt_strand = sa.Column(sa.SmallInteger, nullable=False)
     alt_aln_method_id = sa.Column(sa.Integer, sa.ForeignKey('aln_method.aln_method_id'), nullable=False)

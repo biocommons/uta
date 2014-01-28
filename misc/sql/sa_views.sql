@@ -19,3 +19,17 @@ select seq_id,array_to_string(array_agg(distinct ac order by ac),',') as aliases
 from seq_anno
 where ac ~ '^N[CGMRW]'
 group by seq_id;
+
+
+drop view transcript_alignments_v;
+create or replace view transcript_alignments_v as
+select ES.exon_set_id,G.hgnc,
+	T.transcript_id,T.seq_id tx_seq_id,TSA.aliases as tx_aliases,
+	ES.alt_seq_id,ASA.aliases as alt_aliases,
+	T.cds_start_i,T.cds_end_i,EXE.se_i,EXE.lengths
+from exon_set ES
+join transcript T on ES.transcript_id=T.transcript_id
+join gene G on T.gene_id=G.gene_id
+join seq_anno_ncbi_v TSA on T.seq_id=TSA.seq_id
+join seq_anno_ncbi_v ASA on ES.alt_seq_id=ASA.seq_id
+join exon_set_exons_v EXE on ES.exon_set_id=EXE.exon_set_id;
