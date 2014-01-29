@@ -6,6 +6,7 @@ import gzip
 import hashlib
 import itertools
 import logging
+import os
 
 import eutils.client
     
@@ -233,7 +234,87 @@ def load_txinfo(session,opts,cf):
 
 ############################################################################
 
-def load_ncbi_geneinfo(session,opts,cf):
+def align_exons(session, opts, cf):
+    # N.B. setup.py declares dependencies for using uta as a client.  The
+    # imports below are loading depenencies only and are not in setup.py.
+    import psycopg2.extras
+    from eutils.sqlitecache import SQLiteCache
+    from bdi.multifastadb import MultiFastaDB
+    import uta.utils.alignment as uua
+
+    sel_sql = """
+    SELECT * FROM _tx_alt_exon_pairs_v TAEP
+    WHERE NOT EXISTS (
+        SELECT tx_exon_id,alt_exon_id
+        FROM exon_aln EA
+        WHERE EA.tx_exon_id=TAEP.tx_exon_id AND EA.alt_exon_id=TAEP.alt_exon_id
+        )
+    AND alt_ac in (
+    'NC_000001.10', 'NC_000002.11', 'NC_000003.11',
+    'NC_000004.11', 'NC_000005.9', 'NC_000006.11',
+    'NC_000007.13', 'NC_000008.10', 'NC_000009.11',
+    'NC_000010.10', 'NC_000011.9', 'NC_000012.11',
+    'NC_000013.10', 'NC_000014.8', 'NC_000015.9',
+    'NC_000016.9', 'NC_000017.10', 'NC_000018.9',
+    'NC_000019.9', 'NC_000020.10', 'NC_000021.8',
+    'NC_000022.10', 'NC_000023.10', 'NC_000024.9'
+    )
+    """
+
+    ins_sql = """
+    INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
+    """
+
+    cache = SQLiteCache(os.path.expanduser('~/tmp/align-exons.db'))
+    def _align(tx_seq,alt_seq):
+        key = hashlib.md5(tx_seq+';'+alt_seq).hexdigest()
+        try:
+            return cache[key]
+        except KeyError:
+            pass
+        logger.debug('running alignment ({}~{}); key={}'.format(len(tx_seq),len(alt_seq),key))
+        cache[key] = uua.align2(tx_seq,alt_seq)
+        return cache[key]
+
+    mfdb = MultiFastaDB([opts[u'FASTA_DIR']], use_meta_index=True)
+
+    con = session.bind.pool.connect()
+
+    cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+    cur.execute(sel_sql)
+    rows = cur.fetchall()
+    n_rows = len(rows)
+    ac_warning = set()
+    for i_r,r in enumerate(rows):
+        if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
+            continue
+        try:
+            tx_seq = mfdb.fetch(r.tx_ac, r.tx_start_i, r.tx_end_i)
+        except KeyError:
+            logging.warning("{r.tx_ac}: Not in sequence sources; can't align".format(r=r))
+            ac_warning.add(r.tx_ac)
+            continue
+        try:
+            alt_seq = mfdb.fetch(r.alt_ac, r.alt_start_i, r.alt_end_i)
+        except KeyError:
+            logging.warning("{r.alt_ac}: Not in sequence sources; can't align".format(r=r))
+            ac_warning.add(r.alt_ac)
+            continue
+        tx_aseq,alt_aseq = _align(tx_seq,alt_seq)
+        cigar = uua.alignment_cigar_string(tx_aseq,alt_aseq)
+        added = datetime.datetime.now()
+        cur.execute(ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar,added,tx_aseq,alt_aseq])
+        if i_r == n_rows-1 or i_r % 20 == 0:
+            con.commit()
+            logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed'.format(
+                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100))
+
+    cur.close()
+    con.close()
+
+
+
+def load_ncbi_geneinfo(session, opts, cf):
     """
     import data as downloaded (by you) from 
     ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz

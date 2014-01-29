@@ -16,6 +16,7 @@ Usage:
   uta [options] load-geneinfo FILE
   uta [options] load-txinfo FILE
   uta [options] load-exonsets FILE
+  uta [options] align-exons FASTA_DIR
   uta [options] load-ncbi-seqgene FILE
 
 Options:
@@ -70,6 +71,8 @@ def run(argv=None):
         ('load-geneinfo',               ul.load_geneinfo),
         ('load-seqinfo',                ul.load_seqinfo),
         ('load-txinfo',                 ul.load_txinfo),
+
+        ('align-exons',					ul.align_exons),
 
         ('load-ncbi-seqgene',           ul.load_ncbi_seqgene),
 

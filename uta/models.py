@@ -173,8 +173,8 @@ class ExonAln(Base,UTABase):
     alt_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
     cigar = sa.Column(sa.Text, nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
-    tx_seq = sa.Column(sa.Text, nullable=False)
-    alt_seq = sa.Column(sa.Text, nullable=False)
+    tx_aseq = sa.Column(sa.Text, nullable=False)
+    alt_aseq = sa.Column(sa.Text, nullable=False)
 
     # relationships:
     tx_exon = sao.relationship('Exon', backref='tx_aln', foreign_keys=[tx_exon_id])
