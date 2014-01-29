@@ -2,7 +2,7 @@ import csv
 import recordtype
 
 class ExonSet( recordtype.recordtype('ExonSet',
-                                     ['tx_ac','alt_ac','method','strand','exons_se_i','cds_se_i']) ):
+                                     ['tx_ac','alt_ac','method','strand','exons_se_i']) ):
     pass
 
 class ExonSetWriter(csv.DictWriter):
