@@ -57,18 +57,33 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
 
-    opts = parse_args(sys.argv[1:])
     ec = eutils.client.Client()
+    opts = parse_args(sys.argv[1:])
+
+    gi_fn = opts.prefix + '.geneinfo.gz'
+    es_fn = opts.prefix + '.exonsets.gz'
+    ti_fn = opts.prefix + '.txinfo.gz'
+
+    if len(opts.GENES) == 0:
+        logging.info('reading genes from stdin')
+        hgncs = [ e.strip() for e in sys.stdin.readlines() ]
+    else:
+        logging.info('reading genes from stdin')
+        hgncs = opts.GENES
 
     tx_set = set()
-    n = len(opts.GENES)
-    giw = GeneInfoWriter(gzip.open(opts.prefix + '.geneinfo.gz','w'))
-    esw = ExonSetWriter(gzip.open(opts.prefix + '.exonsets.gz','w'))
-    for i,hgnc in enumerate(opts.GENES):
+    n = len(hgncs)
+    giw = GeneInfoWriter(gzip.open(gi_fn+'.tmp','w'))
+    esw = ExonSetWriter(gzip.open(es_fn+'.tmp','w'))
+    for i,hgnc in enumerate(hgncs):
         logger.info("="*70+"\n{i}/{n} ({p:.1f}%): {hgnc}...".format(
             i=i, n=n, p=(i+1)/n*100, hgnc=hgnc))
 
-        e_gene = ec.fetch_gene_by_hgnc(hgnc)
+        try:
+            e_gene = ec.fetch_gene_by_hgnc(hgnc)
+        except Exception as e:
+            logger.exception(e)
+            continue
 
         gi = GeneInfo(hgnc=hgnc,
                       maploc=e_gene.maploc,
@@ -90,7 +105,7 @@ if __name__ == '__main__':
             pass
 
 
-    tiw = TxInfoWriter(gzip.open(opts.prefix + '.txinfo.gz','w'))
+    tiw = TxInfoWriter(gzip.open(ti_fn+'.tmp','w'))
     n = len(tx_set)
     for i,ac in enumerate(tx_set):
         logger.info("="*70+"\n{i}/{n} ({p:.1f}%): {ac}...".format(
@@ -107,3 +122,6 @@ if __name__ == '__main__':
         except Exception as e:
             logger.exception(e)
             pass
+
+    for fn in [gi_fn,ti_fn,es_fn]:
+        os.rename(fn+'.tmp',fn)
