@@ -60,11 +60,6 @@ NC_to_chr = {
     'NC_000022.10': '22', 'NC_000023.10':  'X', 'NC_000024.9' : 'Y',
     }
 
-
-# also map unversioned accessions
-# NC_to_chr.update([ (k.partition('.')[0],v) for k,v in NC_to_chr.iteritems() ])
-chr_to_NC = dict([ (v,k) for k,v in NC_to_chr.iteritems() ])
-
 def prepend_chr(chr):
     """prefix chr with 'chr' if not present"""
     return chr if chr[0:3] == 'chr' else 'chr'+chr
@@ -73,17 +68,12 @@ def strip_chr(chr):
     """remove 'chr' prefix if it exists"""
     return chr[3:] if chr[0:3] == 'chr' else chr        
 
-# def bracket_region(left,left_margin=0,right=left,right_margin=left_margin):
-#     """expand region [left,right) by left_margin (or left_margin and
-#     right_margin); returns <left,right>; see clamp_region to 
-#     truncate to valid chromosomal region"""
-#     right = right or left
-#     right_margin = right_margin or left_margin
-#     return left-left_margin, right+right_margin
-# 
-# def clamp_region(chr,left,right):
-#     """truncate region to valid chromosomal coordinates"""
-#     return max(left,0), min(right,chr_size[prepend_chr(chr)])
+# also map unversioned accessions
+chr_to_NC = dict([ (v,k) for k,v in NC_to_chr.iteritems() ]
+                 + [ (prepend_chr(v),k) for k,v in NC_to_chr.iteritems() ])
+
+
+
 
 
 ## <LICENSE>

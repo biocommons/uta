@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+import collections
+import gzip
+import os
+import sys
+
+import MySQLdb
+
+from uta.formats.exonset import ExonSet,ExonSetWriter
+from uta.utils.genomeutils import chr_to_NC
+
+ucsc_align_method = 'blat'
+
+
+if __name__ == '__main__':
+    es_fn = 'ucsc' + '.exonset.gz'
+    esw = ExonSetWriter(gzip.open(es_fn+'.tmp','w'))
+
+    conn = MySQLdb.connect(host = 'genome-mysql.cse.ucsc.edu',
+                           user = 'genome',
+                           db = 'hg19' )
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("""
+SELECT geneName,concat(acc,'.',version) as ac,chrom,strand,txStart,txEnd,
+	cdsStart,cdsEnd,exonCount,exonStarts,exonEnds
+FROM refFlat RF
+JOIN gbSeq GB on RF.name=GB.acc
+WHERE name like 'NM_%' and chrom not like '%\_%'
+"""
+        )
+    # and name in ('NM_144670','NM_017436')
+    
+    for row in cursor.fetchall():
+        es = ExonSet(
+            tx_ac=row['ac'],
+            alt_ac=chr_to_NC[row['chrom']],
+            method=ucsc_align_method,
+            strand=-1 if row['strand'] == '-' else 1,
+            exons_se_i=sorted(zip(
+                map(int,row['exonStarts'].rstrip(',').split(',')),
+                map(int,row['exonEnds'].rstrip(',').split(','))),
+                reverse=row['strand']=='-'),
+            )
+        esw.write(es)
+    
+    os.rename(es_fn+'.tmp',es_fn)
+
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
