@@ -72,6 +72,17 @@ class Origin(Base,UTABase):
         self.updated = datetime.datetime.now()
 
 
+class AlnMethod(Base,UTABase):
+    __tablename__ = 'aln_method'
+    __table_args__ = (
+        {'schema' : schema_name},
+        )
+
+    aln_method_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    name = sa.Column(sa.Text, unique=True)
+    descr = sa.Column(sa.Text)
+
+
 class Gene(Base,UTABase):
     __tablename__ = 'gene'
     __table_args__ = (
@@ -79,8 +90,7 @@ class Gene(Base,UTABase):
         )
 
     # columns:
-    gene_id = sa.Column(sa.Integer, primary_key=True)   # must be assigned -- use NCBI gene
-    hgnc = sa.Column(sa.Text, index=True, unique=True, nullable=False)
+    hgnc = sa.Column(sa.Text, primary_key=True)
     maploc = sa.Column(sa.Text)
     descr = sa.Column(sa.Text)
     summary = sa.Column(sa.Text)
@@ -100,10 +110,9 @@ class Transcript(Base,UTABase):
         )
 
     # columns:
-    transcript_id = sa.Column(sa.Text, primary_key=True)
+    ac = sa.Column(sa.Text, primary_key=True)
     origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
-    gene_id = sa.Column(sa.Integer, sa.ForeignKey('gene.gene_id'))
-    seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
+    hgnc = sa.Column(sa.Text, sa.ForeignKey('gene.hgnc'))
     cds_start_i = sa.Column(sa.Integer, nullable=False)
     cds_end_i = sa.Column(sa.Integer, nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
@@ -111,44 +120,26 @@ class Transcript(Base,UTABase):
     # relationships:
     origin = sao.relationship('Origin', backref='transcripts')
     gene = sao.relationship('Gene', backref='transcripts')
-    seq = sao.relationship('Seq')
-    annotations = sao.relationship('SeqAnno',
-                                   foreign_keys=[seq_id],
-                                   primaryjoin='Transcript.seq_id==SeqAnno.seq_id',
-                                   backref='transcripts',)
-
-
-class AlnMethod(Base,UTABase):
-    __tablename__ = 'aln_method'
-    __table_args__ = (
-        {'schema' : schema_name},
-        )
-
-    aln_method_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
-    name = sa.Column(sa.Text, unique=True)
-    descr = sa.Column(sa.Text)
 
 
 class ExonSet(Base,UTABase):
     __tablename__ = 'exon_set'
     __table_args__ = (
-        sa.UniqueConstraint('transcript_id','alt_seq_id','alt_aln_method_id',
-                            name='<transcript,reference,origin,method> must be unique'),
+        sa.UniqueConstraint('tx_ac','alt_ac','alt_aln_method_id',
+                            name='<transcript,reference,method> must be unique'),
         {'schema' : schema_name},
         )
 
     # columns:
     exon_set_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
-    transcript_id = sa.Column(sa.Text, sa.ForeignKey('transcript.transcript_id'), nullable=False)
-    alt_seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'), nullable=False)
+    tx_ac = sa.Column(sa.Text, sa.ForeignKey('transcript.ac'), nullable=False)
+    alt_ac = sa.Column(sa.Text, nullable=False)
     alt_strand = sa.Column(sa.SmallInteger, nullable=False)
     alt_aln_method_id = sa.Column(sa.Integer, sa.ForeignKey('aln_method.aln_method_id'), nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
     
     # relationships:
     transcript = sao.relationship('Transcript', backref='exon_sets')
-    alt_seq = sao.relationship('Seq', backref='exon_sets')
-    alt_aln_method = sao.relation('AlnMethod')
     
     def exons_se(self,transcript_order=False):
         """return exon [start_i,end_i) pairs in reference sequence order, or transcript order if requested"""
@@ -175,6 +166,7 @@ class Exon(Base,UTABase):
     exon_set_id = sa.Column(sa.Integer, sa.ForeignKey('exon_set.exon_set_id'), nullable=False)
     start_i = sa.Column(sa.Integer, nullable=False)
     end_i = sa.Column(sa.Integer, nullable=False)
+    ord = sa.Column(sa.Integer, nullable=False)
     name = sa.Column(sa.Text)
 
     # relationships:
@@ -193,6 +185,8 @@ class ExonAln(Base,UTABase):
     alt_exon_id = sa.Column(sa.Integer, sa.ForeignKey('exon.exon_id'), nullable=False)
     cigar = sa.Column(sa.Text, nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
+    tx_seq = sa.Column(sa.Text, nullable=False)
+    alt_seq = sa.Column(sa.Text, nullable=False)
 
     # relationships:
     tx_exon = sao.relationship('Exon', backref='tx_aln', foreign_keys=[tx_exon_id])

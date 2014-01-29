@@ -7,16 +7,16 @@ __doc__ = """uta -- Universal Transcript Archive command line tool
 Usage:
   uta ( -h | --help )
   uta --version
+  uta [options] shell
   uta [options] drop-schema
   uta [options] create-schema
   uta [options] initialize-schema
   uta [options] rebuild
-  uta [options] load-seq-info --origin=ORIGIN [--fast] FILE
-  uta [options] load-eutils-genes [--with-transcripts] ([--all|-a] | [GENES]...)
-  uta [options] load-eutils-transcripts TRANSCRIPTS ...
-  uta [options] load-gene-info FILE
-  uta [options] load-transcripts-seqgene FILE
-  uta [options] shell
+  uta [options] load-seqinfo --origin=ORIGIN [--fast] FILE
+  uta [options] load-geneinfo FILE
+  uta [options] load-txinfo FILE
+  uta [options] load-exonsets FILE
+  uta [options] load-ncbi-seqgene FILE
 
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
@@ -66,11 +66,12 @@ def run(argv=None):
         ('initialize-schema',           ul.initialize_schema),
         ('rebuild',                     rebuild),
 
-        ('load-seq-info',               ul.load_seq_info),
-        ('load-eutils-genes',           ul.load_eutils_genes),
+        ('load-exonsets',               ul.load_exonsets),
+        ('load-geneinfo',               ul.load_geneinfo),
+        ('load-seqinfo',                ul.load_seqinfo),
+        ('load-txinfo',                 ul.load_seqinfo),
 
-        ('load-gene-info',              ul.load_gene_info),
-        ('load-transcripts-seqgene',    ul.load_transcripts_seqgene),
+        ('load-ncbi-seqgene',           ul.load_ncbi_seqgene),
 
         ('shell',                       shell),
         ]
