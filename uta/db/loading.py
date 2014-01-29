@@ -59,15 +59,15 @@ def initialize_schema(session,opts,cf):
             ))
     session.add(
         usam.Origin(
-            name='NCBI gene',
+            name='NCBI Gene',
             descr='NCBI gene repository',
             url = 'http://www.ncbi.nlm.nih.gov/gene/',
             url_ac_fmt = 'http://www.ncbi.nlm.nih.gov/gene/{ac}'
             ))
     session.add(
         usam.Origin(
-            name='NCBI nuccore',
-            descr='NCBI nuccore repository',
+            name='NCBI RefSeq',
+            descr='NCBI RefSeq (nuccore) repository',
             url = 'http://www.ncbi.nlm.nih.gov/refseq/',
             url_ac_fmt = 'http://www.ncbi.nlm.nih.gov/nuccore/{ac}'
             ))
@@ -156,7 +156,31 @@ def load_seqinfo(session,opts,cf):
 ############################################################################
 
 def load_exonsets(session,opts,cf):
-    pass
+    for es in ufes.ExonSetReader(gzip.open(opts['FILE'])):
+        alt_aln_method = session.query(usam.AlnMethod).filter(usam.AlnMethod.name == es.method).one()
+
+        u_es = usam.ExonSet(
+            tx_ac=es.tx_ac,
+            alt_ac=es.alt_ac,
+            alt_aln_method=alt_aln_method,
+            alt_strand=es.strand
+            )
+        session.add(u_es)
+
+        exons = [ map(int,ex.split(',')) for ex in es.exons_se_i.split(';') ]
+        exons.sort(reverse=es.strand==-1)
+        for i_ex,ex in enumerate(exons):
+            s,e = ex
+            u_ex = usam.Exon(
+                exon_set=u_es,
+                start_i=s,
+                end_i=e,
+                ord=i_ex,
+                )
+            session.add(u_ex)
+
+        session.commit()
+
 
 ############################################################################
 
@@ -175,7 +199,43 @@ def load_geneinfo(session,opts,cf):
 ############################################################################
 
 def load_txinfo(session,opts,cf):
-    pass
+    self_aln_method = 'transcript'
+    alt_aln_method = session.query(usam.AlnMethod).filter(usam.AlnMethod.name == self_aln_method).one()
+
+    for ti in ufti.TxInfoReader(gzip.open(opts['FILE'])):
+        ori = session.query(usam.Origin).filter(usam.Origin.name == ti.origin).one()
+        cds_start_i,cds_end_i = map(int,ti.cds_se_i.split(','))
+        u_tx = usam.Transcript(
+            ac=ti.ac,
+            origin_id=ori.origin_id,
+            hgnc=ti.hgnc,
+            cds_start_i=cds_start_i,
+            cds_end_i=cds_end_i,
+            )
+        session.add(u_tx)
+
+        u_es = usam.ExonSet(
+            tx_ac=ti.ac,
+            alt_ac=ti.ac,
+            alt_strand=1,
+            alt_aln_method=alt_aln_method,
+            )
+        session.add(u_es)
+
+        exons = [ map(int,ex.split(',')) for ex in ti.exons_se_i.split(';') ]
+        for i_ex,ex in enumerate(exons):
+            s,e = ex
+            u_ex = usam.Exon(
+                exon_set=u_es,
+                start_i=s,
+                end_i=e,
+                ord=i_ex,
+                )
+            session.add(u_ex)
+
+        session.commit()
+
+
 
 ############################################################################
 

@@ -32,7 +32,8 @@ def parse_args(argv):
     return opts
 
 
-def fetch_exonset_for_gene(e_gene,esw,hgnc):
+def write_exonsets_for_gene(e_gene,esw,hgnc):
+    rp_combos_seen = set()
     tx_processed = set()
     for e_ref in e_gene.references:
         for e_prd in e_ref.products:
@@ -40,14 +41,25 @@ def fetch_exonset_for_gene(e_gene,esw,hgnc):
                 logger.info("skipping non-NM transcript {e_prd.acv} for {e_gene.hgnc} on {e_ref.acv}".format(
                     e_gene=e_gene,e_ref=e_ref,e_prd=e_prd))
                 continue
+            
+            # e.g., ABCC6, (AC_000148.1,NM_001171.5) is duplicated (with
+            # very different genomic coordinates). I have no idea what this means
+            rp = (e_ref.acv,e_prd.acv)
+            if rp in rp_combos_seen:
+                logger.warning("found duplicate ref,prd pair {rp} in {hgnc}; skipping".format(
+                    rp=rp, hgnc=hgnc))
+                continue
+
             es = ExonSet(tx_ac=e_prd.acv,
                          alt_ac=e_ref.acv,
                          method='splign',
                          strand=e_prd.genomic_coords.strand,
-                         exons_se_i=e_prd.genomic_coords.intervals
+                         exons_se_i=";".join([",".join([str(c) for c in ex]) for ex in e_prd.genomic_coords.intervals])
                 )
             esw.write(es)
             tx_processed.add(e_prd.acv)
+            rp_combos_seen.add(rp)
+
     return tx_processed
 
 
@@ -98,7 +110,7 @@ if __name__ == '__main__':
             continue
 
         try:
-            tx_seen = fetch_exonset_for_gene(e_gene,esw,hgnc)
+            tx_seen = write_exonsets_for_gene(e_gene,esw,hgnc)
             tx_set.update(tx_seen)
         except Exception as e:
             logger.exception(e)
@@ -112,11 +124,11 @@ if __name__ == '__main__':
             i=i, n=n, p=(i+1)/n*100, ac=ac))
         try:
             e_tx = ec.fetch_nuccore_by_ac(ac)
-            es = TxInfo(tx_ac=ac,
+            es = TxInfo(ac=ac,
                         origin=transcript_origin,
                         hgnc=e_tx.gene,
-                        cds_se_i=e_tx.cds_se_i,
-                        exons_se_i=e_tx.exons_se_i
+                        cds_se_i=",".join([str(c) for c in e_tx.cds_se_i]),
+                        exons_se_i=";".join([",".join([str(c) for c in ex]) for ex in e_tx.exons_se_i])
                 )
             tiw.write(es)
         except Exception as e:

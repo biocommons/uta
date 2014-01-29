@@ -2,7 +2,7 @@ import csv
 import recordtype
 
 class TxInfo( recordtype.recordtype('TxInfo',
-                                     ['origin','tx_ac','hgnc','cds_se_i','exons_se_i']) ):
+                                     ['origin','ac','hgnc','cds_se_i','exons_se_i']) ):
     pass
 
 class TxInfoWriter(csv.DictWriter):
