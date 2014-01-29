@@ -29,6 +29,7 @@ doc/build
 hgtools-*
 lib/python/cover
 lib/python/uta/_release.py
+loading/data
 misc/data
 misc/exon-str-cmp
 misc/tests

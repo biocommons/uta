@@ -72,47 +72,6 @@ class Origin(Base,UTABase):
         self.updated = datetime.datetime.now()
 
 
-class Seq(Base,UTABase):
-    __tablename__ = 'seq'
-    __table_args__ = (
-        {'schema' : schema_name},
-        )
-
-    def _seq_hash(context):
-        seq = context.current_parameters['seq']
-        return None if seq is None else hashlib.md5(seq.upper()).hexdigest()
-    def _seq_len(context):
-        seq = context.current_parameters['seq']
-        return None if seq is None else len(seq)
-
-    # columns:
-    seq_id = sa.Column(sa.Text, primary_key=True, default=_seq_hash)
-    len = sa.Column(sa.Integer, default=_seq_len, nullable=False)
-    seq = sa.Column(sa.Text, nullable=True)
-
-    # methods:
-
-
-class SeqAnno(Base,UTABase):
-    __tablename__ = 'seq_anno'
-    __table_args__ = (
-        sa.Index('seq_anno_ac_unique_in_origin', 'origin_id', 'ac', unique=True),
-        {'schema' : schema_name},
-        )
-
-    # columns:
-    seq_anno_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    seq_id = sa.Column(sa.Text, sa.ForeignKey('seq.seq_id'))
-    origin_id = sa.Column(sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False)
-    ac = sa.Column(sa.Text, index=True, nullable=False)
-    descr = sa.Column(sa.Text)
-    added = sa.Column(sa.DateTime, nullable=False, default=datetime.datetime.now() )
-
-    # relationships:
-    origin = sao.relationship('Origin', backref='aliases')
-    seq = sao.relationship('Seq', backref='aliases')
-
-
 class Gene(Base,UTABase):
     __tablename__ = 'gene'
     __table_args__ = (
