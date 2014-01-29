@@ -32,15 +32,16 @@ WHERE name like 'NM_%' and chrom not like '%\_%'
     # and name in ('NM_144670','NM_017436')
     
     for row in cursor.fetchall():
+        exons_se_i = sorted(zip(
+            row['exonStarts'].rstrip(',').split(','),
+            row['exonEnds'].rstrip(',').split(',')),
+            reverse=row['strand']=='-')
         es = ExonSet(
             tx_ac=row['ac'],
             alt_ac=chr_to_NC[row['chrom']],
             method=ucsc_align_method,
             strand=-1 if row['strand'] == '-' else 1,
-            exons_se_i=sorted(zip(
-                map(int,row['exonStarts'].rstrip(',').split(',')),
-                map(int,row['exonEnds'].rstrip(',').split(','))),
-                reverse=row['strand']=='-'),
+            exons_se_i=";".join([",".join([str(c) for c in ex]) for ex in exons_se_i])
             )
         esw.write(es)
     

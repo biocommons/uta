@@ -69,7 +69,7 @@ def run(argv=None):
         ('load-exonsets',               ul.load_exonsets),
         ('load-geneinfo',               ul.load_geneinfo),
         ('load-seqinfo',                ul.load_seqinfo),
-        ('load-txinfo',                 ul.load_seqinfo),
+        ('load-txinfo',                 ul.load_txinfo),
 
         ('load-ncbi-seqgene',           ul.load_ncbi_seqgene),
 

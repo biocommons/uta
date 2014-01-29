@@ -140,6 +140,8 @@ class ExonSet(Base,UTABase):
     
     # relationships:
     transcript = sao.relationship('Transcript', backref='exon_sets')
+    alt_aln_method = sao.relationship('AlnMethod')
+
     
     def exons_se(self,transcript_order=False):
         """return exon [start_i,end_i) pairs in reference sequence order, or transcript order if requested"""

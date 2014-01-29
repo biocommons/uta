@@ -19,7 +19,9 @@ commit;
 
 
 Loading
-export PYTHONPATH=lib/python
-./bin/uta --conf=etc/uta.conf rebuild    # CAUTION: DROPS SCHEMA SPECIFIED IN etc/uta.conf
+./sbin/uta --conf=etc/uta.conf rebuild    # CAUTION: DROPS SCHEMA SPECIFIED IN etc/uta.conf
+./sbin/uta --conf=etc/uta.conf load-geneinfo loading/data/ncbi.geneinfo.gz 
+./sbin/uta --conf=etc/uta.conf load-txinfo loading/data/ncbi.txinfo.gz 
+
 ./bin/uta --conf=etc/uta.conf load-seq-info --origin NCBI data/core-rest-2014-01.seqinfo.gz --fast
 ./bin/uta --conf etc/uta.conf load-eutils-gene --with-transcripts --all
