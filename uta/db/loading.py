@@ -7,6 +7,7 @@ import hashlib
 import itertools
 import logging
 import os
+import time
 
 import eutils.client
     
@@ -285,6 +286,7 @@ def align_exons(session, opts, cf):
     rows = cur.fetchall()
     n_rows = len(rows)
     ac_warning = set()
+    t0 = time.time()
     for i_r,r in enumerate(rows):
         if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
             continue
@@ -304,10 +306,13 @@ def align_exons(session, opts, cf):
         cigar = uua.alignment_cigar_string(tx_aseq,alt_aseq)
         added = datetime.datetime.now()
         cur.execute(ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar,added,tx_aseq,alt_aseq])
-        if i_r == n_rows-1 or i_r % 20 == 0:
+        if i_r == n_rows-1 or i_r % 25 == 0:
             con.commit()
-            logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed'.format(
-                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100))
+            speed = (i_r+1) / (time.time() - t0);      # aln/sec
+            etr = (n_rows-i_r-1) / speed               # etr in secs
+            etr_s = str(datetime.timedelta(seconds=int(etr)))  # etr as H:M:S
+            logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s})'.format(
+                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100,speed=speed,etr=etr,etr_s=etr_s))
 
     cur.close()
     con.close()
