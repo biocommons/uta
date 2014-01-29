@@ -14,7 +14,7 @@ ucsc_align_method = 'blat'
 
 
 if __name__ == '__main__':
-    es_fn = 'ucsc' + '.exonset.gz'
+    es_fn = 'ucsc' + '.exonsets.gz'
     esw = ExonSetWriter(gzip.open(es_fn+'.tmp','w'))
 
     conn = MySQLdb.connect(host = 'genome-mysql.cse.ucsc.edu',

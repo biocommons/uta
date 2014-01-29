@@ -2,7 +2,6 @@ create or replace view gene_aliases_v as
 select hgnc,unnest(array_append(string_to_array(aliases,','),hgnc)) as alias from gene ;
 
 
-
 create or replace view exon_set_exons_v as
 select ES.exon_set_id,
   array_to_string(array_agg(format('[%s,%s)',E.start_i,E.end_i) order by ES.alt_strand*E.start_i),',') as se_i,
@@ -14,22 +13,23 @@ join exon E on ES.exon_set_id=E.exon_set_id
 group by ES.exon_set_id  ;
 
 
-create or replace view seq_anno_ncbi_v as
-select seq_id,array_to_string(array_agg(distinct ac order by ac),',') as aliases
-from seq_anno
-where ac ~ '^N[CGMRW]'
-group by seq_id;
-
-
-drop view transcript_alignments_v;
-create or replace view transcript_alignments_v as
-select ES.exon_set_id,G.hgnc,
-	T.transcript_id,T.seq_id tx_seq_id,TSA.aliases as tx_aliases,
-	ES.alt_seq_id,ASA.aliases as alt_aliases,
-	T.cds_start_i,T.cds_end_i,EXE.se_i,EXE.lengths
+-- TODO: add alignment stats per exon
+create or replace view transcript_exon_sets as
+select T.hgnc,ES.alt_ac,ES.alt_strand,ES.alt_aln_method,EXE.se_i,EXE.lengths
 from exon_set ES
-join transcript T on ES.transcript_id=T.transcript_id
-join gene G on T.gene_id=G.gene_id
-join seq_anno_ncbi_v TSA on T.seq_id=TSA.seq_id
-join seq_anno_ncbi_v ASA on ES.alt_seq_id=ASA.seq_id
-join exon_set_exons_v EXE on ES.exon_set_id=EXE.exon_set_id;
+join transcript T on ES.tx_ac=T.ac
+join exon_set_exons_v EXE on ES.exon_set_id=EXE.exon_set_id
+where ES.alt_aln_method!='transcript';
+
+
+drop view _tx_alt_exon_pairs_v;
+create or replace view _tx_alt_exon_pairs_v as
+select TES.exon_set_id as tes_exon_set_id,AES.exon_set_id as aes_exon_set_id,
+TES.tx_ac as tx_ac,AES.alt_ac as alt_ac,AES.alt_strand,AES.alt_aln_method,
+TEX.ord as ord,TEX.exon_id as tx_exon_id,AEX.exon_id as alt_exon_id,
+TEX.start_i as tx_start_i,TEX.end_i as tx_end_i, AEX.start_i as alt_start_i,AEX.end_i as alt_end_i
+from exon_set TES
+join exon_set AES on TES.tx_ac=AES.tx_ac and TES.alt_aln_method='transcript' and AES.alt_aln_method!='transcript'
+join exon TEX on TES.exon_set_id=TEX.exon_set_id
+join exon AEX on AES.exon_set_id=AEX.exon_set_id and TEX.ord=AEX.ord;
+
