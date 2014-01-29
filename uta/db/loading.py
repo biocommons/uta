@@ -12,9 +12,13 @@ import eutils.client
 import uta
 import uta.luts
 import uta.utils
+import uta.formats.geneinfo as ufgi
+import uta.formats.exonset as ufes
+import uta.formats.txinfo as ufti
 usam = uta.models                         # backward compatibility
 
 logger = logging.getLogger(__name__)
+
 
 ############################################################################
 
@@ -96,10 +100,12 @@ def initialize_schema(session,opts,cf):
 
 ############################################################################
 
-def load_seq_info(session,opts,cf):
+def load_seqinfo(session,opts,cf):
     """load Seq entries with accessions from fasta file
     see uta/sbin/fasta-seq-info
     """
+
+    raise RuntimeError("Needs rework for newer seqinfo format (uta.formats.seqinfo)")
 
     ori = session.query(usam.Origin).filter(usam.Origin.name == opts['--origin']).one()
 
@@ -149,180 +155,31 @@ def load_seq_info(session,opts,cf):
 
 ############################################################################
 
-def load_eutils_genes(session,opts,cf):
-    """
-    load genes via eutils
-
-    This is preferred over data in ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/ because
-    we get summaries with eutils.
-    """
-
-    ec = eutils.client.Client()
-
-    splign_aln_method = session.query(usam.AlnMethod).filter(usam.AlnMethod.name == 'splign').one()
-    self_aln_method = session.query(usam.AlnMethod).filter(usam.AlnMethod.name == 'transcript').one()
-    u_ori_gene = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI gene').one()
-    u_ori_nt = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI nuccore').one()
-
-    def _get_or_create_seq(seq):
-        logger.debug('***** _get_or_create_seq('+seq[0:10]+'...)')
-        seq_md5 = hashlib.md5(seq.upper()).hexdigest()
-        u_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == seq_md5).first()
-        if u_seq is not None:
-            return u_seq,False
-        u_seq = usam.Seq(
-            seq = seq.upper(),
-            md5 = seq_md5,
-            len = len(seq),
-            )
-        session.add(u_seq)
-        logger.info("Seq: added seq_id {u_seq.seq_id} ({u_seq.len}, {u_seq.md5})".format(u_seq=u_seq))
-        return u_seq,True
-        
-    def _get_or_create_gene(hgnc,e_gene=None):
-        logger.debug("***** _get_or_create_gene({hgnc},{e_gene})".format(hgnc=hgnc,e_gene=e_gene))
-        u_gene = session.query(usam.Gene).filter(usam.Gene.hgnc == hgnc).first()
-        if u_gene is not None:
-            return u_gene,False
-        if e_gene is None:
-            e_gene = ec.fetch_gene_by_hgnc(hgnc)
-        u_gene = usam.Gene(
-            gene_id = e_gene.gene_id,
-            hgnc = e_gene.hgnc,
-            maploc = e_gene.maploc,
-            descr = e_gene.description,
-            summary = e_gene.summary,
-            aliases = ','.join(e_gene.synonyms),
-            )
-        session.add(u_gene)
-        logger.info("Gene: added {u_gene.gene_id} ({u_gene.hgnc}; {u_gene.descr})".format(u_gene=u_gene))
-        return u_gene,True
-
-    def _get_or_create_tx(ac,u_gene=None,e_tx=None):
-        logger.debug("***** _get_or_create_tx({ac},{u_gene},{e_tx})".format(
-            ac=ac,u_gene=u_gene,e_tx=e_tx))
-        u_tx = session.query(usam.Transcript).join(usam.SeqAnno,usam.Transcript.seq_id==usam.SeqAnno.seq_id).filter(usam.SeqAnno.ac == ac).first()
-        if u_tx is not None:
-            return u_tx,False
-        if u_gene is None:
-            u_gene,_ = _get_or_create_gene(e_tx.gene)
-        if e_tx is None:
-            e_tx = ec.fetch_nuccore_by_ac(ac)
-        u_tx_seq,_ = _get_or_create_seq(e_tx.seq)
-        u_tx = usam.Transcript(
-            origin_id=u_ori_nt.origin_id,
-            gene=u_gene,
-            seq=u_tx_seq,
-            cds_start_i=e_tx.cds.start_i,
-            cds_end_i=e_tx.cds.end_i,
-            )
-        session.add(u_tx)
-        logger.info("created Transcript {u_tx.transcript_id}".format(u_tx=u_tx))
-        return u_tx,True
-
-    def _get_or_create_tx_exon_set(u_tx,e_tx=None):
-        logger.debug("***** _get_or_create_tx_exon_set({u_tx},{e_tx})".format(u_tx=u_tx,e_tx=e_tx))
-        u_es = session.query(usam.ExonSet).filter(
-            usam.ExonSet.transcript_id == u_tx.transcript_id,
-            usam.ExonSet.alt_seq_id == u_tx.seq_id,
-            usam.ExonSet.alt_aln_method_id == self_aln_method.aln_method_id,
-            ).first()
-        if u_es is not None:
-            return u_es,False
-        if e_tx is None:
-            e_tx = ec.fetch_nuccore_by_ac(u_tx.ac)
-        u_es = usam.ExonSet(
-            transcript_id = u_tx.transcript_id,
-            alt_seq_id = u_tx.seq_id,
-            alt_aln_method_id = self_aln_method.aln_method_id,
-            alt_strand = 1,
-            )
-        session.add(u_es)
-        for ex in sorted(e_tx.exons):
-            session.add( usam.Exon(exon_set = u_es, start_i = ex.start_i, end_i = ex.end_i) )
-        return u_es,True
-    
-    def _get_or_create_g_exon_set(u_tx,e_ref,e_prd):
-        logger.debug("***** _get_or_create_g_exon_set({u_tx},{e_ref},{e_prd})".format(
-            u_tx=u_tx,e_ref=e_ref,e_prd=e_prd))
-        u_alt_seq = session.query(usam.Seq).join(usam.SeqAnno).filter(
-                        usam.SeqAnno.ac == e_ref.acv).first()
-        u_es = session.query(usam.ExonSet).filter(
-            usam.ExonSet.transcript == u_tx,
-            usam.ExonSet.alt_seq == u_alt_seq,
-            usam.ExonSet.alt_aln_method == splign_aln_method,
-            ).first()
-        if u_es is not None:
-            return u_es,False
-        u_es = usam.ExonSet(
-            transcript = u_tx,
-            alt_seq = u_alt_seq,
-            alt_aln_method = splign_aln_method,
-            alt_strand = e_prd.genomic_coords.strand,
-            )
-        session.add(u_es)
-        for s,e in sorted(e_prd.genomic_coords.intervals):
-            session.add( usam.Exon(exon_set = u_es, start_i = s, end_i = e) )
-        return u_es,True
-
-    ############################################################################
-    # TODO: switch to esr = ec.esearch(db='gene',term='human[orgn] AND "current only"[Filter]')
-    if opts['--all']:
-        def e_gene_iterator():
-            query = 'human[orgn] AND "current only"[Filter]';
-            esr = ec.esearch(db='gene',term=query)
-            n = esr.count
-            for i,id in enumerate(esr.ids):
-                e_gene = ec.efetch(db='gene',id=id)
-                logger.info("="*70+"\n{i}/{n} ({p:.1f}%): {e_gene.hgnc}...".format(
-                    i=i, n=n, p=(i+1)/n*100, e_gene=e_gene))
-                yield e_gene
-    else:
-        def e_gene_iterator():
-            hgncs = opts['GENES']
-            n = len(hgncs)
-            for i,hgnc in enumerate(hgncs):
-                e_gene = ec.fetch_gene_by_hgnc(hgnc)
-                logger.info("="*70+"\n{i}/{n} ({p:.1f}%): {e_gene.hgnc}...".format(
-                    i=i, n=n, p=(i+1)/n*100, e_gene=e_gene))
-                yield e_gene
-    
-    for e_gene in e_gene_iterator():
-        try:
-            if e_gene.type != 'protein-coding':
-                logger.warning("Skipping {e_gene.hgnc} (not protein coding)".format(e_gene=e_gene))
-                continue
-
-            u_gene,_ = _get_or_create_gene(e_gene.hgnc,e_gene)
-            if opts['--with-transcripts']:
-                for i_e_ref,e_ref in enumerate(e_gene.references):
-                    u_alt_seq = session.query(usam.Seq).join(usam.SeqAnno).filter(
-                        usam.SeqAnno.ac == e_ref.acv).first()
-                    if u_alt_seq is None:
-                        logger.warning("reference sequence {e_ref.acv} ({e_ref.heading}) is not loaded; skipping".format(
-                            e_ref=e_ref))
-                        continue
-
-                    for e_prd in e_ref.products:
-                        if not e_prd.acv.startswith('NM_'):
-                            logger.info("Skipping {e_prd.acv} (not an NM)".format(e_prd=e_prd))
-                            continue
-                        e_tx = ec.fetch_nuccore_by_ac(e_prd.acv)
-                        u_tx,_ = _get_or_create_tx(e_prd.acv,u_gene=u_gene,e_tx=e_tx)
-                        u_tx_es,_ = _get_or_create_tx_exon_set(u_tx,e_tx=e_tx)
-                        u_g_es,_ = _get_or_create_g_exon_set(u_tx,e_ref,e_prd)
-
-            session.commit()
-
-        #except eutils.exceptions.EutilsError as e:
-        except Exception as e:
-            logger.exception(e)
-            continue
-
+def load_exonsets(session,opts,cf):
+    pass
 
 ############################################################################
 
-def load_gene_info(session,opts,cf):
+def load_geneinfo(session,opts,cf):
+    for gi in ufgi.GeneInfoReader(gzip.open(opts['FILE'])):
+        session.add(
+            usam.Gene(
+                hgnc=gi.hgnc,
+                maploc=gi.maploc,
+                descr=gi.descr,
+                summary=gi.summary,
+                aliases=gi.aliases,
+                ))
+    session.commit()
+
+############################################################################
+
+def load_txinfo(session,opts,cf):
+    pass
+
+############################################################################
+
+def load_ncbi_geneinfo(session,opts,cf):
     """
     import data as downloaded (by you) from 
     ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
@@ -346,10 +203,12 @@ def load_gene_info(session,opts,cf):
         logger.info('loaded gene {g.hgnc} ({g.descr})'.format(g=g))
     session.commit()
 
-    
+
+
+
 ############################################################################
 
-def load_transcripts_seqgene(session,opts,cf):
+def load_ncbi_seqgene(session,opts,cf):
     """
     import data as downloaded (by you) as from
     ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz
