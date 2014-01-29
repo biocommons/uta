@@ -78,22 +78,6 @@ def initialize_schema(session,opts,cf):
             url = 'ftp://ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/',
             ))
     
-    session.add(
-        usam.AlnMethod(
-            name='transcript',
-            descr='exons defined in transcript source',
-            ))
-    session.add(
-        usam.AlnMethod(
-            name='splign',
-            descr='coordinates as obtained from NCBI via eutils, exon sequences realigned with needle',
-            ))
-    session.add(
-        usam.AlnMethod(
-            name='blat',
-            descr='coordinates obtained from UCSC via mysql interface, exon sequences realigned with needle',
-            ))
-
     session.commit()
     logger.info('initialized schema')
 
@@ -156,13 +140,19 @@ def load_seqinfo(session,opts,cf):
 ############################################################################
 
 def load_exonsets(session,opts,cf):
+    seen = set()
     for es in ufes.ExonSetReader(gzip.open(opts['FILE'])):
-        alt_aln_method = session.query(usam.AlnMethod).filter(usam.AlnMethod.name == es.method).one()
-
+        seen_key = (es.tx_ac,es.alt_ac,es.method)
+        if seen_key in seen:
+            logger.warn("multiple occurrences of {seen_key} in {file}; using only first".format(
+                seen_key=seen_key, file=opts['FILE']))
+            continue
+        seen.add(seen_key)
+        
         u_es = usam.ExonSet(
             tx_ac=es.tx_ac,
             alt_ac=es.alt_ac,
-            alt_aln_method=alt_aln_method,
+            alt_aln_method=es.method,
             alt_strand=es.strand
             )
         session.add(u_es)
@@ -200,14 +190,18 @@ def load_geneinfo(session,opts,cf):
 
 def load_txinfo(session,opts,cf):
     self_aln_method = 'transcript'
-    alt_aln_method = session.query(usam.AlnMethod).filter(usam.AlnMethod.name == self_aln_method).one()
 
     for ti in ufti.TxInfoReader(gzip.open(opts['FILE'])):
+        if ti.exons_se_i == '':
+            logger.warning(ti.ac + ': no exons?!; skipping.')
+            continue
+
         ori = session.query(usam.Origin).filter(usam.Origin.name == ti.origin).one()
         cds_start_i,cds_end_i = map(int,ti.cds_se_i.split(','))
+
         u_tx = usam.Transcript(
             ac=ti.ac,
-            origin_id=ori.origin_id,
+            origin=ori,
             hgnc=ti.hgnc,
             cds_start_i=cds_start_i,
             cds_end_i=cds_end_i,
@@ -218,7 +212,7 @@ def load_txinfo(session,opts,cf):
             tx_ac=ti.ac,
             alt_ac=ti.ac,
             alt_strand=1,
-            alt_aln_method=alt_aln_method,
+            alt_aln_method=self_aln_method,
             )
         session.add(u_es)
 
