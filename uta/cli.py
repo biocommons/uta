@@ -17,8 +17,9 @@ Usage:
   uta [options] load-txinfo FILE
   uta [options] load-exonsets FILE
   uta [options] align-exons FASTA_DIR
+  uta [options] fetch-align-tasks
   uta [options] load-ncbi-seqgene FILE
-
+  
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
 
@@ -73,6 +74,7 @@ def run(argv=None):
         ('load-txinfo',                 ul.load_txinfo),
 
         ('align-exons',					ul.align_exons),
+        ('fetch-align-tasks',			ul.fetch_align_tasks),
 
         ('load-ncbi-seqgene',           ul.load_ncbi_seqgene),
 

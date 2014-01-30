@@ -235,58 +235,86 @@ def load_txinfo(session,opts,cf):
 
 ############################################################################
 
+aln_sel_sql = """
+SELECT * FROM _tx_alt_exon_pairs_v TAEP
+WHERE NOT EXISTS (
+    SELECT tx_exon_id,alt_exon_id
+    FROM exon_aln EA
+    WHERE EA.tx_exon_id=TAEP.tx_exon_id AND EA.alt_exon_id=TAEP.alt_exon_id
+    )
+AND alt_ac in (
+'NC_000001.10', 'NC_000002.11', 'NC_000003.11',
+'NC_000004.11', 'NC_000005.9', 'NC_000006.11',
+'NC_000007.13', 'NC_000008.10', 'NC_000009.11',
+'NC_000010.10', 'NC_000011.9', 'NC_000012.11',
+'NC_000013.10', 'NC_000014.8', 'NC_000015.9',
+'NC_000016.9', 'NC_000017.10', 'NC_000018.9',
+'NC_000019.9', 'NC_000020.10', 'NC_000021.8',
+'NC_000022.10', 'NC_000023.10', 'NC_000024.9'
+)
+"""
+
+aln_ins_sql = """
+INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
+"""
+
+
+def fetch_align_tasks(session, opts, cf):
+    import psycopg2.extras
+
+    con = session.bind.pool.connect()
+
+    cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+    cur.execute(aln_sel_sql)
+    for r in cur.fetchall():
+        print("\t".join([ '%s:%d:%d' % (r.tx_ac, r.tx_start_i, r.tx_end_i),
+                          '%s:%d:%d' % (r.alt_ac, r.alt_start_i, r.alt_end_i) ]))
+
+
+
 def align_exons(session, opts, cf):
     # N.B. setup.py declares dependencies for using uta as a client.  The
     # imports below are loading depenencies only and are not in setup.py.
     import psycopg2.extras
     from eutils.sqlitecache import SQLiteCache
     from bdi.multifastadb import MultiFastaDB
+    import uta.utils.genomeutils as uug
     import uta.utils.alignment as uua
+    import locus_lib_bio.align.algorithms as llbaa
 
-    sel_sql = """
-    SELECT * FROM _tx_alt_exon_pairs_v TAEP
-    WHERE NOT EXISTS (
-        SELECT tx_exon_id,alt_exon_id
-        FROM exon_aln EA
-        WHERE EA.tx_exon_id=TAEP.tx_exon_id AND EA.alt_exon_id=TAEP.alt_exon_id
-        )
-    AND alt_ac in (
-    'NC_000001.10', 'NC_000002.11', 'NC_000003.11',
-    'NC_000004.11', 'NC_000005.9', 'NC_000006.11',
-    'NC_000007.13', 'NC_000008.10', 'NC_000009.11',
-    'NC_000010.10', 'NC_000011.9', 'NC_000012.11',
-    'NC_000013.10', 'NC_000014.8', 'NC_000015.9',
-    'NC_000016.9', 'NC_000017.10', 'NC_000018.9',
-    'NC_000019.9', 'NC_000020.10', 'NC_000021.8',
-    'NC_000022.10', 'NC_000023.10', 'NC_000024.9'
-    )
-    """
-
-    ins_sql = """
-    INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
-    """
+    aligner = 'llbaa'
 
     cache = SQLiteCache(os.path.expanduser('~/tmp/align-exons.db'))
     def _align(tx_seq,alt_seq):
-        key = hashlib.md5(tx_seq+';'+alt_seq).hexdigest()
+        key = aligner + hashlib.md5(tx_seq+';'+alt_seq).hexdigest()
         try:
-            return cache[key]
+            a = cache[key]
+            logger.debug('cache hit for ({}~{}); key={}'.format(len(tx_seq),len(alt_seq),key))
+            return a
         except KeyError:
+            logger.debug('cache miss for ({}~{}); key={}'.format(len(tx_seq),len(alt_seq),key))
             pass
-        logger.debug('running alignment ({}~{}); key={}'.format(len(tx_seq),len(alt_seq),key))
-        cache[key] = uua.align2(tx_seq,alt_seq)
+        if aligner == '':
+            cache[key] = uua.align2(tx_seq,alt_seq)
+        elif aligner == 'llbaa':
+            score,cigar = llbaa.needleman_wunsch_gotoh_align(tx_seq,alt_seq)
+            tx_aseq,alt_aseq = llbaa.cigar_alignment(tx_seq,alt_seq,cigar,hide_match=False)
+            cache[key] = tx_aseq,alt_aseq
+        else:
+            raise RuntimeError("WTF? I ain't ne'er heard of no {} aligner".format(aligner))
         return cache[key]
 
-    mfdb = MultiFastaDB([opts[u'FASTA_DIR']], use_meta_index=True)
 
+    mfdb = MultiFastaDB([opts[u'FASTA_DIR']], use_meta_index=True)
     con = session.bind.pool.connect()
 
     cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-    cur.execute(sel_sql)
+    cur.execute(aln_sel_sql)
     rows = cur.fetchall()
     n_rows = len(rows)
     ac_warning = set()
     t0 = time.time()
+    tx_acs = set()
     for i_r,r in enumerate(rows):
         if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
             continue
@@ -302,17 +330,24 @@ def align_exons(session, opts, cf):
             logging.warning("{r.alt_ac}: Not in sequence sources; can't align".format(r=r))
             ac_warning.add(r.alt_ac)
             continue
+
+        if r.alt_strand == -1:
+            alt_seq = uug.reverse_complement(alt_seq)
+
         tx_aseq,alt_aseq = _align(tx_seq,alt_seq)
+
         cigar = uua.alignment_cigar_string(tx_aseq,alt_aseq)
         added = datetime.datetime.now()
-        cur.execute(ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar,added,tx_aseq,alt_aseq])
-        if i_r == n_rows-1 or i_r % 25 == 0:
+        cur.execute(aln_ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar,added,tx_aseq,alt_aseq])
+        tx_acs.add(r.tx_ac)
+        if i_r == n_rows-1 or i_r % 50 == 0:
             con.commit()
             speed = (i_r+1) / (time.time() - t0);      # aln/sec
             etr = (n_rows-i_r-1) / speed               # etr in secs
             etr_s = str(datetime.timedelta(seconds=int(etr)))  # etr as H:M:S
-            logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s})'.format(
-                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100,speed=speed,etr=etr,etr_s=etr_s))
+            logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s}); {n_tx} tx ({tx_acs})'.format(
+                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100,speed=speed,etr=etr,etr_s=etr_s,n_tx=len(tx_acs),tx_acs=','.join(sorted(tx_acs)) ))
+            tx_acs = set()
 
     cur.close()
     con.close()
