@@ -14,7 +14,7 @@ group by ES.exon_set_id  ;
 
 
 -- TODO: add alignment stats per exon
-drop view transcript_exon_sets_v cascade;
+--drop view transcript_exon_sets_v cascade;
 create or replace view transcript_exon_sets_v as
 select T.hgnc,ES.tx_ac,ES.alt_ac,ES.alt_strand,ES.alt_aln_method,EXE.se_i,EXE.lengths
 from exon_set ES
@@ -24,7 +24,7 @@ join exon_set_exons_v EXE on ES.exon_set_id=EXE.exon_set_id
 -- where ES.alt_aln_method!='transcript';
 
 
-drop view tx_alt_exon_pairs_v;
+--drop view tx_alt_exon_pairs_v;
 create or replace view tx_alt_exon_pairs_v as
 select TES.exon_set_id as tes_exon_set_id,AES.exon_set_id as aes_exon_set_id,
 TES.tx_ac as tx_ac,AES.alt_ac as alt_ac,AES.alt_strand,AES.alt_aln_method,
