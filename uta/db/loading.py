@@ -160,7 +160,7 @@ def load_exonsets(session,opts,cf):
         session.add(u_es)
 
         exons = [ map(int,ex.split(',')) for ex in es.exons_se_i.split(';') ]
-        exons.sort(reverse=es.strand==-1)
+        exons.sort(reverse=int(es.strand)==-1)
         for i_ex,ex in enumerate(exons):
             s,e = ex
             u_ex = usam.Exon(
@@ -192,6 +192,8 @@ def load_geneinfo(session,opts,cf):
 
 def load_txinfo(session,opts,cf):
     self_aln_method = 'transcript'
+
+    #TODO: add cds_md5 column and load here
 
     for ti in ufti.TxInfoReader(gzip.open(opts['FILE'])):
         if ti.exons_se_i == '':
@@ -259,19 +261,6 @@ INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUE
 """
 
 
-def fetch_align_tasks(session, opts, cf):
-    import psycopg2.extras
-
-    con = session.bind.pool.connect()
-
-    cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-    cur.execute(aln_sel_sql)
-    for r in cur.fetchall():
-        print("\t".join([ '%s:%d:%d' % (r.tx_ac, r.tx_start_i, r.tx_end_i),
-                          '%s:%d:%d' % (r.alt_ac, r.alt_start_i, r.alt_end_i) ]))
-
-
-
 def align_exons(session, opts, cf):
     # N.B. setup.py declares dependencies for using uta as a client.  The
     # imports below are loading depenencies only and are not in setup.py.
@@ -281,29 +270,6 @@ def align_exons(session, opts, cf):
     import uta.utils.genomeutils as uug
     import uta.utils.alignment as uua
     import locus_lib_bio.align.algorithms as llbaa
-
-    aligner = 'llbaa'
-
-    cache = SQLiteCache(os.path.expanduser('~/tmp/align-exons.db'))
-    def _align(tx_seq,alt_seq):
-        key = aligner + hashlib.md5(tx_seq+';'+alt_seq).hexdigest()
-        try:
-            a = cache[key]
-            logger.debug('cache hit for ({}~{}); key={}'.format(len(tx_seq),len(alt_seq),key))
-            return a
-        except KeyError:
-            logger.debug('cache miss for ({}~{}); key={}'.format(len(tx_seq),len(alt_seq),key))
-            pass
-        if aligner == '':
-            cache[key] = uua.align2(tx_seq,alt_seq)
-        elif aligner == 'llbaa':
-            score,cigar = llbaa.needleman_wunsch_gotoh_align(tx_seq,alt_seq)
-            tx_aseq,alt_aseq = llbaa.cigar_alignment(tx_seq,alt_seq,cigar,hide_match=False)
-            cache[key] = tx_aseq,alt_aseq
-        else:
-            raise RuntimeError("WTF? I ain't ne'er heard of no {} aligner".format(aligner))
-        return cache[key]
-
 
     mfdb = MultiFastaDB([opts[u'FASTA_DIR']], use_meta_index=True)
     con = session.bind.pool.connect()
@@ -334,12 +300,13 @@ def align_exons(session, opts, cf):
         if r.alt_strand == -1:
             alt_seq = uug.reverse_complement(alt_seq)
 
-        tx_aseq,alt_aseq = _align(tx_seq,alt_seq)
-
-        cigar = uua.alignment_cigar_string(tx_aseq,alt_aseq)
+        score,cigar = llbaa.needleman_wunsch_gotoh_align(tx_seq,alt_seq,extended_cigar=True)
+        tx_aseq,alt_aseq = llbaa.cigar_alignment(tx_seq,alt_seq,cigar,hide_match=False)
+        
         added = datetime.datetime.now()
-        cur.execute(aln_ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar,added,tx_aseq,alt_aseq])
+        cur.execute(aln_ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar.to_string(),added,tx_aseq,alt_aseq])
         tx_acs.add(r.tx_ac)
+
         if i_r == n_rows-1 or i_r % 50 == 0:
             con.commit()
             speed = (i_r+1) / (time.time() - t0);      # aln/sec
