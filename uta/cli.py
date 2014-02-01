@@ -10,6 +10,7 @@ Usage:
   uta [options] shell
   uta [options] drop-schema
   uta [options] create-schema
+  uta [options] create-views FILES ...
   uta [options] initialize-schema
   uta [options] rebuild
   uta [options] load-seqinfo --origin=ORIGIN [--fast] FILE
@@ -64,6 +65,7 @@ def run(argv=None):
     dispatch_table = [
         ('drop-schema',                 ul.drop_schema),
         ('create-schema',               ul.create_schema),
+        ('create-views',                ul.create_views),
         ('initialize-schema',           ul.initialize_schema),
         ('rebuild',                     rebuild),
 

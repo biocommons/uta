@@ -51,6 +51,15 @@ def create_schema(session,opts,cf):
 
 ############################################################################
 
+def create_views(session,opts,cf):
+    """Create views"""
+    for fn in opts['FILES']:
+        logging.info('loading '+fn)
+        session.execute( open(fn).read() )
+    session.commit()
+
+############################################################################
+
 def initialize_schema(session,opts,cf):
     """Create and populate initial schema"""
 
@@ -177,7 +186,7 @@ def load_exonsets(session,opts,cf):
 ############################################################################
 
 def load_geneinfo(session,opts,cf):
-    for gi in ufgi.GeneInfoReader(gzip.open(opts['FILE'])):
+    for i_gi,gi in enumerate(ufgi.GeneInfoReader(gzip.open(opts['FILE']))):
         session.add(
             usam.Gene(
                 hgnc=gi.hgnc,
@@ -238,7 +247,7 @@ def load_txinfo(session,opts,cf):
 ############################################################################
 
 aln_sel_sql = """
-SELECT * FROM _tx_alt_exon_pairs_v TAEP
+SELECT * FROM tx_alt_exon_pairs_v TAEP
 WHERE NOT EXISTS (
     SELECT tx_exon_id,alt_exon_id
     FROM exon_aln EA
