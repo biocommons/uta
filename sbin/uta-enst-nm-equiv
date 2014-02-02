@@ -1,0 +1,94 @@
+#!/usr/bin/env perl
+#
+# compare-transcripts -- compare refseq and enst transcript exon
+# structures and CDS as stored in Ensembl
+#
+
+use strict;
+use warnings;
+
+use Config::IniFiles;
+use Data::Dumper;
+use FindBin;
+use Getopt::Long qw(:config gnu_compat);
+
+use local::lib "$FindBin::RealBin/../ve";
+use Log::Log4perl;
+
+use local::lib "$FindBin::RealBin/..";
+use UTA::Matchmaker;
+
+
+my $root = "$FindBin::RealBin/..";
+
+my $opts = {
+  'database' => 'homo_sapiens_core_70_37',
+  'host' => 'ensembl-70.locusdev.net',
+  'port' => 5306,
+  'user' => 'anonymous',
+  'pass' => undef,
+};
+$opts->{'cache-filename'} = join('/', $ENV{'HOME'}, 'tmp',
+								 'matchmaker-'.$opts->{'database'}.'.cache');
+
+
+Log::Log4perl->init_once( "$root/etc/logging.conf" );
+
+GetOptions($opts,
+		   'host|h=s',
+		   'port|p=s',
+		   'user|u=s',
+		   'config|C=s',
+		  )
+  || die("$0: you got usage issues, homey\n");
+
+
+sub fetch_genes($) {
+  my $opts = shift;
+  eval 'use DBI';
+  my $dsn = "DBI:mysql:host=$opts->{host};port=$opts->{port};database=$opts->{database}";
+  my $dbh = DBI->connect($dsn, $opts->{user}, $opts->{pass});
+  my @res = map {$_->[0]} @{ $dbh->selectall_arrayref(
+	'select display_label from xref where external_db_id=1100') };
+  return sort(@res);
+}
+
+my @genes = $#ARGV == -1 ? sort(fetch_genes($opts)) : @ARGV;
+printf(STDERR "# %d genes to list\n", $#genes+1);
+
+my $mm = UTA::Matchmaker->new( %$opts );
+
+for(my $i=0; $i<=$#genes; $i++) {
+  my $hgnc = $genes[$i];
+  printf(STDERR "%d/%d (%4.1f%%): %-40s\r", 
+		 $i+1, $#genes+1, ($i+1)/($#genes+1)*100, $hgnc);
+  my $gti;
+  eval '$gti = $mm->match_by_gene($hgnc)';
+  if (not defined $gti) {
+	print(STDERR "$hgnc failed: $@");
+	next;
+  }
+
+  foreach my $rec (	(map {[@$_,'CE']} @{$gti->cmps()->{'CE'}}),
+					(map {[@$_,'CC']} @{$gti->cmps()->{'CC'}}) ) {
+	print( join("\t",$gti->hgnc(),@$rec), "\n" );
+  }
+}
+
+exit(0);
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>

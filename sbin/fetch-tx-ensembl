@@ -1,0 +1,124 @@
+#!/usr/bin/env perl
+#
+# fetch-tx-ensembl -- fetch all NM transcripts with exon start,end pairs
+# NM_000017.2 10  (121163570,121163734);(121164828,121164992);(121174788,121174938) ...
+#
+
+use strict;
+use warnings;
+
+use Config::IniFiles;
+use Data::Dumper;
+use Getopt::Long qw(:config gnu_compat);
+use Bio::EnsEMBL::Registry;
+
+use FindBin;
+
+use local::lib "$FindBin::RealBin/../ve";
+use Log::Log4perl;
+
+############################################################################
+
+my $root = "$FindBin::RealBin/..";
+
+my $opts = {
+  'database' => 'homo_sapiens_otherfeatures_70_37',
+  'host' => 'ensembl-70.locusdev.net',
+  'port' => 5306,
+  'user' => 'anonymous',
+  'pass' => undef,
+};
+
+$opts->{'cache-filename'} = join('/', $ENV{'HOME'}, 'tmp',
+								 'matchmaker-'.$opts->{'database'}.'.cache');
+
+############################################################################
+
+sub fetch_transcripts($);
+
+############################################################################
+
+Log::Log4perl->init_once( "$root/etc/logging.conf" );
+my $logger = Log::Log4perl->get_logger();
+
+GetOptions($opts,
+		   'host|h=s',
+		   'port|p=s',
+		   'user|u=s',
+		   'config|C=s',
+		  )
+  || die("$0: you got usage issues, homey\n");
+
+my $registry = 'Bio::EnsEMBL::Registry';
+$registry->load_registry_from_db(
+    -host => $opts->{host},
+    -user => $opts->{user},
+	-port => $opts->{port},
+	-pass => $opts->{pass},
+);
+
+my $sa = $registry->get_adaptor( 'Human', 'Otherfeatures', 'Slice' );
+my $ta = $registry->get_adaptor( 'Human', 'Otherfeatures', 'Transcript' );
+
+my @transcripts = $#ARGV == -1 ? sort(fetch_transcripts($opts)) : @ARGV;
+$logger->info(sprintf("%d transcripts\n", $#transcripts+1));
+
+for(my $i=0; $i<=$#transcripts; $i++) {
+  my $acv = $transcripts[$i];
+
+  if (-t 2 and $i%7 == 0) {
+	printf(STDERR "%d/%d (%4.1f%%): %-40s\r",
+		   $i+1, $#transcripts+1, ($i+1)/($#transcripts+1)*100, $acv);
+  }
+
+  my $tx = $ta->fetch_by_stable_id($acv);
+  if ($acv ne $tx->display_id()) {
+	$logger->fatal(sprintf("acv %s != display_id %s\n", $acv,$tx->display_id()));
+  }
+
+  if ( not $tx->is_current() ) {
+	$logger->info(sprintf("%s: not current (but including)\n", $acv));
+  }
+
+  my @se = map {sprintf("(%d,%d)",$_->start-1,$_->end)} @{ $tx->get_all_Exons() };
+  @se = reverse(@se) if ($tx->seq_region_strand() == -1);
+
+  print( join("\t", $acv, $#se+1, join(';',@se) ), "\n" );
+#			  #'chr'.$tx->seq_region_name(),
+#			  #($tx->seq_region_strand() == -1 ? '-' : '+'),
+#			  #$tx->seq_region_start()-1,
+#			  #$tx->seq_region_end(),
+#			  #(defined $tx->cdna_coding_start() ? $tx->cdna_coding_start()-1 : ''),
+#		 "\n"));
+}
+
+exit(0);
+
+############################################################################
+
+sub fetch_transcripts($) {
+  my $opts = shift;
+  eval 'use DBI';
+  my $dsn = "DBI:mysql:host=$opts->{host};port=$opts->{port};database=$opts->{database}";
+  my $dbh = DBI->connect($dsn, $opts->{user}, $opts->{pass});
+  my $sql = sprintf("select stable_id from %s.transcript where stable_id like 'NM_%%'",
+					$opts->{database} );
+  my @res = map {$_->[0]} @{ $dbh->selectall_arrayref($sql) };
+  return sort(@res);
+}
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
