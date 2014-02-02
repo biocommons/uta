@@ -28,12 +28,53 @@ data/ucsc.exonsets.gz:
 
 
 ############################################################################
-## test data
+## testdb
 
 TEST_CONF=test.conf
 include .${TEST_CONF}
 .${TEST_CONF}: ${TEST_CONF}
 	../sbin/conf-to-vars $< >$@
+
+#=> test-data -- build test data (currently 4 genes, 4 transcripts)
+.PHONY: test-data
+test-data: test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz;
+
+
+# select one gene,ac combo for 3-exon transcript with each status,strand possibility
+# uta=# select distinct on (status,strand) status,strand,gene,ac from transcript_table_mv where gene !~ 'orf|BEAN1' and n_t_exons=3;
+#  status | strand |  gene   |       ac       
+# --------+--------+---------+----------------
+#  nlxdi  |     -1 | VSX1    | NM_001256271.1
+#  nlXDI  |     -1 | KCNJ8   | NM_004982.2
+#  NlxdI  |     -1 | GPHB5   | NM_145171.3
+#  NlxdI  |      1 | GFER    | NM_005262.2
+#  NlxDi  |     -1 | ZNF787  | NM_001002836.2
+#  NlxDi  |      1 | TGIF2   | NM_001199513.1
+#  NlXdI  |     -1 | CYP1B1  | NM_000104.3
+#  NlXDi  |     -1 | EGR2    | NM_001136179.1
+#  NLxdi  |     -1 | TMEM86B | NM_173804.4
+#  NLxdi  |      1 | RPLP1   | NM_213725.1
+#  NLXdi  |     -1 | FUT3    | NM_001097639.1
+#  NLXdi  |      1 | KLHL42  | NM_020782.1
+
+test-data/ncbi.geneinfo.gz: data/ncbi.geneinfo.gz test-data/genes
+	gzip -cdq <$< \
+	| perl -n -e 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
+		-e 'print if $$.==1 or m/^(?:$$re)\s/' \
+	| gzip -cq >$@
+	printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
+test-data/ncbi.exonsets.gz: data/ncbi.exonsets.gz test-data/acs
+	gzip -cdq <$< \
+	| perl -n -e 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
+		-e 'print if $$.==1 or m/^(?:$$re)\s/' \
+	| gzip -cq >$@
+	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
+test-data/ncbi.txinfo.gz: data/ncbi.txinfo.gz test-data/acs
+	gzip -cdq <$< \
+	| perl -aF'\t' -ne 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
+		-e 'print if $$.==1 or $$F[1] =~ m/^(?:$$re)$$/' \
+	| gzip -cq >$@
+	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
 #=> testdb -- create a test database with small input
 testdb: test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz
@@ -48,13 +89,6 @@ testdb: test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exons
 	uta --conf=${TEST_CONF} load-exonsets $(word 3,$^)
 	uta --conf=${TEST_CONF} align-exons /locus/data/core-rest/2014-01/sequences/
 
-
-test-data/ncbi.exonsets.gz: data/ncbi.exonsets.gz
-	gzip -cdq <$< | perl -ne 'print if $$.==1 or m/^(?:NM_000039.1|NM_000040.1|NM_000041.2|NM_000055.2)\s/' | gzip -cq >$@
-test-data/ncbi.geneinfo.gz: data/ncbi.geneinfo.gz
-	gzip -cdq <$< | perl -ne 'print if $$.==1 or m/^(?:APOC3|BCHE|APOE|APOA1)\s/' | gzip -cq >$@
-test-data/ncbi.txinfo.gz: data/ncbi.txinfo.gz
-	gzip -cdq <$< | perl -aF'\t' -ne 'print if $$.==1 or $$F[1] =~ m/^(?:NM_000039.1|NM_000040.1|NM_000041.2|NM_000055.2)$$/' | gzip -cq >$@
 
 
 
