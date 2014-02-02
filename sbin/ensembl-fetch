@@ -1,0 +1,141 @@
+#!/usr/bin/env perl
+#
+# fetch-tx-ensembl -- fetch all NM transcripts with exon start,end pairs
+# NM_000017.2 10  (121163570,121163734);(121164828,121164992);(121174788,121174938) ...
+#
+
+use strict;
+use warnings;
+
+use Config::IniFiles;
+use Data::Dumper;
+use Getopt::Long qw(:config gnu_compat);
+use Bio::EnsEMBL::Registry;
+
+use IO::File;
+use IO::Zlib;
+use IO::Compress::Gzip;
+
+use FindBin;
+
+use local::lib "$FindBin::RealBin/../ve";
+use Log::Log4perl;
+
+############################################################################
+
+my $root = "$FindBin::RealBin/..";
+
+my $opts = {
+  'database' => 'homo_sapiens_otherfeatures_73_37',
+  'host' => '10.10.3.142',
+	  #'ensembl-70.locusdev.net',
+  'port' => 5306,
+  'user' => 'anonymous',
+  'pass' => undef,
+};
+
+our %nc_to_chr = (
+    'NC_000001.10' =>  '1', 'NC_000002.11' =>  '2', 'NC_000003.11' => '3',
+    'NC_000004.11' =>  '4', 'NC_000005.9'  =>  '5', 'NC_000006.11' => '6',
+    'NC_000007.13' =>  '7', 'NC_000008.10' =>  '8', 'NC_000009.11' => '9',
+    'NC_000010.10' => '10', 'NC_000011.9'  => '11', 'NC_000012.11' => '12',
+    'NC_000013.10' => '13', 'NC_000014.8'  => '14', 'NC_000015.9'  => '15',
+    'NC_000016.9'  => '16', 'NC_000017.10' => '17', 'NC_000018.9'  => '18',
+    'NC_000019.9'  => '19', 'NC_000020.10' => '20', 'NC_000021.8'  => '21',
+    'NC_000022.10' => '22', 'NC_000023.10' =>  'X', 'NC_000024.9'  => 'Y',
+    );
+our %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
+
+my $method = 'ensembl';
+my $origin = 'ensembl';
+
+############################################################################
+
+Log::Log4perl->init_once( "$root/etc/logging.conf" );
+my $logger = Log::Log4perl->get_logger();
+
+GetOptions($opts,
+		   'host|h=s',
+		   'port|p=s',
+		   'user|u=s',
+		   'config|C=s',
+		  )
+  || die("$0: you got usage issues, homey\n");
+
+my $registry = 'Bio::EnsEMBL::Registry';
+$registry->load_registry_from_db(
+    -host => $opts->{host},
+    -user => $opts->{user},
+	-port => $opts->{port},
+	-pass => $opts->{pass},
+);
+
+my $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
+my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
+my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
+
+
+#foreach my $chr (@ARGV) {
+#	my $slice = $sa->fetch_by_region('chromosome',$chr,16000000,16200000);
+#	my (@tx) = @{ $slice->get_all_Transcripts() };
+#	$logger->info(sprintf("%d transcripts on chr%d\n",$#tx+1,$chr));
+
+my $to_file = 1;
+my ($tiw, $esw);
+if ($to_file == 1) {
+	$tiw = IO::Zlib->new("ensembl.txinfo.gz", "wb");
+	$esw = IO::Zlib->new("ensembl.exonsets.gz", "wb");
+} else {
+	$tiw = IO::Handle->new_from_fd(fileno(STDOUT),'w');
+	$esw = IO::Handle->new_from_fd(fileno(STDOUT),'w');
+}
+
+$tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
+$esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
+
+foreach my $hgnc (@ARGV) {
+	my $g = @{ $ga->fetch_all_by_external_name($hgnc) }[0];
+	my @tx = @{ $g->get_all_Transcripts };
+	$logger->info(sprintf("%d transcripts for gene %s\n",$#tx+1,$hgnc));
+	
+	foreach my $tx (@tx) {
+		my $hgnc = $tx->get_Gene()->external_name();
+		my $srn = @{$tx->project('chromosome')}[0]->to_Slice()->seq_region_name;
+		my $nc = $chr_to_nc{$srn};
+
+		$logger->info(sprintf("%s (%s; %s)\n",$tx->display_id,$hgnc,$tx->strand));
+
+		my @g_exons = @{ $tx->get_all_Exons() };
+		my $g_exons_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @g_exons ));
+		$esw->print( join("\t", $tx->display_id(), $nc, $method, $tx->strand(), $g_exons_str), "\n");
+
+		if ( $tx->biotype ne 'protein_coding' ) {
+			$logger->info(sprintf("%s: is type %s (not protein_coding); skipping",$tx->display_id,$tx->biotype));
+			next;
+		}
+		
+		my $tm = $tx->get_TranscriptMapper();
+		my @c_exon_coords = map( $tm->genomic2cdna($_->start(),$_->end(),$tx->strand), @g_exons );
+		my $c_exon_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @c_exon_coords ));
+		$tiw->print( join("\t", $origin, $tx->display_id(), $hgnc, 
+						  sprintf("%d,%d",$tx->cdna_coding_start-1,$tx->cdna_coding_end),
+						  $c_exon_str), "\n");
+}}
+
+
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
