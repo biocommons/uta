@@ -73,26 +73,23 @@ my $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
 my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
 my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
 
-
-#foreach my $chr (@ARGV) {
-#	my $slice = $sa->fetch_by_region('chromosome',$chr,16000000,16200000);
-#	my (@tx) = @{ $slice->get_all_Transcripts() };
-#	$logger->info(sprintf("%d transcripts on chr%d\n",$#tx+1,$chr));
-
-my $to_file = 1;
-my ($tiw, $esw, $faw);
-if ($to_file == 1) {
-	$tiw = IO::Zlib->new("ensembl.txinfo.gz", "wb");
-	$esw = IO::Zlib->new("ensembl.exonsets.gz", "wb");
-	$faw = IO::Zlib->new("ensembl.fasta.gz", "wb");
-} else {
-	$tiw = IO::Handle->new_from_fd(fileno(STDOUT),'w');
-	$esw = IO::Handle->new_from_fd(fileno(STDOUT),'w');
-}
+my $tiw = IO::Zlib->new("ensembl.txinfo.gz.tmp", "wb");
+my $esw = IO::Zlib->new("ensembl.exonsets.gz.tmp", "wb");
+my $faw = IO::Zlib->new("ensembl.fasta.gz.tmp", "wb");
 
 $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
 $esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
 
+
+my %tx_seen;
+
+## process by chromosome -- I'd prefer to do this, but the coords were not
+## equivalent. I was probably in the wrong coord system, but I haven't work
+## this out yet.
+##foreach my $chr (@ARGV) {
+##	my $slice = $sa->fetch_by_region('chromosome',$chr,16000000,16200000);
+##	my (@tx) = @{ $slice->get_all_Transcripts() };
+##	$logger->info(sprintf("%d transcripts on chr%d\n",$#tx+1,$chr));
 
 #foreach my $hgnc (@ARGV) {
 while (my $hgnc = <>) {
@@ -104,8 +101,23 @@ while (my $hgnc = <>) {
 	}
 	my @tx = @{ $g->get_all_Transcripts };
 	$logger->info(sprintf("%d transcripts for gene %s\n",$#tx+1,$hgnc));
-	
+
 	foreach my $tx (@tx) {
+		# write txinfo if protein coding
+		if ( $tx->biotype ne 'protein_coding' ) {
+			$logger->info(sprintf("%s: is type %s (not protein_coding); skipping",$tx->display_id,$tx->biotype));
+			next;
+		}
+
+		if (exists $tx_seen{$tx->display_id}) {
+			my @others = sort(@{$tx_seen{$tx->display_id}});
+			$logger->warn(sprintf("gene %s: %s already seen for %d genes (%s); skipping",
+								  $hgnc, $tx->display_id, $#others+1, join(",",@others)));
+			push(@{$tx_seen{$tx->display_id}},$hgnc);
+			next;
+		}
+		push(@{$tx_seen{$tx->display_id}},$hgnc);
+
 		my $hgnc = $tx->get_Gene()->external_name();
 		my $tx_c = @{$tx->project('chromosome')}[0];
 		if (not defined $tx_c) {
@@ -126,11 +138,6 @@ while (my $hgnc = <>) {
 		my $g_exons_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @g_exons ));
 		$esw->print( join("\t", $tx->display_id(), $nc, $method, $tx->strand(), $g_exons_str), "\n");
 
-		# write txinfo if protein coding
-		if ( $tx->biotype ne 'protein_coding' ) {
-			$logger->info(sprintf("%s: is type %s (not protein_coding); skipping",$tx->display_id,$tx->biotype));
-			next;
-		}
 		my $tm = $tx->get_TranscriptMapper();
 		my @c_exon_coords = map( $tm->genomic2cdna($_->start(),$_->end(),$tx->strand), @g_exons );
 		my $c_exon_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @c_exon_coords ));
@@ -139,6 +146,10 @@ while (my $hgnc = <>) {
 						  $c_exon_str), "\n");
 }}
 
+
+rename("ensembl.txinfo.gz.tmp","ensembl.txinfo.gz");
+rename("ensembl.exonsets.gz.tmp","ensembl.exonsets.gz");
+rename("ensembl.fasta.gz.tmp","ensembl.fasta.gz");
 
 
 ## <LICENSE>
