@@ -14,8 +14,9 @@ import eutils.client
 import uta
 import uta.luts
 import uta.utils
-import uta.formats.geneinfo as ufgi
 import uta.formats.exonset as ufes
+import uta.formats.geneinfo as ufgi
+import uta.formats.seqinfo as ufsi
 import uta.formats.txinfo as ufti
 usam = uta.models                         # backward compatibility
 
@@ -54,7 +55,7 @@ def create_schema(session,opts,cf):
 def create_views(session,opts,cf):
     """Create views"""
     for fn in opts['FILES']:
-        logging.info('loading '+fn)
+        logger.info('loading '+fn)
         session.execute( open(fn).read() )
     session.commit()
 
@@ -97,56 +98,32 @@ def initialize_schema(session,opts,cf):
 
 def load_seqinfo(session,opts,cf):
     """load Seq entries with accessions from fasta file
-    see uta/sbin/fasta-seq-info
     """
 
-    raise RuntimeError("Needs rework for newer seqinfo format (uta.formats.seqinfo)")
+    sir = ufsi.SeqInfoReader(gzip.open(opts['FILE']))
+    for md5,si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
+                                  key=lambda si: si.md5):
+        sis = list(si_iter)
+        si = sis[0]
 
-    ori = session.query(usam.Origin).filter(usam.Origin.name == opts['--origin']).one()
+        logger.info("loading seq {md5} with {n} acs ({acs})".format(
+            md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
 
-    fh = gzip.open(opts['FILE'],'r') if opts['FILE'].endswith('.gz') else open(opts['FILE'])
-    seqinfo = csv.DictReader(fh, delimiter=b'\t')
+        u_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == md5).first()
+        if u_seq is None:
+            u_seq = usam.Seq(seq_id=md5, len=si.len, seq=si.seq)
+            session.add(u_seq)
 
-    if opts['--fast']:
-        logger.info('using fast(er) seq_anno loader')
-        data = list(seqinfo)
-        unique_md5_lens = set([ (d['md5'],int(d['len'])) for d in data ])
-        session.execute(
-            usam.Seq.__table__.insert(),
-            [ {'seq_id':md5, 'len':len}
-              for md5,len in unique_md5_lens ]
-            )
-        session.execute(
-            usam.SeqAnno.__table__.insert(),
-            [ {'origin_id': ori.origin_id,'seq_id':d['md5'],'ac':a}
-              for d in data for a in d['aliases'].split(',') ]
-            )
+            for si in sis:
+                u_ori = session.query(usam.Origin).filter(usam.Origin.name == si.origin).one()                
+                u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
+                                         ac=si.ac, descr=si.descr)
+                session.add(u_seqanno)
+        else:
+            RuntimeError("need to handle case of existing sequences")
+            
         session.commit()
-        return
 
-    raise RuntimeError("code below probably needs updating")
-    for i_row,row in enumerate(seqinfo):
-        seq = session.query(usam.Seq).filter(usam.Seq.seq_id == row['md5']).first()
-        if seq is None:
-            seq = usam.Seq(seq_id=row['md5'],len=row['len'])
-            session.add(seq)
-
-        for alias in row['aliases'].split(','):
-            soa = session.query(usam.SeqAnno).filter(
-                usam.SeqAnno.origin_id == ori.origin_id,
-                usam.SeqAnno.ac == alias,
-                ).first()
-            if soa is None:
-                soa = usam.SeqAnno(
-                    seq = seq,
-                    origin = ori,
-                    alias = alias
-                    )
-                session.add(soa)
-        if i_row % 250 == 0:
-            session.commit()
-            logger.info('commited @ row '+str(i_row))
-    session.commit()
 
 ############################################################################
 
@@ -297,13 +274,13 @@ def align_exons(session, opts, cf):
         try:
             tx_seq = mfdb.fetch(r.tx_ac, r.tx_start_i, r.tx_end_i)
         except KeyError:
-            logging.warning("{r.tx_ac}: Not in sequence sources; can't align".format(r=r))
+            logger.warning("{r.tx_ac}: Not in sequence sources; can't align".format(r=r))
             ac_warning.add(r.tx_ac)
             continue
         try:
             alt_seq = mfdb.fetch(r.alt_ac, r.alt_start_i, r.alt_end_i)
         except KeyError:
-            logging.warning("{r.alt_ac}: Not in sequence sources; can't align".format(r=r))
+            logger.warning("{r.alt_ac}: Not in sequence sources; can't align".format(r=r))
             ac_warning.add(r.alt_ac)
             continue
 

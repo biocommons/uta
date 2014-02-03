@@ -13,7 +13,7 @@ Usage:
   uta [options] create-views FILES ...
   uta [options] initialize-schema
   uta [options] rebuild
-  uta [options] load-seqinfo --origin=ORIGIN [--fast] FILE
+  uta [options] load-seqinfo FILE
   uta [options] load-geneinfo FILE
   uta [options] load-txinfo FILE
   uta [options] load-exonsets FILE

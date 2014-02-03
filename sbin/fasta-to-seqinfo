@@ -22,7 +22,8 @@ def parse_args(argv):
         )
     ap.add_argument('FILES',
                     nargs='+')
-    ap.add_argument('--origin','-o')
+    ap.add_argument('--origin','-o',
+                    required=True)
     ap.add_argument('--max-seq-len','-s',
                     type=int,
                     default=0)
@@ -46,6 +47,10 @@ def process1(opts,siw,fn):
     for record in Bio.SeqIO.parse(fh, "fasta"):
         seq = record.seq.tostring()
 
+        acs = parse_acs(record.id)
+        if len(acs) == 0:
+            acs = [record.id]
+
         descr = record.description
         if descr.startswith(record.id):
             descr = descr[len(record.id):]
@@ -54,8 +59,8 @@ def process1(opts,siw,fn):
         si = SeqInfo(md5=seq_md5(seq), descr=descr, len=len(seq),
                      seq=seq if len(seq)<=opts.max_seq_len else None,
                      origin=opts.origin, ac=None)
-
-        for ac in parse_acs(record.id):
+        
+        for ac in acs:
             si.ac = ac
             siw.write(si)
             si.seq = None
