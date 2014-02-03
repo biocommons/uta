@@ -4,6 +4,7 @@ select hgnc,unnest(array_append(string_to_array(aliases,','),hgnc)) as alias fro
 
 create or replace view exon_set_exons_v as
 select ES.exon_set_id,
+  count(*) as n_exons,
   array_to_string(array_agg(format('[%s,%s)',E.start_i,E.end_i) order by E.ord),',') as se_i,
   array_to_string(array_agg(E.start_i                           order by E.ord),',') as starts_i,
   array_to_string(array_agg(E.end_i                             order by E.ord),',') as ends_i,
@@ -16,7 +17,7 @@ group by ES.exon_set_id  ;
 -- TODO: add alignment stats per exon
 --drop view transcript_exon_sets_v cascade;
 create or replace view transcript_exon_sets_v as
-select T.hgnc,ES.tx_ac,ES.alt_ac,ES.alt_strand,ES.alt_aln_method,EXE.se_i,EXE.lengths
+select T.hgnc,ES.tx_ac,ES.alt_ac,ES.alt_strand,ES.alt_aln_method,EXE.n_exons,EXE.se_i,EXE.lengths
 from exon_set ES
 join transcript T on ES.tx_ac=T.ac
 join exon_set_exons_v EXE on ES.exon_set_id=EXE.exon_set_id
