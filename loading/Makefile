@@ -7,6 +7,9 @@ SHELL:=/bin/bash -o pipefail
 PATH:=../sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
 
+# move the following to conf
+SEQ_DIR:=/locus/data/core-rest/2014-01/sequences
+
 
 ############################################################################
 #= BASIC USAGE
@@ -16,7 +19,13 @@ default: help
 help:
 	@extract-makefile-documentation "${SELF}"
 
+data/ensembl.seqinfo.gz:
+	fasta-to-seqinfo -o ensembl ${SEQ_DIR}/ensembl.fasta \
+	| gzip -cq >$@
 
+data/ncbi.seqinfo.gz:
+	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
+	| gzip -cq >$@
 
 data/ncbi.exonsets.gz data/ncbi.geneinfo.gz data/ncbi.txinfo.gz: data/ncbi.log;
 data/ncbi.log: %.log: data/genes.hgnc.gz
@@ -75,18 +84,25 @@ test-data/ncbi.txinfo.gz: data/ncbi.txinfo.gz test-data/acs
 		-e 'print if $$.==1 or $$F[1] =~ m/^(?:$$re)$$/' \
 	| gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
+test-data/ncbi.seqinfo.gz: data/ncbi.seqinfo.gz test-data/acs
+	gzip -cdq <$< \
+	| perl -aF'\t' -ne 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
+		-e 'print if $$.==1 or $$F[2] =~ m/^(?:$$re|NC_\d+\.\d+|AC_\d+\.\d+)$$/' \
+	| gzip -cq >$@
+	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
 #=> testdb -- create a test database with small input
-testdb: test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz
+testdb: test-data/ncbi.seqinfo.gz test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz
 	# >>> if ${uta_database} already exists, we'll ignore that error
 	-createdb ${uta_database}
 	uta --conf=${TEST_CONF} drop-schema
 	uta --conf=${TEST_CONF} create-schema
 	uta --conf=${TEST_CONF} create-views ../sql/views.sql
 	uta --conf=${TEST_CONF} initialize-schema
-	uta --conf=${TEST_CONF} load-geneinfo $(word 1,$^)
-	uta --conf=${TEST_CONF} load-txinfo $(word 2,$^)
-	uta --conf=${TEST_CONF} load-exonsets $(word 3,$^)
+	uta --conf=${TEST_CONF} load-seqinfo $(word 1,$^)
+	uta --conf=${TEST_CONF} load-geneinfo $(word 2,$^)
+	uta --conf=${TEST_CONF} load-txinfo $(word 3,$^)
+	uta --conf=${TEST_CONF} load-exonsets $(word 4,$^)
 	uta --conf=${TEST_CONF} align-exons /locus/data/core-rest/2014-01/sequences/
 
 
