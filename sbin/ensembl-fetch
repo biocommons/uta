@@ -10,16 +10,15 @@ use warnings;
 use Config::IniFiles;
 use Data::Dumper;
 use Getopt::Long qw(:config gnu_compat);
-use Bio::EnsEMBL::Registry;
-
+use IO::Compress::Gzip;
 use IO::File;
 use IO::Zlib;
-use IO::Compress::Gzip;
+use Log::Log4perl;
+
+use Bio::EnsEMBL::Registry;
 
 use FindBin;
 
-use local::lib "$FindBin::RealBin/../ve";
-use Log::Log4perl;
 
 ############################################################################
 
@@ -81,10 +80,11 @@ my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
 #	$logger->info(sprintf("%d transcripts on chr%d\n",$#tx+1,$chr));
 
 my $to_file = 1;
-my ($tiw, $esw);
+my ($tiw, $esw, $faw);
 if ($to_file == 1) {
 	$tiw = IO::Zlib->new("ensembl.txinfo.gz", "wb");
 	$esw = IO::Zlib->new("ensembl.exonsets.gz", "wb");
+	$faw = IO::Zlib->new("ensembl.fasta.gz", "wb");
 } else {
 	$tiw = IO::Handle->new_from_fd(fileno(STDOUT),'w');
 	$esw = IO::Handle->new_from_fd(fileno(STDOUT),'w');
@@ -93,27 +93,44 @@ if ($to_file == 1) {
 $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
 $esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
 
-foreach my $hgnc (@ARGV) {
+
+#foreach my $hgnc (@ARGV) {
+while (my $hgnc = <>) {
+	chomp($hgnc);
 	my $g = @{ $ga->fetch_all_by_external_name($hgnc) }[0];
+	if (not defined $g) {
+		$logger->error("gene $hgnc is not in Ensembl");
+		next;
+	}
 	my @tx = @{ $g->get_all_Transcripts };
 	$logger->info(sprintf("%d transcripts for gene %s\n",$#tx+1,$hgnc));
 	
 	foreach my $tx (@tx) {
 		my $hgnc = $tx->get_Gene()->external_name();
-		my $srn = @{$tx->project('chromosome')}[0]->to_Slice()->seq_region_name;
+		my $tx_c = @{$tx->project('chromosome')}[0];
+		if (not defined $tx_c) {
+			$logger->error(sprintf("Can't project %s onto a chromosome; skipping",$tx->display_id));
+			next;
+		}
+		my $srn = $tx_c->to_Slice()->seq_region_name;
 		my $nc = $chr_to_nc{$srn};
+		my $seq = $tx->seq->seq;
 
-		$logger->info(sprintf("%s (%s; %s)\n",$tx->display_id,$hgnc,$tx->strand));
+		$logger->info(sprintf("%s (%s; %s); %d nt\n",$tx->display_id,$hgnc,$tx->strand,length($seq)));
 
+		# write sequence and seqinfo
+		$faw->print(">",$tx->display_id,"\n",$seq,"\n");
+
+		# write exonset
 		my @g_exons = @{ $tx->get_all_Exons() };
 		my $g_exons_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @g_exons ));
 		$esw->print( join("\t", $tx->display_id(), $nc, $method, $tx->strand(), $g_exons_str), "\n");
 
+		# write txinfo if protein coding
 		if ( $tx->biotype ne 'protein_coding' ) {
 			$logger->info(sprintf("%s: is type %s (not protein_coding); skipping",$tx->display_id,$tx->biotype));
 			next;
 		}
-		
 		my $tm = $tx->get_TranscriptMapper();
 		my @c_exon_coords = map( $tm->genomic2cdna($_->start(),$_->end(),$tx->strand), @g_exons );
 		my $c_exon_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @c_exon_coords ));
