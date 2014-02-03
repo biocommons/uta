@@ -10,6 +10,17 @@ SELF:=$(firstword $(MAKEFILE_LIST))
 # move the following to conf
 SEQ_DIR:=/locus/data/core-rest/2014-01/sequences
 
+# Instance name
+IN=test
+
+DATA_DIR:=${IN}
+CONF_FN=${IN}.conf
+include .${CONF_FN}
+.${CONF_FN}: ${CONF_FN}
+	../sbin/conf-to-vars $< >$@
+
+#test-data/ncbi.seqinfo.gz /dev/null test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz test-data/ucsc.exonsets.gz
+
 
 ############################################################################
 #= BASIC USAGE
@@ -19,9 +30,28 @@ default: help
 help:
 	@extract-makefile-documentation "${SELF}"
 
-data/ensembl.seqinfo.gz:
-	fasta-to-seqinfo -o ensembl ${SEQ_DIR}/ensembl.fasta \
-	| gzip -cq >$@
+
+############################################################################
+#=> build -- 
+build:
+	# >>> if ${uta_database} already exists, we'll ignore that error
+	-createdb ${uta_database}
+	uta --conf=${CONF_FN} drop-schema
+	uta --conf=${CONF_FN} create-schema
+	uta --conf=${CONF_FN} create-views ../sql/views.sql
+	uta --conf=${CONF_FN} initialize-schema
+	for f in ${DATA_DIR}/*.seqinfo.gz; do uta --conf=${CONF_FN} load-seqinfo "$$f"; done
+	for f in ${DATA_DIR}/*.geneinfo.gz; do uta --conf=${CONF_FN} load-geneinfo "$$f"; done
+	for f in ${DATA_DIR}/*.txinfo.gz; do uta --conf=${CONF_FN} load-txinfo "$$f"; done
+	for f in ${DATA_DIR}/*.exonsets.gz; do uta --conf=${CONF_FN} load-exonsets "$$f"; done
+	uta --conf=${CONF_FN} align-exons ${SEQ_DIR}
+
+
+############################################################################
+## build primary data
+
+data/ensembl.seqinfo.gz: data/ensembl.fasta.gz
+	fasta-to-seqinfo -o ensembl $< | gzip -cq >$@
 
 data/ncbi.seqinfo.gz:
 	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
@@ -35,75 +65,44 @@ data/ucsc.exonsets.gz:
 	ucsc-fetch-exonsets && mv ucsc.exonsets.gz data/
 
 
-
 ############################################################################
-## testdb
+## test-data
 
-TEST_CONF=test.conf
-include .${TEST_CONF}
-.${TEST_CONF}: ${TEST_CONF}
-	../sbin/conf-to-vars $< >$@
+## These rules build a subset of the database loading files for a set of
+## genes.  The genes were selected for diversity of transcript pathologies
+## represented.  (see test-data/tx-selection.sql)
+
 
 #=> test-data -- build test data (currently 4 genes, 4 transcripts)
 .PHONY: test-data
 test-data: test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz;
 
 
-# select one gene,ac combo for 3-exon transcript with each status,strand possibility
-# uta=# select distinct on (status,strand) status,strand,gene,ac from transcript_table_mv where gene !~ 'orf|BEAN1' and n_t_exons=3;
-#  status | strand |  gene   |       ac       
-# --------+--------+---------+----------------
-#  nlxdi  |     -1 | VSX1    | NM_001256271.1
-#  nlXDI  |     -1 | KCNJ8   | NM_004982.2
-#  NlxdI  |     -1 | GPHB5   | NM_145171.3
-#  NlxdI  |      1 | GFER    | NM_005262.2
-#  NlxDi  |     -1 | ZNF787  | NM_001002836.2
-#  NlxDi  |      1 | TGIF2   | NM_001199513.1
-#  NlXdI  |     -1 | CYP1B1  | NM_000104.3
-#  NlXDi  |     -1 | EGR2    | NM_001136179.1
-#  NLxdi  |     -1 | TMEM86B | NM_173804.4
-#  NLxdi  |      1 | RPLP1   | NM_213725.1
-#  NLXdi  |     -1 | FUT3    | NM_001097639.1
-#  NLXdi  |      1 | KLHL42  | NM_020782.1
-
-test-data/ncbi.geneinfo.gz: data/ncbi.geneinfo.gz test-data/genes
+test-data/%.geneinfo.gz: data/%.geneinfo.gz test-data/genes
 	gzip -cdq <$< \
 	| perl -n -e 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
 		-e 'print if $$.==1 or m/^(?:$$re)\s/' \
 	| gzip -cq >$@
 	printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-test-data/ncbi.exonsets.gz: data/ncbi.exonsets.gz test-data/acs
+test-data/%.exonsets.gz: data/%.exonsets.gz test-data/acs
 	gzip -cdq <$< \
 	| perl -n -e 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
 		-e 'print if $$.==1 or m/^(?:$$re)\s/' \
 	| gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-test-data/ncbi.txinfo.gz: data/ncbi.txinfo.gz test-data/acs
+test-data/%.txinfo.gz: data/%.txinfo.gz test-data/acs
 	gzip -cdq <$< \
 	| perl -aF'\t' -ne 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
 		-e 'print if $$.==1 or $$F[1] =~ m/^(?:$$re)$$/' \
 	| gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-test-data/ncbi.seqinfo.gz: data/ncbi.seqinfo.gz test-data/acs
+test-data/%.seqinfo.gz: data/%.seqinfo.gz test-data/acs
 	gzip -cdq <$< \
 	| perl -aF'\t' -ne 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
 		-e 'print if $$.==1 or $$F[2] =~ m/^(?:$$re|NC_\d+\.\d+|AC_\d+\.\d+)$$/' \
 	| gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
-#=> testdb -- create a test database with small input
-testdb: test-data/ncbi.seqinfo.gz test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz
-	# >>> if ${uta_database} already exists, we'll ignore that error
-	-createdb ${uta_database}
-	uta --conf=${TEST_CONF} drop-schema
-	uta --conf=${TEST_CONF} create-schema
-	uta --conf=${TEST_CONF} create-views ../sql/views.sql
-	uta --conf=${TEST_CONF} initialize-schema
-	uta --conf=${TEST_CONF} load-seqinfo $(word 1,$^)
-	uta --conf=${TEST_CONF} load-geneinfo $(word 2,$^)
-	uta --conf=${TEST_CONF} load-txinfo $(word 3,$^)
-	uta --conf=${TEST_CONF} load-exonsets $(word 4,$^)
-	uta --conf=${TEST_CONF} align-exons /locus/data/core-rest/2014-01/sequences/
 
 
 
@@ -112,6 +111,7 @@ testdb: test-data/ncbi.seqinfo.gz test-data/ncbi.geneinfo.gz test-data/ncbi.txin
 # TODO: consider perl brew instead
 setup-perl:
 	./sbin/perl-module-install --install-base ve   Log::Log4perl
+
 
 
 ############################################################################

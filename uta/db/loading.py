@@ -89,6 +89,12 @@ def initialize_schema(session,opts,cf):
             descr='NCBI "seq_gene" files from FTP site',
             url = 'ftp://ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/',
             ))
+    session.add(
+        usam.Origin(
+            name='ensembl',
+            descr='Ensembl',
+            url = 'http://ensembl.org/',
+            ))
     
     session.commit()
     logger.info('initialized schema')
