@@ -109,10 +109,16 @@ def load_seqinfo(session,opts,cf):
     sir = ufsi.SeqInfoReader(gzip.open(opts['FILE']))
     logger.info('opened '+opts['FILE'])
 
+    i_md5 = 0
     for md5,si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
                                   key=lambda si: si.md5):
         sis = list(si_iter)
         si = sis[0]
+
+        i_md5 += 1
+        if i_md5 % 25 == 1:
+            logger.info("{i_md5}/???: updated/added seq {md5} with {n} acs ({acs})".format(
+                i_md5=i_md5, md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
 
         u_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == md5).first()
         if u_seq is None:
@@ -127,8 +133,6 @@ def load_seqinfo(session,opts,cf):
                                          ac=si.ac, descr=si.descr)
                 session.add(u_seqanno)
 
-            logger.info("updated/added seq {md5} with {n} acs ({acs})".format(
-                md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
             session.commit()
 
         else:
@@ -166,11 +170,17 @@ def load_exonsets(session,opts,cf):
     known_es = set([ (u_es.tx_ac,u_es.alt_ac,u_es.alt_aln_method) for u_es in session.query(usam.ExonSet) ])
     logger.info("{n} known exon_set keys; will skip those during loading".format(n=len(known_es)))
 
+    n_lines = len(gzip.open(opts['FILE']).readlines())
     esr = ufes.ExonSetReader(gzip.open(opts['FILE']))
     logger.info('opened '+opts['FILE'])
 
-    for es in esr:
+    for i_es,es in enumerate(esr):
         key = (es.tx_ac,es.alt_ac,es.method)
+
+        if i_es % 50 == 0 or i_es+1==n_lines:
+            logger.info('{i_es}/{n_lines} {p}%: loading exonset  ({key})'.format(
+                i_es=i_es,n_lines=n_lines,p=(i_es+1)/n_lines*100,key=str(key)))
+
         if key in known_es:
             continue
         known_es.add(key)
@@ -196,7 +206,6 @@ def load_exonsets(session,opts,cf):
             session.add(u_ex)
 
         session.commit()
-        logger.info("loaded ExonSet "+str(key))
 
 
 
@@ -226,10 +235,15 @@ def load_txinfo(session,opts,cf):
 
     known_acs = set([ u_ti.ac for u_ti in session.query(usam.Transcript) ])
 
+    n_lines = len(gzip.open(opts['FILE']).readlines())
     tir = ufti.TxInfoReader(gzip.open(opts['FILE']))
     logger.info('opened '+opts['FILE'])
 
-    for ti in tir:
+    for i_ti,ti in enumerate(tir):
+        if i_ti % 50 == 0 or i_ti+1==n_lines:
+            logger.info('{i_ti}/{n_lines} {p:.1f}%: loading transcript {ac}'.format(
+                i_ti=i_ti, n_lines=n_lines, p=(i_ti+1)/n_lines*100, ac=ti.ac))
+
         if ti.ac in known_acs:
             logger.warning("skipping new definition of transcript "+ti.ac)
             continue
