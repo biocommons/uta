@@ -74,7 +74,7 @@ my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
 my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
 
 my $tiw = IO::Zlib->new("ensembl.txinfo.gz.tmp", "wb");
-my $esw = IO::Zlib->new("ensembl.exonsets.gz.tmp", "wb");
+my $esw = IO::Zlib->new("ensembl.exonset.gz.tmp", "wb");
 my $faw = IO::Zlib->new("ensembl.fasta.gz.tmp", "wb");
 
 $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
