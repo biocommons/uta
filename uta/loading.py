@@ -178,7 +178,7 @@ def load_exonsets(session,opts,cf):
         key = (es.tx_ac,es.alt_ac,es.method)
 
         if i_es % 50 == 0 or i_es+1==n_lines:
-            logger.info('{i_es}/{n_lines} {p}%: loading exonset  ({key})'.format(
+            logger.info('{i_es}/{n_lines} {p:.1f}%: loading exonset  ({key})'.format(
                 i_es=i_es,n_lines=n_lines,p=(i_es+1)/n_lines*100,key=str(key)))
 
         if key in known_es:

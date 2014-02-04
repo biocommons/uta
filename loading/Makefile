@@ -19,7 +19,7 @@ include .${CONF_FN}
 .${CONF_FN}: ${CONF_FN}
 	../sbin/conf-to-vars $< >$@
 
-#test-data/ncbi.seqinfo.gz /dev/null test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz test-data/ucsc.exonsets.gz
+#test-data/ncbi.seqinfo.gz /dev/null test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonset.gz test-data/ucsc.exonset.gz
 
 
 ############################################################################
@@ -43,30 +43,37 @@ build-db:
 	for f in ${DATA_DIR}/*.seqinfo.gz; do uta --conf=${CONF_FN} load-seqinfo "$$f"; done
 	for f in ${DATA_DIR}/*.geneinfo.gz; do uta --conf=${CONF_FN} load-geneinfo "$$f"; done
 	for f in ${DATA_DIR}/*.txinfo.gz; do uta --conf=${CONF_FN} load-txinfo "$$f"; done
-	for f in ${DATA_DIR}/*.exonsets.gz; do uta --conf=${CONF_FN} load-exonsets "$$f"; done
+	for f in ${DATA_DIR}/*.exonset.gz; do uta --conf=${CONF_FN} load-exonsets "$$f"; done
 	uta --conf=${CONF_FN} align-exons ${SEQ_DIR}
 
 
 ############################################################################
-## build primary data
+## build main data
+
+main-data: main/ensembl.seqinfo.gz 
+main-data: main/ncbi.seqinfo.gz main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz
+main-data: main/ucsc.exonset.gz
+main-data: main/uta0.exonset.gz main/uta0.txinfo.gz
+main-data: ;
 
 main/ensembl.seqinfo.gz: main/ensembl.fasta.gz
-	fasta-to-seqinfo -o ensembl $< | gzip -cq >$@
+	fasta-to-seqinfo -o ensembl $< | gzip -cq >$@.tmp && mv -f $@.tmp $@
 
 main/ncbi.seqinfo.gz:
 	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
-	| gzip -cq >$@
+	| gzip -cq >$@.tmp
+	mv -f $@.tmp $@
 
-main/ncbi.exonsets.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz: main/ncbi.log;
+main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz: main/ncbi.log;
 main/ncbi.log: %.log: main/genes.hgnc.gz
 	{ gzip -cdq <$< | ncbi-fetch -p $* 2>&1 | tee $@.tmp; } && mv -v $@.tmp $@
 
-main/ucsc.exonsets.gz:
-	ucsc-fetch-exonsets && mv ucsc.exonsets.gz main/
+main/ucsc.exonset.gz:
+	ucsc-fetch -d ${@D}
 
 main/uta0.exonset.gz main/uta0.txinfo.gz: main/uta0.log;
 main/uta0.log:
-	cd main; ../../sbin/uta0-fetch-exonset-tx
+	uta0-fetch -d ${@D}
 
 
 ############################################################################
@@ -80,10 +87,10 @@ main/uta0.log:
 #=> test-data -- build test data (currently 4 genes, 4 transcripts)
 .PHONY: test-data
 test-data: \
-	test/ncbi.geneinfo.gz test/ncbi.txinfo.gz test/ncbi.exonsets.gz test/ncbi.seqinfo.gz  \
-	test/ensembl.txinfo.gz test/ensembl.exonsets.gz test/ensembl.seqinfo.gz \
-	test/ucsc.exonsets.gz \
-	test/uta0.exonsets.gz test/uta0.txinfo.gz;
+	test/ncbi.geneinfo.gz test/ncbi.txinfo.gz test/ncbi.exonset.gz test/ncbi.seqinfo.gz  \
+	test/ensembl.txinfo.gz test/ensembl.exonset.gz test/ensembl.seqinfo.gz \
+	test/ucsc.exonset.gz \
+	test/uta0.exonset.gz test/uta0.txinfo.gz;
 
 
 TEST_TXINFO_FILES:=main/ncbi.txinfo.gz main/ensembl.txinfo.gz
@@ -95,7 +102,7 @@ test/acs: test/genes ${TEST_TXINFO_FILES}
 test/%.geneinfo.gz: main/%.geneinfo.gz test/genes
 	gzip -cdq <$< | geneinfo-filter -G $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-test/%.exonsets.gz: main/%.exonsets.gz test/acs
+test/%.exonset.gz: main/%.exonset.gz test/acs
 	gzip -cdq <$< | exonset-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 test/%.txinfo.gz: main/%.txinfo.gz test/acs
