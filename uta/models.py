@@ -123,6 +123,7 @@ class Transcript(Base,UTABase):
     hgnc = sa.Column(sa.Text) #, sa.ForeignKey('gene.hgnc'))
     cds_start_i = sa.Column(sa.Integer, nullable=False)
     cds_end_i = sa.Column(sa.Integer, nullable=False)
+    cds_md5 = sa.Column(sa.Text, nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
 
     # relationships:

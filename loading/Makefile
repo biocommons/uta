@@ -50,23 +50,24 @@ build-db:
 ############################################################################
 ## build main data
 
-main-data: main/ensembl.seqinfo.gz 
-main-data: main/ncbi.seqinfo.gz main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz
-main-data: main/ucsc.exonset.gz
-main-data: main/uta0.exonset.gz main/uta0.txinfo.gz
-main-data: ;
+main-data: main-ensembl main-ncbi main-ucsc main-uta0
+
+main-ensembl: main/ensembl.seqinfo.gz 
+main-ncbi: main/ncbi.seqinfo.gz main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz main/ncbi.fasta.gz
+main-ucsc: main/ucsc.exonset.gz
+main-uta0: main/uta0.exonset.gz main/uta0.txinfo.gz
 
 main/ensembl.seqinfo.gz: main/ensembl.fasta.gz
-	fasta-to-seqinfo -o ensembl $< | gzip -cq >$@.tmp && mv -f $@.tmp $@
+	fasta-to-seqinfo -o ensembl $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
 
-main/ncbi.seqinfo.gz:
+main/ncbi-core.seqinfo.gz:
 	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
 	| gzip -cq >$@.tmp
-	mv -f $@.tmp $@
+	mv -bfv $@.tmp $@
 
-main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz: main/ncbi.log;
+main/ncbi.exonset.gz main/ncbi.fasta.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz: main/ncbi.log;
 main/ncbi.log: %.log: main/genes.hgnc.gz
-	{ gzip -cdq <$< | ncbi-fetch -p $* 2>&1 | tee $@.tmp; } && mv -v $@.tmp $@
+	{ gzip -cdq <$< | ncbi-fetch -p $* 2>&1 | tee $@.tmp; } && mv -bfv $@.tmp $@
 
 main/ucsc.exonset.gz:
 	ucsc-fetch -d ${@D}

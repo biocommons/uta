@@ -72,8 +72,9 @@ if __name__ == '__main__':
     ec = eutils.client.Client()
     opts = parse_args(sys.argv[1:])
 
-    gi_fn = opts.prefix + '.geneinfo.gz'
     es_fn = opts.prefix + '.exonsets.gz'
+    fa_fn = opts.prefix + '.fasta.gz'
+    gi_fn = opts.prefix + '.geneinfo.gz'
     ti_fn = opts.prefix + '.txinfo.gz'
 
     if len(opts.GENES) == 0:
@@ -83,13 +84,15 @@ if __name__ == '__main__':
         logging.info('reading genes from stdin')
         hgncs = opts.GENES
 
+
     tx_set = set()
     n = len(hgncs)
     giw = GeneInfoWriter(gzip.open(gi_fn+'.tmp','w'))
     esw = ExonSetWriter(gzip.open(es_fn+'.tmp','w'))
     for i,hgnc in enumerate(hgncs):
-        logger.info("="*70+"\n{i}/{n} ({p:.1f}%): {hgnc}...".format(
-            i=i, n=n, p=(i+1)/n*100, hgnc=hgnc))
+        if i % 25 == 0 or i+1 == len(hgncs):
+            logger.info("\n{i}/{n} ({p:.1f}%): {hgnc}...".format(
+                i=i, n=n, p=(i+1)/n*100, hgnc=hgnc))
 
         try:
             e_gene = ec.fetch_gene_by_hgnc(hgnc)
@@ -116,7 +119,8 @@ if __name__ == '__main__':
             logger.exception(e)
             pass
 
-
+        
+    faw = gzip.open(fa_fn+'.tmp','w')
     tiw = TxInfoWriter(gzip.open(ti_fn+'.tmp','w'))
     n = len(tx_set)
     for i,ac in enumerate(tx_set):
@@ -131,9 +135,10 @@ if __name__ == '__main__':
                         exons_se_i=";".join([",".join([str(c) for c in ex]) for ex in e_tx.exons_se_i])
                 )
             tiw.write(es)
+            faw.write(">"+e_tx.acv+"\n"+e_tx.seq+"\n")
         except Exception as e:
             logger.exception(e)
             pass
 
-    for fn in [gi_fn,ti_fn,es_fn]:
+    for fn in [gi_fn,ti_fn,es_fn,fa_fn]:
         os.rename(fn+'.tmp',fn)
