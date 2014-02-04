@@ -11,13 +11,6 @@ import uta.utils
 
 
 ############################################################################
-## Implmentation notes
-# * PK-FK object relationships are declared exclusively on the dependent
-# object, that is, the FK side. (SQLAlchemy permits either, but mixing
-# styles screws with my head too much.
-
-
-############################################################################
 ## schema name support
 # also see etc/uta.conf
 
@@ -34,9 +27,8 @@ else:
 ############################################################################
 
 Base = saed.declarative_base(
-    metadata=sa.MetaData(schema=schema_name)
+    metadata = sa.MetaData(schema = schema_name)
     )
-
 
 class UTABase(object):
     pass
@@ -46,18 +38,12 @@ class UTABase(object):
 
 class Meta(Base,UTABase):
     __tablename__ = 'meta'
-    __table_args__ = (
-        {'schema' : schema_name},
-        )
     key = sa.Column(sa.Text, primary_key = True, nullable = False)
     value = sa.Column(sa.Text, nullable = False)
 
 
 class Origin(Base,UTABase):
     __tablename__ = 'origin'
-    __table_args__ = (
-        {'schema' : schema_name},
-        )
 
     # columns:
     origin_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
@@ -74,9 +60,6 @@ class Origin(Base,UTABase):
 
 class Seq(Base,UTABase):
     __tablename__ = 'seq'
-    __table_args__ = (
-        {'schema' : schema_name},
-        )
 
     def _seq_hash(context):
         seq = context.current_parameters['seq']
@@ -97,7 +80,6 @@ class SeqAnno(Base,UTABase):
     __tablename__ = 'seq_anno'
     __table_args__ = (
         sa.Index('seq_anno_ac_unique_in_origin', 'origin_id', 'ac', unique=True),
-        {'schema' : schema_name},
         )
 
     # columns:
@@ -115,9 +97,6 @@ class SeqAnno(Base,UTABase):
 
 class Gene(Base,UTABase):
     __tablename__ = 'gene'
-    __table_args__ = (
-        {'schema' : schema_name},
-        )
 
     # columns:
     hgnc = sa.Column(sa.Text, primary_key=True)
@@ -136,7 +115,6 @@ class Transcript(Base,UTABase):
     __tablename__ = 'transcript'
     __table_args__ = (
         sa.CheckConstraint('cds_start_i <= cds_end_i', 'cds_start_i_must_be_le_cds_end_i'),
-        {'schema' : schema_name},
         )
 
     # columns:
@@ -156,7 +134,6 @@ class ExonSet(Base,UTABase):
     __table_args__ = (
         sa.UniqueConstraint('tx_ac','alt_ac','alt_aln_method',
                             name='<transcript,reference,method> must be unique'),
-        {'schema' : schema_name},
         )
 
     # columns:
@@ -184,7 +161,6 @@ class Exon(Base,UTABase):
         sa.CheckConstraint('start_i < end_i', 'exon_start_i_must_be_lt_end_i'),
         sa.UniqueConstraint('exon_set_id','start_i',name='start_i_must_be_unique_in_exon_set'),
         sa.UniqueConstraint('exon_set_id','end_i',name='end_i_must_be_unique_in_exon_set'),
-        {'schema' : schema_name},
         )
 
     def __unicode___(self):
@@ -205,7 +181,6 @@ class Exon(Base,UTABase):
 class ExonAln(Base,UTABase):
     __tablename__ = 'exon_aln'
     __table_args__ = (
-        {'schema' : schema_name},
         )
 
     # columns:
