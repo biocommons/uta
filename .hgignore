@@ -30,7 +30,8 @@ hgtools-*
 lib/python/cover
 lib/python/uta/_release.py
 loading/main
-loading/.test.conf
+loading/*/acs
+loading/.*.conf
 misc/data
 misc/exon-str-cmp
 misc/tests

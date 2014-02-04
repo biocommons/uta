@@ -49,7 +49,7 @@ import time
 import docopt
 
 import uta
-import uta.db.loading as ul
+import uta.loading as ul
 usam = uta.models                         # backward compatibility
 
 
