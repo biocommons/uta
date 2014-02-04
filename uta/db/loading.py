@@ -107,6 +107,8 @@ def load_seqinfo(session,opts,cf):
     """
 
     sir = ufsi.SeqInfoReader(gzip.open(opts['FILE']))
+    logger.info('opened '+opts['FILE'])
+
     for md5,si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
                                   key=lambda si: si.md5):
         sis = list(si_iter)
@@ -158,14 +160,20 @@ def load_seqinfo(session,opts,cf):
 ############################################################################
 
 def load_exonsets(session,opts,cf):
-    seen = set()
-    for es in ufes.ExonSetReader(gzip.open(opts['FILE'])):
-        seen_key = (es.tx_ac,es.alt_ac,es.method)
-        if seen_key in seen:
-            logger.warn("multiple occurrences of {seen_key} in {file}; using only first".format(
-                seen_key=seen_key, file=opts['FILE']))
+    # unlike seq and seq_anno loading, where annotations may be updated at any time,
+    # exonsets are loaded discretely -- that is, we never *add* new exons to exonsets.
+
+    known_es = set([ (u_es.tx_ac,u_es.alt_ac,u_es.alt_aln_method) for u_es in session.query(usam.ExonSet) ])
+    logger.info("{n} known exon_set keys; will skip those during loading".format(n=len(known_es)))
+
+    esr = ufes.ExonSetReader(gzip.open(opts['FILE']))
+    logger.info('opened '+opts['FILE'])
+
+    for es in esr:
+        key = (es.tx_ac,es.alt_ac,es.method)
+        if key in known_es:
             continue
-        seen.add(seen_key)
+        known_es.add(key)
         
         u_es = usam.ExonSet(
             tx_ac=es.tx_ac,
@@ -188,12 +196,17 @@ def load_exonsets(session,opts,cf):
             session.add(u_ex)
 
         session.commit()
+        logger.info("loaded ExonSet "+str(key))
+
 
 
 ############################################################################
 
 def load_geneinfo(session,opts,cf):
-    for i_gi,gi in enumerate(ufgi.GeneInfoReader(gzip.open(opts['FILE']))):
+    gir = ufgi.GeneInfoReader(gzip.open(opts['FILE']))
+    logger.info('opened '+opts['FILE'])
+
+    for i_gi,gi in enumerate(gir):
         session.add(
             usam.Gene(
                 hgnc=gi.hgnc,
@@ -207,11 +220,21 @@ def load_geneinfo(session,opts,cf):
 ############################################################################
 
 def load_txinfo(session,opts,cf):
-    self_aln_method = 'transcript'
-
     #TODO: add cds_md5 column and load here
 
-    for ti in ufti.TxInfoReader(gzip.open(opts['FILE'])):
+    self_aln_method = 'transcript'
+
+    known_acs = set([ u_ti.ac for u_ti in session.query(usam.Transcript) ])
+
+    tir = ufti.TxInfoReader(gzip.open(opts['FILE']))
+    logger.info('opened '+opts['FILE'])
+
+    for ti in tir:
+        if ti.ac in known_acs:
+            logger.warning("skipping new definition of transcript "+ti.ac)
+            continue
+        known_acs.add(ti.ac)
+
         if ti.exons_se_i == '':
             logger.warning(ti.ac + ': no exons?!; skipping.')
             continue
@@ -329,8 +352,8 @@ def align_exons(session, opts, cf):
             speed = (i_r+1) / (time.time() - t0);      # aln/sec
             etr = (n_rows-i_r-1) / speed               # etr in secs
             etr_s = str(datetime.timedelta(seconds=int(etr)))  # etr as H:M:S
-            logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s}); {n_tx} tx ({tx_acs})'.format(
-                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100,speed=speed,etr=etr,etr_s=etr_s,n_tx=len(tx_acs),tx_acs=','.join(sorted(tx_acs)) ))
+            logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s}); {n_tx} tx'.format(
+                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100,speed=speed,etr=etr,etr_s=etr_s,n_tx=len(tx_acs) ))
             tx_acs = set()
 
     cur.close()
