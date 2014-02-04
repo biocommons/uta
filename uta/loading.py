@@ -230,8 +230,12 @@ def load_geneinfo(session,opts,cf):
 
 def load_txinfo(session,opts,cf):
     #TODO: add cds_md5 column and load here
-
     self_aln_method = 'transcript'
+
+    from bdi.multifastadb import MultiFastaDB
+    from bdi.utils.aminoacids import seq_md5
+
+    mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
 
     known_acs = set([ u_ti.ac for u_ti in session.query(usam.Transcript) ])
 
@@ -256,12 +260,16 @@ def load_txinfo(session,opts,cf):
         ori = session.query(usam.Origin).filter(usam.Origin.name == ti.origin).one()
         cds_start_i,cds_end_i = map(int,ti.cds_se_i.split(','))
 
+        cds_seq = mfdb.fetch(ti.ac,cds_start_i,cds_end_i)
+        cds_md5 = seq_md5(cds_seq)
+
         u_tx = usam.Transcript(
             ac=ti.ac,
             origin=ori,
             hgnc=ti.hgnc,
             cds_start_i=cds_start_i,
             cds_end_i=cds_end_i,
+            cds_md5=cds_md5,
             )
         session.add(u_tx)
 
