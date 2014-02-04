@@ -112,11 +112,10 @@ def load_seqinfo(session,opts,cf):
         sis = list(si_iter)
         si = sis[0]
 
-        logger.info("loading seq {md5} with {n} acs ({acs})".format(
-            md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
-
         u_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == md5).first()
         if u_seq is None:
+            # if the seq doesn't exist, we can add it and the sequence
+            # annotations without fear of collision (which is faster)
             u_seq = usam.Seq(seq_id=md5, len=si.len, seq=si.seq)
             session.add(u_seq)
 
@@ -125,10 +124,35 @@ def load_seqinfo(session,opts,cf):
                 u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
                                          ac=si.ac, descr=si.descr)
                 session.add(u_seqanno)
+
+            logger.info("updated/added seq {md5} with {n} acs ({acs})".format(
+                md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
+            session.commit()
+
         else:
-            RuntimeError("need to handle case of existing sequences")
+            # the seq existed, and therefore some of the incoming annotations may
+            # exist. Need to check first.
+            for si in sis:
+                u_ori = session.query(usam.Origin).filter(usam.Origin.name == si.origin).one()                
+                u_seqanno = session.query(usam.SeqAnno).filter(
+                    usam.SeqAnno.origin_id == u_ori.origin_id,
+                    usam.SeqAnno.seq_id == si.md5,
+                    usam.SeqAnno.ac == si.ac).first()
+                if u_seqanno:
+                    # update descr, perhaps
+                    if si.descr and u_seqanno.descr != si.descr:
+                        u_seqanno.descr = si.descr
+                        session.merge(u_seqanno)
+                        logger.info('updated description for '+si.ac)
+                else:
+                    # create the new descr
+                    u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
+                                             ac=si.ac, descr=si.descr)
+                    session.add(u_seqanno)
             
-        session.commit()
+            session.commit()
+            logger.info("updated annotations for seq {md5} with {n} acs ({acs})".format(
+                md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
 
 
 ############################################################################
