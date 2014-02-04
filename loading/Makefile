@@ -32,8 +32,8 @@ help:
 
 
 ############################################################################
-#=> build -- 
-build:
+#=> build-db -- 
+build-db:
 	# >>> if ${uta_database} already exists, we'll ignore that error
 	-createdb ${uta_database}
 	uta --conf=${CONF_FN} drop-schema
@@ -50,19 +50,23 @@ build:
 ############################################################################
 ## build primary data
 
-data/ensembl.seqinfo.gz: data/ensembl.fasta.gz
+main/ensembl.seqinfo.gz: main/ensembl.fasta.gz
 	fasta-to-seqinfo -o ensembl $< | gzip -cq >$@
 
-data/ncbi.seqinfo.gz:
+main/ncbi.seqinfo.gz:
 	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
 	| gzip -cq >$@
 
-data/ncbi.exonsets.gz data/ncbi.geneinfo.gz data/ncbi.txinfo.gz: data/ncbi.log;
-data/ncbi.log: %.log: data/genes.hgnc.gz
+main/ncbi.exonsets.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz: main/ncbi.log;
+main/ncbi.log: %.log: main/genes.hgnc.gz
 	{ gzip -cdq <$< | ncbi-fetch -p $* 2>&1 | tee $@.tmp; } && mv -v $@.tmp $@
 
-data/ucsc.exonsets.gz:
-	ucsc-fetch-exonsets && mv ucsc.exonsets.gz data/
+main/ucsc.exonsets.gz:
+	ucsc-fetch-exonsets && mv ucsc.exonsets.gz main/
+
+main/uta0.exonset.gz main/uta0.txinfo.gz: main/uta0.log;
+main/uta0.log:
+	cd main; ../../sbin/uta0-fetch-exonset-tx
 
 
 ############################################################################
@@ -70,48 +74,48 @@ data/ucsc.exonsets.gz:
 
 ## These rules build a subset of the database loading files for a set of
 ## genes.  The genes were selected for diversity of transcript pathologies
-## represented.  (see test-data/tx-selection.sql)
+## represented.  (see test/tx-selection.sql)
 
 
 #=> test-data -- build test data (currently 4 genes, 4 transcripts)
 .PHONY: test-data
-test-data: test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonsets.gz;
+test-data: \
+	test/ncbi.geneinfo.gz test/ncbi.txinfo.gz test/ncbi.exonsets.gz test/ncbi.seqinfo.gz  \
+	test/ensembl.txinfo.gz test/ensembl.exonsets.gz test/ensembl.seqinfo.gz \
+	test/ucsc.exonsets.gz \
+	test/uta0.exonsets.gz test/uta0.txinfo.gz;
 
 
-test-data/%.geneinfo.gz: data/%.geneinfo.gz test-data/genes
-	gzip -cdq <$< \
-	| perl -n -e 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
-		-e 'print if $$.==1 or m/^(?:$$re)\s/' \
-	| gzip -cq >$@
-	printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-test-data/%.exonsets.gz: data/%.exonsets.gz test-data/acs
-	gzip -cdq <$< \
-	| perl -n -e 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
-		-e 'print if $$.==1 or m/^(?:$$re)\s/' \
-	| gzip -cq >$@
+TEST_TXINFO_FILES:=main/ncbi.txinfo.gz main/ensembl.txinfo.gz
+test/acs: test/genes ${TEST_TXINFO_FILES}
+	for f in ${TEST_TXINFO_FILES}; do \
+	gzip -cdq "$$f" | ../sbin/txinfo-filter -G $< - | tail -n+2 | cut -f 2; \
+	done | sort -u >$@
+
+test/%.geneinfo.gz: main/%.geneinfo.gz test/genes
+	gzip -cdq <$< | geneinfo-filter -G $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-test-data/%.txinfo.gz: data/%.txinfo.gz test-data/acs
-	gzip -cdq <$< \
-	| perl -aF'\t' -ne 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
-		-e 'print if $$.==1 or $$F[1] =~ m/^(?:$$re)$$/' \
-	| gzip -cq >$@
+test/%.exonsets.gz: main/%.exonsets.gz test/acs
+	gzip -cdq <$< | exonset-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-test-data/%.seqinfo.gz: data/%.seqinfo.gz test-data/acs
-	gzip -cdq <$< \
-	| perl -aF'\t' -ne 'BEGIN{open(F,"$(word 2,$^)"); $$re=join("|",map {chomp;$$_} <F>); print(STDERR "re=$$re\n");}' \
-		-e 'print if $$.==1 or $$F[2] =~ m/^(?:$$re|NC_\d+\.\d+|AC_\d+\.\d+)$$/' \
-	| gzip -cq >$@
+test/%.txinfo.gz: main/%.txinfo.gz test/acs
+	gzip -cdq <$< | txinfo-filter -T $(word 2,$^) - | gzip -cq >$@
+	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
+test/%.seqinfo.gz: main/%.seqinfo.gz test/acs
+	gzip -cdq <$< | seqinfo-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
 
 
 
+
+############################################################################
+## SETUP
 
 #=> setup-perl: install perl packages
 # TODO: consider perl brew instead
 setup-perl:
 	./sbin/perl-module-install --install-base ve   Log::Log4perl
-
 
 
 ############################################################################
