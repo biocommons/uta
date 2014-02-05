@@ -34,12 +34,13 @@ help:
 ############################################################################
 #=> build-db -- 
 build-db:
-	# >>> if ${uta_database} already exists, we'll ignore that error
-	-createdb ${uta_database}
 	uta --conf=${CONF_FN} drop-schema
 	uta --conf=${CONF_FN} create-schema
 	uta --conf=${CONF_FN} create-views ../sql/views.sql
 	uta --conf=${CONF_FN} initialize-schema
+
+	uta --conf=${CONF_FN} grant-permissions
+
 	for f in ${DATA_DIR}/*.seqinfo.gz; do uta --conf=${CONF_FN} load-seqinfo "$$f"; done
 	for f in ${DATA_DIR}/*.geneinfo.gz; do uta --conf=${CONF_FN} load-geneinfo "$$f"; done
 	for f in ${DATA_DIR}/*.txinfo.gz; do uta --conf=${CONF_FN} load-txinfo "$$f"; done
@@ -53,12 +54,12 @@ build-db:
 main-data: main-ensembl main-ncbi main-ucsc main-uta0
 
 main-ensembl: main/ensembl.seqinfo.gz 
-main-ncbi: main/ncbi.seqinfo.gz main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz main/ncbi.fasta.gz
+main-ncbi: main/ncbi.seqinfo.gz main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz main/ncbi.fasta.gz main/ncbi-core.seqinfo.gz
 main-ucsc: main/ucsc.exonset.gz
 main-uta0: main/uta0.exonset.gz main/uta0.txinfo.gz
 
 main/ensembl.seqinfo.gz: main/ensembl.fasta.gz
-	fasta-to-seqinfo -o ensembl $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
+	fasta-to-seqinfo -o Ensembl $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
 
 main/ncbi-core.seqinfo.gz:
 	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
@@ -69,12 +70,15 @@ main/ncbi.exonset.gz main/ncbi.fasta.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.g
 main/ncbi.log: %.log: main/genes.hgnc.gz
 	{ gzip -cdq <$< | ncbi-fetch -p $* 2>&1 | tee $@.tmp; } && mv -bfv $@.tmp $@
 
-main/ucsc.exonset.gz:
-	ucsc-fetch -d ${@D}
+main/ucsc.exonset.gz: main/ucsc.log
+main/ucsc.log:
+	ucsc-fetch -d ${@D} >$@.tmp 2>&1 && mv -bfv $@.tmp $@
 
-main/uta0.exonset.gz main/uta0.txinfo.gz: main/uta0.log;
+main/uta0.exonset.gz main/uta0.txinfo.gz main/uta0.fasta.gz: main/uta0.log;
 main/uta0.log:
-	uta0-fetch -d ${@D}
+	uta0-fetch -d ${@D} >$@.tmp 2>&1 && mv -bfv $@.tmp $@
+main/uta0.seqinfo.gz: main/uta0.fasta.gz
+	fasta-to-seqinfo -o uta0  $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
 
 
 ############################################################################
@@ -88,12 +92,13 @@ main/uta0.log:
 #=> test-data -- build test data (currently 4 genes, 4 transcripts)
 .PHONY: test-data
 test-data: \
-	test/ncbi.geneinfo.gz test/ncbi.txinfo.gz test/ncbi.exonset.gz test/ncbi.seqinfo.gz  \
+	test/ncbi.geneinfo.gz test/ncbi.txinfo.gz test/ncbi.exonset.gz test/ncbi.seqinfo.gz test/ncbi-core.seqinfo.gz  \
 	test/ensembl.txinfo.gz test/ensembl.exonset.gz test/ensembl.seqinfo.gz \
 	test/ucsc.exonset.gz \
 	test/uta0.exonset.gz test/uta0.txinfo.gz;
 
 
+# generate a list of accessions from a list of genes
 TEST_TXINFO_FILES:=main/ncbi.txinfo.gz main/ensembl.txinfo.gz
 test/acs: test/genes ${TEST_TXINFO_FILES}
 	for f in ${TEST_TXINFO_FILES}; do \
@@ -110,7 +115,7 @@ test/%.txinfo.gz: main/%.txinfo.gz test/acs
 	gzip -cdq <$< | txinfo-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 test/%.seqinfo.gz: main/%.seqinfo.gz test/acs
-	gzip -cdq <$< | seqinfo-filter -T $(word 2,$^) - | gzip -cq >$@
+	gzip -cdq <$< | seqinfo-filter -T $(word 2,$^) -R '^[NA]C_' - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
 
