@@ -5,7 +5,7 @@ select hgnc,unnest(array_append(string_to_array(aliases,','),hgnc)) as alias fro
 create or replace view exon_set_exons_v as
 select ES.exon_set_id,
   count(*) as n_exons,
-  array_to_string(array_agg(format('[%s,%s)',E.start_i,E.end_i) order by E.ord),',') as se_i,
+  array_to_string(array_agg(format('%s,%s',E.start_i,E.end_i)   order by E.ord),';') as se_i,
   array_to_string(array_agg(E.start_i                           order by E.ord),',') as starts_i,
   array_to_string(array_agg(E.end_i                             order by E.ord),',') as ends_i,
   array_to_string(array_agg((E.end_i-E.start_i)                 order by E.ord),',') as lengths
