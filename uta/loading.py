@@ -493,7 +493,7 @@ def load_ncbi_seqgene(session,opts,cf):
 
 def grant_permissions(session,opts,cf):
     cmds = [
-        'grant usage on SCHEMA uta1 to uta_public',
+        'grant usage on schema uta1 to uta_public',
         ]
 
     sql = "select concat(table_schema,'.',table_name) as fqrn from information_schema.tables where table_schema='uta1'"
@@ -503,6 +503,7 @@ def grant_permissions(session,opts,cf):
     for cmd in cmds:
         logger.info(cmd)
         session.execute(cmd)
+    session.commit()
 
 
 ## <LICENSE>
