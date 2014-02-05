@@ -32,6 +32,7 @@ if __name__ == '__main__':
 
     es_fn = os.path.join(opts.out_dir,'uta0.exonset.gz')
     ti_fn = os.path.join(opts.out_dir,'uta0.txinfo.gz')
+    fa_fn = os.path.join(opts.out_dir,'uta0.fasta.gz')
 
     conn = psycopg2.connect(dsn)
     sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -57,11 +58,12 @@ if __name__ == '__main__':
 
     # Transcripts
     sel_sql = """
-    SELECT 'NCBI RefSeq' as origin,T.ac,T.gene,format('%s,%s',T.cds_start_i,T.cds_end_i) as cds_se_i,TEv.exons_se_i
+    SELECT 'NCBI RefSeq' as origin,T.ac,T.gene,format('%s,%s',T.cds_start_i,T.cds_end_i) as cds_se_i,TEv.exons_se_i,T.seq
          FROM uta0.transcript T
          join (select ac,array_to_string(array_agg(format('%s,%s',TE.start_i,TE.end_i) ORDER BY TE.ord), ';') AS exons_se_i from uta0.transcript_exon TE group by TE.ac) TEv on T.ac=TEv.ac;
         """
     tiw = TxInfoWriter(gzip.open(ti_fn+'.tmp', 'w'))
+    faw = gzip.open(fa_fn+'.tmp','w')
     sel_cur.execute(sel_sql)
     for row in sel_cur.fetchall():
         ti = TxInfo(origin=row['origin'],
@@ -70,9 +72,11 @@ if __name__ == '__main__':
                     cds_se_i=row['cds_se_i'],
                     exons_se_i=row['exons_se_i'],)
         tiw.write(ti)
+        faw.write(">"+row['ac']+"\n"+row['seq']+"\n")
     
     os.rename(es_fn+'.tmp',es_fn)
     os.rename(ti_fn+'.tmp',ti_fn)
+    os.rename(fa_fn+'.tmp',fa_fn)
 
 
 ## <LICENSE>
