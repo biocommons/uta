@@ -19,6 +19,7 @@ Usage:
   uta [options] load-exonsets FILE
   uta [options] align-exons FASTA_DIR
   uta [options] load-ncbi-seqgene FILE
+  uta [options] grant-permissions
   
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
@@ -60,14 +61,17 @@ def rebuild(*args):
     ul.drop_schema(*args)
     ul.create_schema(*args)
     ul.initialize_schema(*args)
+    ul.grant_permissions(*args)
 
 def run(argv=None):
     dispatch_table = [
         ('drop-schema',                 ul.drop_schema),
         ('create-schema',               ul.create_schema),
-        ('create-views',                ul.create_views),
         ('initialize-schema',           ul.initialize_schema),
+        ('grant-permissions',           ul.grant_permissions),
         ('rebuild',                     rebuild),
+
+        ('create-views',                ul.create_views),
 
         ('load-exonsets',               ul.load_exonsets),
         ('load-geneinfo',               ul.load_geneinfo),

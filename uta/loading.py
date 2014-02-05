@@ -91,9 +91,15 @@ def initialize_schema(session,opts,cf):
             ))
     session.add(
         usam.Origin(
-            name='ensembl',
+            name='Ensembl',
             descr='Ensembl',
             url = 'http://ensembl.org/',
+            ))
+    session.add(
+        usam.Origin(
+            name='uta0',
+            descr='UTA version 0',
+            url = 'http://bitbucket.org/invitae/uta',
             ))
     
     session.commit()
@@ -157,7 +163,7 @@ def load_seqinfo(session,opts,cf):
                     session.add(u_seqanno)
             
             session.commit()
-            logger.info("updated annotations for seq {md5} with {n} acs ({acs})".format(
+            logger.debug("updated annotations for seq {md5} with {n} acs ({acs})".format(
                 md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
 
 
@@ -260,7 +266,12 @@ def load_txinfo(session,opts,cf):
         ori = session.query(usam.Origin).filter(usam.Origin.name == ti.origin).one()
         cds_start_i,cds_end_i = map(int,ti.cds_se_i.split(','))
 
-        cds_seq = mfdb.fetch(ti.ac,cds_start_i,cds_end_i)
+        try:
+            cds_seq = mfdb.fetch(ti.ac,cds_start_i,cds_end_i)
+        except KeyError:
+            logger.error("{ac}: not in fasta database; skipping transcript".format(
+                ac=ti.ac))
+            continue
         cds_md5 = seq_md5(cds_seq)
 
         u_tx = usam.Transcript(
@@ -478,6 +489,21 @@ def load_ncbi_seqgene(session,opts,cf):
             cds_start_i = ti['cds_start_i'],
             cds_end_i = ti['cds_end_i'],
             )
+
+
+def grant_permissions(session,opts,cf):
+    cmds = [
+        'grant usage on SCHEMA uta1 to uta_public',
+        ]
+
+    sql = "select concat(table_schema,'.',table_name) as fqrn from information_schema.tables where table_schema='uta1'"
+    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn'])
+              for row in session.execute(sql) ]
+
+    for cmd in cmds:
+        logger.info(cmd)
+        session.execute(cmd)
+
 
 ## <LICENSE>
 ## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
