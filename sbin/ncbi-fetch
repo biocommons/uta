@@ -72,7 +72,7 @@ if __name__ == '__main__':
     ec = eutils.client.Client()
     opts = parse_args(sys.argv[1:])
 
-    es_fn = opts.prefix + '.exonsets.gz'
+    es_fn = opts.prefix + '.exonset.gz'
     fa_fn = opts.prefix + '.fasta.gz'
     gi_fn = opts.prefix + '.geneinfo.gz'
     ti_fn = opts.prefix + '.txinfo.gz'

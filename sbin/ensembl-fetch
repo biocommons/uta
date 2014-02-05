@@ -45,8 +45,8 @@ our %nc_to_chr = (
     );
 our %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
 
-my $method = 'ensembl';
-my $origin = 'ensembl';
+my $method = 'genebuild';
+my $origin = 'Ensembl';
 
 ############################################################################
 
