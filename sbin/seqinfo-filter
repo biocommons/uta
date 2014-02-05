@@ -6,6 +6,7 @@ __doc__ = """filter txinfo files by given criteria"""
 
 import argparse
 import os
+import re
 import sys
 
 import uta.formats.seqinfo as ufsi
@@ -21,6 +22,11 @@ def parse_args(argv):
     ap.add_argument(
         '--transcripts-from', '-T',
         )
+    ap.add_argument(
+        '--transcript-regexps', '-R',
+        default = [],
+        action = 'append',
+        )
     
     opts = ap.parse_args(argv)
     return opts
@@ -33,9 +39,11 @@ if __name__ == '__main__':
     if opts.transcripts_from:
         filter_acs = set([ l.strip() for l in open(opts.transcripts_from,'r').readlines() ])
 
+    regexps = [ re.compile(tre) for tre in opts.transcript_regexps ]
+
     sir = ufsi.SeqInfoReader(sys.stdin if opts.FILE == '-' else open(opts.FILE,'r'))
     siw = ufsi.SeqInfoWriter(sys.stdout)
 
     for si in sir:
-        if si.ac in filter_acs:
+        if si.ac in filter_acs or any(tre.match(si.ac) for tre in regexps):
             siw.write(si)
