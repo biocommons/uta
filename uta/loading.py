@@ -317,17 +317,17 @@ WHERE NOT EXISTS (
     WHERE EA.tx_exon_id=TAEP.tx_exon_id AND EA.alt_exon_id=TAEP.alt_exon_id
     )
 """
-## AND alt_ac in (
-## 'NC_000001.10', 'NC_000002.11', 'NC_000003.11',
-## 'NC_000004.11', 'NC_000005.9', 'NC_000006.11',
-## 'NC_000007.13', 'NC_000008.10', 'NC_000009.11',
-## 'NC_000010.10', 'NC_000011.9', 'NC_000012.11',
-## 'NC_000013.10', 'NC_000014.8', 'NC_000015.9',
-## 'NC_000016.9', 'NC_000017.10', 'NC_000018.9',
-## 'NC_000019.9', 'NC_000020.10', 'NC_000021.8',
-## 'NC_000022.10', 'NC_000023.10', 'NC_000024.9'
-## )
-## """
+#AND alt_ac in (
+#'NC_000001.10', 'NC_000002.11', 'NC_000003.11',
+#'NC_000004.11', 'NC_000005.9', 'NC_000006.11',
+#'NC_000007.13', 'NC_000008.10', 'NC_000009.11',
+#'NC_000010.10', 'NC_000011.9', 'NC_000012.11',
+#'NC_000013.10', 'NC_000014.8', 'NC_000015.9',
+#'NC_000016.9', 'NC_000017.10', 'NC_000018.9',
+#'NC_000019.9', 'NC_000020.10', 'NC_000021.8',
+#'NC_000022.10', 'NC_000023.10', 'NC_000024.9'
+#)
+#"""
 
 aln_ins_sql = """
 INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
@@ -344,11 +344,18 @@ def align_exons(session, opts, cf):
     import uta.utils.alignment as uua
     import locus_lib_bio.align.algorithms as llbaa
 
-    mfdb = MultiFastaDB([opts[u'FASTA_DIR']], use_meta_index=True)
+    mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
     con = session.bind.pool.connect()
 
+    sql = aln_sel_sql
+    if opts['--sql']:
+        # hello injection attack! This would worry me, except that it's always run
+        # by a real person who could just as easily connect directly to do damage.
+        sql += ' ' + opts['SQL']
+    sql += ' ORDER BY hgnc';
+
     cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-    cur.execute(aln_sel_sql)
+    cur.execute(sql)
     rows = cur.fetchall()
     n_rows = len(rows)
     ac_warning = set()
@@ -384,7 +391,7 @@ def align_exons(session, opts, cf):
             con.commit()
             speed = (i_r+1) / (time.time() - t0);      # aln/sec
             etr = (n_rows-i_r-1) / speed               # etr in secs
-            etr_s = str(datetime.timedelta(seconds=int(etr)))  # etr as H:M:S
+            etr_s = str(datetime.timedelta(seconds=round(etr)))  # etr as H:M:S
             logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s}); {n_tx} tx'.format(
                 i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100,speed=speed,etr=etr,etr_s=etr_s,n_tx=len(tx_acs) ))
             tx_acs = set()
