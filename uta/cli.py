@@ -17,7 +17,7 @@ Usage:
   uta [options] load-geneinfo FILE
   uta [options] load-txinfo FILE
   uta [options] load-exonsets FILE
-  uta [options] align-exons FASTA_DIR
+  uta [options] align-exons [--sql SQL]
   uta [options] load-ncbi-seqgene FILE
   uta [options] grant-permissions
   
