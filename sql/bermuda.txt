@@ -1,0 +1,91 @@
+The goal of the bermuda doc is to summarize RefSeq transcripts by gene to
+assess which are most suitable for curation and reporting.  The components
+of the summary are:
+
+hgnc tx_ac alt_ac alt_strand 
+start end 
+
+* hgnc           -- gene name
+* tx_ac          -- transcript accession (RefSeq)
+* alt_ac         -- aligned sequence
+* alt_strand     -- sequence strand
+* start          -- start (human coords)
+* end            -- end (human coords)
+* alt_status [1] -- NLxdi categorization
+* alt_cigars [1] -- 
+* enst tx equivs [2] -- 
+* ucsc ambiguity [3] -- 
+
+We'll build this up through a series of component views, denoted with []
+above.
+
+NOTE: uta0.transcript_table_v currently returns rows like this:
+gene           | AVPR2
+maploc+        | Xq28
+chr+           | X
+strand         | 1
+start_i        | 153167984
+end_i          | 153172620
+ac             | NM_000054.4
+cds_start_i    | 71
+cds_end_i      | 1187
+status         | NLxdi
+n_t_exons      | 3
+n_g_exons      | 3
+lengths        | 96,885,644
+cigars         | 96M,885M,644M
+seqviewer_urls | 
+e_refseq_ac    | NM_000054.4
+enst_equivs    | ENST00000337474/CC,ENST00000358927/CC
+
+
+
+
+                 ----|||||||------|||||-------|||||||||||----      es1  tx1  tx1   defn
+       +-+-+->        ex11        ex12            ex13
+       | | |
+       | | |   //----|||||||------|||||-------|||x|||||||----//    es2  tx1  alt1  splign
+       | | +->        ex21        ex22            ex23
+       | | ea1121
+       | |     //----|||||||---------|||||----|||x|||||||----//    es3  tx1  alt1  blat
+       | +--->        ex31           ex32         ex33
+       | ea1131
+       |       //----|||||||------|||||-------|||||||||||----//    es4  tx2  alt1  genebuild
+       +----->        ex41        ex42            ex43
+        ea1141
+
+
+
+          gene --------<- transcript --------<- exon_set --------<- exon ->------<- exon_aln
+
+                                                ------------------------
+                                                exon_set_exons_v
+                                                formats exons in order
+                                                n_exons, es_fingerprint
+                                                s,e
+
+                                                ------------------------
+                                                exon_set_exons_fp_v
+												as above, with fingerprint
+
+                          ----------------------------------------------
+                          transcript_exon_sets_v
+                          aggregate exon_set_exons_v on transcript and 
+                          include transcript data
+
+                                                --------------------------------------------
+                                                exon_set_alignments_v (ese_v X ese_v)
+                                                compare tx exon set with non-tx exon set
+                                                include cigar string array, n exon equiv,
+                                                status
+
+                          ------------------------------------------------------------------
+                          transcript_alignments_v
+                          aggregate exon_set_alignments_v on tx ac, alt ac, aln method
+                          and include transcript data
+
+						  nm_enst_equivs_v
+
+                          ------------------------------------------------------------------
+                          bermuda_doc_v
+                          filter transcript_alignments_v on refseqs,                          
