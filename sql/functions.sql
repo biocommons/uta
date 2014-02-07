@@ -16,18 +16,16 @@ comment on function subseq(in seq text, in start_i int, in end_i int, out seq te
 
 
 
-
-
-#-- http://stackoverflow.com/questions/12414750/
-#CREATE OR REPLACE FUNCTION zip(anyarray, anyarray)
-#  RETURNS SETOF anyarray LANGUAGE SQL AS
-#$func$
-#SELECT ARRAY[a,b] FROM (SELECT unnest($1) AS a, unnest($2) AS b) x;
-#$func$;
-#
-#CREATE OR REPLACE FUNCTION zip2(anyarray, anyarray)
-#  RETURNS SETOF anyarray LANGUAGE SQL AS
-#$func$
-#SELECT array_agg_mult(ARRAY[ARRAY[a,b]])
-#FROM (SELECT unnest($1) AS a, unnest($2) AS b) x;
-#$func$;
+-- -- http://stackoverflow.com/questions/12414750/
+-- CREATE OR REPLACE FUNCTION zip(anyarray, anyarray)
+--   RETURNS SETOF anyarray LANGUAGE SQL AS
+-- $func$
+-- SELECT ARRAY[a,b] FROM (SELECT unnest($1) AS a, unnest($2) AS b) x;
+-- $func$;
+-- 
+-- CREATE OR REPLACE FUNCTION zip2(anyarray, anyarray)
+--   RETURNS SETOF anyarray LANGUAGE SQL AS
+-- $func$
+-- SELECT array_agg_mult(ARRAY[ARRAY[a,b]])
+-- FROM (SELECT unnest($1) AS a, unnest($2) AS b) x;
+-- $func$;
