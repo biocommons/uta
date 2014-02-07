@@ -36,7 +36,7 @@ def main():
     with open(args_in.tabfile, 'r') as f:
         _ = f.readline()   # discard the 1st line - timestamp
         reader = csv.DictReader(f, delimiter='\t')
-        f_out = gzip.open(os.path.join(args_in.outdir, 'lrg.exonset.gz'), 'w')
+        exonset_lines = set()
         chr_nc_map = uta.luts.chr_to_NC['GRCh37.p10-Primary Assembly']
 
         for row in reader:
@@ -48,15 +48,20 @@ def main():
                 g_list.reverse()
             g_exon_coords_string = ';'.join(g_list)
 
-            exon_str = '{}\t{}\t{}\t{}\t{}\n'.format(row['# LRG_TRANSCRIPT'],
+            exonset_lines.add('{}\t{}\t{}\t{}\t{}\n'.format(row['# LRG_TRANSCRIPT'],
                                                      chr_nc_map[row['CHROMOSOME']],
-                                                     'download_txt',
+                                                     'LRG_download',
                                                      row['STRAND'],
-                                                     g_exon_coords_string)
-            f_out.write(exon_str)
+                                                     g_exon_coords_string))
             tx_acs_hgnc[row['# LRG_TRANSCRIPT']] = row['HGNC_SYMBOL']
 
-        f_out.close()
+
+    with gzip.open(os.path.join(args_in.outdir, 'lrg.exonset.gz'), 'w') as f:
+        exonset_lines = list(exonset_lines)
+        exonset_lines.sort()
+        for exonset_line in exonset_lines:
+            f.write(exonset_line)
+
 
     # write tx info file
     with gzip.open(os.path.join(args_in.outdir, 'lrg.txinfo.gz'), 'w') as f_out:
