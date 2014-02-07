@@ -2,7 +2,7 @@
 -- see Bermuda.txt for background
 
 
-create or replace view exon_set_exons_dv as
+create or replace view exon_set_exons_v as
 select ES.*,EL.n_exons,EL.se_i,EL.starts_i,EL.ends_i,EL.lengths
 from exon_set ES
 join (select 
@@ -16,32 +16,18 @@ join (select
   join exon iE on iES.exon_set_id=iE.exon_set_id
   group by iES.exon_set_id) EL
   on ES.exon_set_id = EL.exon_set_id;
-comment on view exon_set_exons_dv is 'defining view of "flat" (aggregated) exons on a sequence; use _mv; for faster materialized version';
+comment on view exon_set_exons_v is 'defining view of "flat" (aggregated) exons on a sequence; use _mv; for faster materialized version';
 
-
-create table exon_set_exons_mv as select * from exon_set_exons_dv;
-comment on table exon_set_exons_mv is 'materialized view of "flat" (aggregated) exons on a sequence; also see _dv form for view definition';
-
-
-create or replace view  exon_set_exons_fp_dv as
+create or replace view  exon_set_exons_fp_v as
 select ESE.*,md5(format('%s;%s',lower(ASA.seq_id),ESE.se_i)) as es_fingerprint
-from exon_set_exons_mv ESE
+from exon_set_exons_v ESE
 join seq_anno ASA on ESE.alt_ac=ASA.ac;
-comment on view exon_set_exons_fp_v is 'defining view of exon_set_exons_mv + exon set fingerprint';
+comment on view exon_set_exons_fp_v is 'flattened (aggregated) exons with exon set fingerprint';
 
-
-create table exon_set_exons_fp_mv as select * from exon_set_exons_fp_dv;
-comment on table exon_set_exons_fp_mv is 'materialized view of "flat" (aggregated) exons on a sequence with fingerprint; also see _dv form for view definition';
-
-
--- ideally, we'd include cds start and end here, but we don't yet map CDS
--- start and end to alt exon.  This are simple offsets in most cases,
--- except when there are indels, which is why I'm not doing that now.
-create or replace view tx_def_summary_v as
-select T.hgnc,T.cds_md5,exon_set_id,tx_ac,ESE.added,n_exons,se_i,starts_i,ends_i,lengths,es_fingerprint from transcript T
-join exon_set_exons_fp_mv ESE on T.ac=ESE.tx_ac
-where ESE.alt_aln_method = 'transcript';
-comment on view tx_def_summary_v is 'transcript definitions, with exon structures';
+create materialized view exon_set_exons_fp_mv as select * from exon_set_exons_fp_v;
+create index exon_set_exons_fp_mv_tx_ac_ix on exon_set_exons_fp_mv(tx_ac);
+create index exon_set_exons_fp_mv_alt_ac_ix on exon_set_exons_fp_mv(alt_ac);
+create index exon_set_exons_fp_mv_alt_aln_method_ix on exon_set_exons_fp_mv(alt_aln_method);
 
 
 create or replace view tx_aln_cigar_dv as
@@ -54,19 +40,48 @@ join exon AEX on AES.exon_set_id=AEX.exon_set_id and TEX.ord=AEX.ord
 join exon_aln EA on EA.tx_exon_id=TEX.exon_id and EA.alt_exon_id=AEX.exon_id
 group by AES.tx_ac,AES.alt_ac,AES.alt_strand,AES.alt_aln_method;
 
+create materialized view tx_aln_cigar_mv as select * from tx_aln_cigar_dv;
+create index tx_aln_cigar_mv_alt_ac_ix on tx_aln_cigar_mv(alt_ac);
+create index tx_aln_cigar_mv_tx_ac_ix on tx_aln_cigar_mv(tx_ac);
+create index tx_aln_cigar_mv_alt_aln_method_ix on tx_aln_cigar_mv(alt_aln_method);
+analyze tx_aln_cigar_mv;
 
-create table tx_aln_cigar_mv as select * from tx_aln_cigar_dv;
+
+create or replace view tx_exon_set_summary_dv as
+select hgnc,cds_md5,es_fingerprint,tx_ac,alt_ac,alt_aln_method,alt_strand,exon_set_id,n_exons,se_i,starts_i,ends_i,lengths
+from transcript T
+join exon_set_exons_fp_mv ESE on T.ac=ESE.tx_ac;
+
+create materialized view tx_exon_set_summary_mv as select * from tx_exon_set_summary_dv;
+create index tx_exon_set_summary_mv_cds_md5_ix on tx_exon_set_summary_mv(cds_md5);
+create index tx_exon_set_summary_mv_es_fingerprint_ix on tx_exon_set_summary_mv(es_fingerprint);
+create index tx_exon_set_summary_mv_tx_ac_ix on tx_exon_set_summary_mv(tx_ac);
+create index tx_exon_set_summary_mv_alt_ac_ix on tx_exon_set_summary_mv(alt_ac);
+create index tx_exon_set_summary_mv_alt_aln_method_ix on tx_exon_set_summary_mv(alt_aln_method);
+analyze tx_exon_set_summary_mv;
 
 
-create or replace view tx_aln_summary_dv as
-select T.hgnc,T.cds_md5,ESE.*,TAC.cigars from transcript T
-join exon_set_exons_fp_mv ESE on T.ac=ESE.tx_ac
-left join tx_aln_cigar_mv TAC on ESE.tx_ac=TAC.tx_ac and ESE.alt_ac=TAC.alt_ac and ESE.alt_aln_method=TAC.alt_aln_method
-where ESE.alt_aln_method != 'transcript';
+-- ideally, we'd include cds start and end here, but we don't yet map CDS
+-- start and end to alt exon.  This are simple offsets in most cases,
+-- except when there are indels, which is why I'm not doing that now.
+create or replace view tx_def_summary_v as
+select *
+from tx_exon_set_summary_mv
+where alt_aln_method = 'transcript';
+comment on view tx_def_summary_v is 'transcript definitions, with exon structures';
+
+
+create or replace view tx_aln_summary_v as
+select TESS.*,TAC.cigars
+from tx_exon_set_summary_mv as TESS
+join tx_aln_cigar_mv TAC on TESS.tx_ac=TAC.tx_ac and TESS.alt_ac=TAC.alt_ac and TESS.alt_aln_method=TAC.alt_aln_method
+where TESS.alt_aln_method != 'transcript';
 comment on view tx_def_summary_v is 'transcript alignments on alternate seqeuences, with exon structures';
 
-
-create table tx_aln_summary_mv as select * from tx_aln_summary_dv;
+create materialized view tx_aln_summary_mv as select * from tx_aln_summary_v;
+create index tx_aln_summary_mv_tx_ac_ix on tx_aln_summary_mv(tx_ac);
+create index tx_aln_summary_mv_alt_ac_ix on tx_aln_summary_mv(alt_ac);
+create index tx_aln_summary_mv_alt_aln_method_ix on tx_aln_summary_mv(alt_aln_method);
 
 
 CREATE OR REPLACE VIEW nm_enst_equivalence_v AS 
@@ -104,9 +119,12 @@ join tx_aln_summary_mv TASS on TDS.tx_ac=TASS.tx_ac and TASS.alt_aln_method='spl
 join tx_aln_summary_mv TASB on TASS.tx_ac=TASB.tx_ac and TASS.alt_ac=TASB.alt_ac and TASB.alt_aln_method='blat'
 join nm_enst_equivalence_v NEE on TDS.tx_ac=NEE.tx_ac
 join splign_blat_equivalence_v SBE on TASS.tx_ac=SBE.tx_ac and TASS.alt_ac=SBE.alt_ac
-where TASS.alt_ac ~ '^NC_0000'
+where TASS.alt_ac ~ '^NC_0000'	-- ~ GRCh37 primary assy
 order by hgnc,tx_ac,alt_ac;
 comment on view bermuda_v is 'the infamous bermuda doc!';
+
+create materialized view bermuda_mv as select * from bermuda_v;
+
 
 
 create or replace view exon_alignments_v as
@@ -120,9 +138,3 @@ join exon_set AES on TES.tx_ac=AES.tx_ac and TES.alt_aln_method='transcript' and
 join exon TEX on TES.exon_set_id=TEX.exon_set_id
 join exon AEX on AES.exon_set_id=AEX.exon_set_id and TEX.ord=AEX.ord
 left join exon_aln EA on EA.tx_exon_id=TEX.exon_id and EA.alt_exon_id=AEX.exon_id;
-
-
--- ucsc se diff stat
--- cigar => stats
--- refagree_match = NLxdi
--- 
