@@ -1,6 +1,56 @@
+create or replace function sv_cmp(IN sep text, IN cigar1 text, IN cigar2 text, OUT mask text)
+strict immutable language plperl as
+$$
+    # given two sep-separated strings, a mask with ^^^ highlighting disagreement
+    my ($sep,$c1,$c2) = @_;
+    
+    my @e1 = split($sep,$c1);
+    my @e2 = split($sep,$c2);
+
+    my $min = $#e1 < $#e2 ? $#e1 : $#e2;
+    my @rv = map {$e1[$_] eq $e2[$_] ? ' ' x length($e1[$_]) : '^' x length($e1[$_])} 0..$min;
+
+    if ($#e1 > $min) {
+        push(@rv,'+e1',@e1[$min+1,$#e1]);
+    } elsif ($#e2 > $min) {
+        push(@rv,'+e2',@e2[$min+1,$#e2]);
+    }
+    
+    return join($sep,@rv);
+$$;
+
+
+create or replace function cigar_status(IN cigar1 text, IN cigar2 text, OUT mask text)
+strict immutable language plperl as
+$$
+	# given two cigar strings, perhaps comma-sep, return consensus at agreement, ^^^ elsewhere
+	my ($c1,$c2) = @_;
+	#$c1 =~ s/,//g;
+	#$c2 =~ s/,//g;
+	#my @e1 = $c1 =~ m/\d+\D/g;
+	#my @e2 = $c2 =~ m/\d+\D/g;
+	
+	my @e1 = split(',',$c1);
+	my @e2 = split(',',$c2);
+
+	my $min = $#e1 < $#e2 ? $#e1 : $#e2;
+	my @rv = map {$e1[$_] eq $e2[$_] ? ' ' x length($e1[$_]) : '^' x length($e1[$_])} 0..$min;
+
+	if ($#e1 > $min) {
+		push(@rv,'+e1',@e1[$min+1,$#e1]);
+	} elsif ($#e2 > $min) {
+		push(@rv,'+e2',@e2[$min+1,$#e2]);
+	}
+	
+	return join(',',@rv);
+$$;
+
+
+
 create or replace function cigar_status(IN cigar text, OUT status text)
 strict immutable language sql as
-$$select concat(
+$$
+select concat(
          case when cigar ~ 'X' then 'X' else 'x' end,
          case when cigar ~ 'D' then 'D' else 'd' end,
          case when cigar ~ 'I' then 'I' else 'i' end

@@ -5,6 +5,29 @@ use warnings;
 
 use Data::Dumper;
 
+sub cigar_cmp($$) {
+	# given two cigar strings, perhaps comma-sep, return consensus at agreement, ^^^ elsewhere
+	my ($c1,$c2) = @_;
+	$c1 =~ s/,//g;
+	$c2 =~ s/,//g;
+
+	my @e1 = $c1 =~ m/\d+\D/g;
+	my @e2 = $c2 =~ m/\d+\D/g;
+	
+	my $min = $#e1 < $#e2 ? $#e1 : $#e2;
+	my @rv = map {$e1[$_] eq $e2[$_] ? ' ' x length($e1[$_]) : '^' x length($e1[$_])} 0..$min;
+
+	if ($#e1 > $min) {
+		push(@rv,'+e1',@e1[$min+1,$#e1]);
+	} elsif ($#e2 > $min) {
+		push(@rv,'+e2',@e2[$min+1,$#e2]);
+	}
+	
+	return join(',',@rv);
+}
+
+
+
 # IN tx_se_i text, IN alt_se_i text, IN cigars text, OUT status text)
 sub aln_status {
 	# return NLxdi-string
@@ -47,6 +70,14 @@ sub cigar_stats($) {
 	return %rv;
 }
 
+
+
+
+print(
+	cigar_cmp(
+		'141=,815=,21=1X210=,194=,167=,61=,200=,3113=1I1248=',
+		'142=,815=,21=1X210=,194=,167=,61=,200=,3113=1I1248=',
+	), "\n" );
 
 print(
 	aln_status( '122740342,122740483;122748592,122749407;122749612,122749844;122755302,122755496;122759911,122760078;122760832,122760893;122768492,122768692;122770099,122774461',
