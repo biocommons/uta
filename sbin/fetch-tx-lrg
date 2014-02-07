@@ -50,7 +50,7 @@ def main():
 
             exon_str = '{}\t{}\t{}\t{}\t{}\n'.format(row['# LRG_TRANSCRIPT'],
                                                      chr_nc_map[row['CHROMOSOME']],
-                                                     'download_txt',
+                                                     'LRG_download',
                                                      row['STRAND'],
                                                      g_exon_coords_string)
             f_out.write(exon_str)
