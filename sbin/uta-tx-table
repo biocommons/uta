@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+import logging,re,sys
+logging.basicConfig(level=logging.DEBUG)
+
+import psycopg2, psycopg2.extras
+import locus.utils.genomeutils as gu
+import IPython
+
+conn = psycopg2.connect("dbname=reece")
+
+def build_sel_sql(preds=[]):
+    sel_preds = [ 
+        # 'enst_equivs IS NOT NULL',
+        'n_t_exons > 0',
+        ]
+    sel_preds += preds
+    pred = ''
+    if len(sel_preds) > 0:
+        pred = 'WHERE ' + ' AND '.join(sel_preds)
+
+    return ' '.join([
+            'SELECT * FROM transcript_table_v',
+            pred,
+            'ORDER BY gene,ac',
+            ])
+
+
+def ex_op_pos(cigar):
+    '''Add positions to operations in cigar string, treating deletes as
+    zero-width (relative to comparison sequence).'''
+    u = re.compile('(?P<n>\d+)(?P<op>[MXID])')
+    ops = []
+    ex_pos = 0                  # exon pos, rel tx, disregarding deletes
+    for op in [m.groupdict() for m in u.finditer(cigar)]:
+        op['pos'] = ex_pos
+        if op['op'] != 'D':     # deletes are zero-width operations
+            ex_pos += int(op['n'])
+        ops += [op]
+    return ops
+
+def op_pos(cigars,lengths,cds_start_i,cds_end_i):
+    net_pos = 0
+    ops = []
+    for i in range(len(cigars)):
+        for op in ex_op_pos(cigars[i]):
+            op['net_pos'] = net_pos + op['pos']
+            op['cds_pos'] = op['net_pos'] - cds_start_i
+            op['cds?'] = (op['net_pos']+int(op['n'])>cds_start_i and op['net_pos']<cds_end_i)
+            op['exon'] = i+1
+            ops += [op]
+        net_pos += lengths[i]
+    return ops
+
+def _pm(i):
+    if i==-1: return '-'
+    if i== 1: return '+'
+    return None
+
+def op_fmt(ops):
+    op_map = { 'X': 'S', 'D': 'D', 'I': 'I' }
+    def _op_fmt(op):
+        n = '' if op['n'] == '1' else op['n']
+        return '%s:%d(%s)%s%s' % (
+            op['exon'], op['pos']+1, op['cds_pos']+1, op_map[op['op']], n )
+    return ','.join(map(_op_fmt,ops))
+
+
+def row_str(row):
+    cds_start_i,cds_end_i = row['cds_start_i'],row['cds_end_i']
+    coords = '%s:%d-%d' % (row['chr'],row['start_i']+1,row['end_i'])
+
+    lengths = ops = []
+    if row['cigars'] is not None:
+        lengths = [ int(l) for l in row['lengths'].split(',') ]
+        ops = [ o for o in op_pos(row['cigars'].split(','),lengths,
+                                  cds_start_i,cds_end_i) ]
+    subs = [ o for o in ops if o['op'] == 'X' ]
+    indels = [ o for o in ops if o['op'] in 'DI' ]
+    cds_indels = [ o for o in indels if o['cds?'] ]
+    utr_indels = [ o for o in indels if not o['cds?'] ]
+
+    refseq_notes = []
+    if row['n_t_exons'] is not None and row['n_g_exons'] is not None:
+        if 'n' in row['status']:
+            refseq_notes += ['! Avoid -- exon # mismatch']
+        if 'l' in row['status']:
+            refseq_notes += ['! Avoid -- exon length mismatch']
+    else:
+        if row['n_t_exons'] is None:
+            refseq_notes += ["! Avoid -- no exons in transcript record (may be fixable)"]
+        if row['n_g_exons'] is None:
+            refseq_notes += ["! Caution -- verify that transcript returns coordinates in GetFreqsAndRefs before using"]
+
+    ensts = []
+    e_warnings = []
+    e_align = []
+    if row['enst_equivs'] is None or row['enst_equivs'] == '':
+        e_warnings += ['! Avoid -- no suitable ENST equivalents']
+    else:
+        ensts = [ e.partition('/')[0] for e in row['enst_equivs'].split(',') ]
+        if row['ac'] != row['e_refseq_ac']:
+            e_warnings += ['! Caution -- Not current refseq']
+        if '/CE' in row['enst_equivs']:
+            e_align += ['Good -- Complete exon structure match']
+        elif '/CC' in row['enst_equivs']:
+            e_align += ['Okay -- CDS exon structure match']
+
+    return( '\t'.join([
+                row['gene'], row['ac'], coords,
+                op_fmt(cds_indels), op_fmt(utr_indels), op_fmt(subs), '; '.join(refseq_notes),
+                (row['e_refseq_ac'] or ''), ','.join(ensts), '; '.join(e_warnings), '; '.join(e_align),
+                (row['seqviewer_urls'] or ''),
+                ]))
+
+
+if __name__ == '__main__':
+    print("# unparsable gene or transcript records, or aligments to patch regions lead to missing data")
+    print( '#'+
+           '\t'.join([
+                'Gene', 'RefSeq', 'Coordinates',
+                'CDS indels', 'UTR indels', 'Substitutions', 'RefAgree Notes',
+                'Ensembl RefSeq', 'ENSTs', 'Warnings', 'Equivalence Level',
+                'Evidence URLs'
+                ]))
+
+    sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    if len(sys.argv) > 1:
+        sel_sql = build_sel_sql(preds = [ 'gene = %(hgnc)s' ])
+        print(sel_sql)
+        for hgnc in sys.argv[1:]:
+            sel_cur.execute(sel_sql,{'hgnc': hgnc})
+            for row in sel_cur:
+                print( row_str(row) )
+    else:
+        sel_sql = build_sel_sql()
+        sel_cur.execute(sel_sql)
+        for row in sel_cur:
+            print( row_str(row) )
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
