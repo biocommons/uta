@@ -4,7 +4,7 @@ UTA -- Universal Transcript Archive
 
 *bringing smiles to transcript users since 2013*
 
-`Docs <http://uta.readthedocs.org/>`_ | `PyPI <https://pypi.python.org/pypi/uta>`_ | |build_status|
+`Docs <http://pythonhosted.org/uta/>`_ | `PyPI <https://pypi.python.org/pypi/uta>`_ | |build_status|
 
 
 Overview
