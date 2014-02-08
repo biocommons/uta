@@ -20,8 +20,10 @@ class SeqInfoReader(csv.DictReader):
 
     def next(self):
         d = csv.DictReader.next(self)
-        return SeqInfo(**d)
-
+        si = SeqInfo(**d)
+        if si.seq == '':
+            si.seq = None
+        return si
 
 
 if __name__ == '__main__':

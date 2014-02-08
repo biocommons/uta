@@ -427,6 +427,44 @@ def load_ncbi_geneinfo(session, opts, cf):
 
 
 
+############################################################################
+
+def load_sequences(session,opts,cf):
+    from bdi.multifastadb import MultiFastaDB
+
+    mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
+
+    sql = """
+    select S.seq_id,S.len,array_agg(SA.ac order by SA.ac) as acs
+    from seq S
+    join seq_anno SA on S.seq_id=SA.seq_id
+    where SA.ac ~ '^(NP|NG|ENST|NM)_' and S.seq is NULL
+    group by S.seq_id,len
+    """
+
+    def _fetch_first(acs):
+        # try all accessions in acs, return sequence of first that returns a sequence
+        for ac in row['acs']:
+            try:
+                return mfdb.fetch(ac)
+            except KeyError:
+                pass
+        return None
+
+    for row in session.execute(sql):
+        seq = _fetch_first(row['acs'])
+        if seq is None:
+            logger.warn("No sequence found for {acs}".format(acs=row['acs']))
+            continue
+        assert row['len'] == len(seq), "expected a sequence of length {len} for {md5} ({acs}); length {len2}".format(
+            len=len(seq), md5=row['seq_id'], acs=row['acs'], len2=len(seq))
+        session.execute( usam.Seq.__table__.update().values(seq=seq).where(usam.Seq.seq_id==row['seq_id']) )
+        logger.info("loaded sequence of length {len} for {md5} ({acs})".format(
+            len=len(seq), md5=row['seq_id'], acs=row['acs']))
+        session.commit()
+    
+
+
 
 ############################################################################
 
