@@ -34,17 +34,18 @@ help:
 ############################################################################
 #=> build-db -- 
 build-db:
-	uta --conf=${CONF_FN} drop-schema
+	#uta --conf=${CONF_FN} drop-schema
 	uta --conf=${CONF_FN} create-schema
 	uta --conf=${CONF_FN} create-views ../sql/views.sql
 	uta --conf=${CONF_FN} initialize-schema
 
 	uta --conf=${CONF_FN} grant-permissions
 
-	for f in ${DATA_DIR}/*.seqinfo.gz; do uta --conf=${CONF_FN} load-seqinfo "$$f"; done
+	for f in ${DATA_DIR}/*.seqinfo.gz ; do uta --conf=${CONF_FN} load-seqinfo  "$$f"; done
 	for f in ${DATA_DIR}/*.geneinfo.gz; do uta --conf=${CONF_FN} load-geneinfo "$$f"; done
-	for f in ${DATA_DIR}/*.txinfo.gz; do uta --conf=${CONF_FN} load-txinfo "$$f"; done
-	for f in ${DATA_DIR}/*.exonset.gz; do uta --conf=${CONF_FN} load-exonsets "$$f"; done
+	for f in ${DATA_DIR}/*.txinfo.gz  ; do uta --conf=${CONF_FN} load-txinfo   "$$f"; done
+	for f in ${DATA_DIR}/*.exonset.gz ; do uta --conf=${CONF_FN} load-exonsets "$$f"; done
+
 	uta --conf=${CONF_FN} align-exons ${SEQ_DIR}
 
 
