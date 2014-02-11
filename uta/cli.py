@@ -7,20 +7,20 @@ __doc__ = """uta -- Universal Transcript Archive command line tool
 Usage:
   uta ( -h | --help )
   uta --version
-  uta [options] shell
-  uta [options] drop-schema
-  uta [options] create-schema
-  uta [options] create-views FILES ...
-  uta [options] initialize-schema
-  uta [options] rebuild
-  uta [options] load-seqinfo FILE
-  uta [options] load-geneinfo FILE
-  uta [options] load-txinfo FILE
-  uta [options] load-exonsets FILE
-  uta [options] load-sequences
-  uta [options] align-exons [--sql SQL]
-  uta [options] load-ncbi-seqgene FILE
-  uta [options] grant-permissions
+  uta (-C CONF ...) [options] shell
+  uta (-C CONF ...) [options] drop-schema
+  uta (-C CONF ...) [options] create-schema
+  uta (-C CONF ...) [options] create-views FILES ...
+  uta (-C CONF ...) [options] initialize-schema
+  uta (-C CONF ...) [options] rebuild
+  uta (-C CONF ...) [options] load-seqinfo FILE
+  uta (-C CONF ...) [options] load-geneinfo FILE
+  uta (-C CONF ...) [options] load-txinfo FILE
+  uta (-C CONF ...) [options] load-exonsets FILE
+  uta (-C CONF ...) [options] load-sequences
+  uta (-C CONF ...) [options] align-exons [--sql SQL]
+  uta (-C CONF ...) [options] load-ncbi-seqgene FILE
+  uta (-C CONF ...) [options] grant-permissions
   
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
@@ -92,9 +92,16 @@ def run(argv=None):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
+    # cf_loaded: deal with docopt issue https://github.com/docopt/docopt/issues/134
     cf = ConfigParser.SafeConfigParser()
-    cf.readfp( open(opts['--conf']) )
-    db_url = cf.get('uta','db_loading_url')
+    cf_loaded = dict()
+    for conf_fn in opts['--conf']:
+        if conf_fn not in cf_loaded:
+            cf.readfp( open(conf_fn) )
+            cf_loaded[conf_fn] = True
+            logger.info('loaded '+conf_fn)
+
+    db_url = cf.get('uta','db_url')
     session = uta.connect(db_url)
 
     sub = None
