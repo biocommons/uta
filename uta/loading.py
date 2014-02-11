@@ -97,6 +97,18 @@ def initialize_schema(session,opts,cf):
             ))
     session.add(
         usam.Origin(
+            name='BIC',
+            descr='Breast Cancer Information Core',
+            url='http://research.nhgri.nih.gov/bic/',
+            ))
+    session.add(
+        usam.Origin(
+            name='LRG',
+            descr='Locus Reference Genomic sequence',
+            url='http://www.lrg-sequence.org/',
+            ))
+    session.add(
+        usam.Origin(
             name='uta0',
             descr='UTA version 0',
             url = 'http://bitbucket.org/invitae/uta',
