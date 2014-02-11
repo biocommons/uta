@@ -7,19 +7,16 @@ SHELL:=/bin/bash -o pipefail
 PATH:=../sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
 
-# move the following to conf
-SEQ_DIR:=/locus/data/core-rest/2014-01/sequences
+DATA_DIR:=${DATA}
+CONF=uta_dev@localhost
+CONF_FN=../etc/${CONF}.conf
+GLOBAL_CONF_FN:=../etc/global.conf
+CONF_OPTS:=--conf=${GLOBAL_CONF_FN} --conf=${CONF_FN}
 
-# Instance name
-IN=test
 
-DATA_DIR:=${IN}
-CONF_FN=${IN}.conf
-include .${CONF_FN}
-.${CONF_FN}: ${CONF_FN}
-	../sbin/conf-to-vars $< >$@
-
-#test-data/ncbi.seqinfo.gz /dev/null test-data/ncbi.geneinfo.gz test-data/ncbi.txinfo.gz test-data/ncbi.exonset.gz test-data/ucsc.exonset.gz
+include .${CONF}.conf.mk
+.${CONF}.conf.mk: ${GLOBAL_CONF_FN} ${CONF_FN}
+	../sbin/conf-to-vars $^ >$@
 
 
 ############################################################################
@@ -32,21 +29,27 @@ help:
 
 
 ############################################################################
-#=> build-db -- 
-build-db:
-	#uta --conf=${CONF_FN} drop-schema
-	uta --conf=${CONF_FN} create-schema
-	uta --conf=${CONF_FN} create-views ../sql/views.sql
-	uta --conf=${CONF_FN} initialize-schema
+#=> db-build -- 
+db-create:
+	#uta ${CONF_OPTS} drop-schema
+	uta ${CONF_OPTS} create-schema
+	uta ${CONF_OPTS} create-views ../sql/views.sql
+	uta ${CONF_OPTS} initialize-schema
 
-	uta --conf=${CONF_FN} grant-permissions
+db-grant:
+	uta ${CONF_OPTS} grant-permissions
 
-	for f in ${DATA_DIR}/*.seqinfo.gz ; do uta --conf=${CONF_FN} load-seqinfo  "$$f"; done
-	for f in ${DATA_DIR}/*.geneinfo.gz; do uta --conf=${CONF_FN} load-geneinfo "$$f"; done
-	for f in ${DATA_DIR}/*.txinfo.gz  ; do uta --conf=${CONF_FN} load-txinfo   "$$f"; done
-	for f in ${DATA_DIR}/*.exonset.gz ; do uta --conf=${CONF_FN} load-exonsets "$$f"; done
+db-load:
+	for f in ${DATA_DIR}/*.seqinfo.gz ; do uta ${CONF_OPTS} load-seqinfo  "$$f"; done
+	for f in ${DATA_DIR}/*.geneinfo.gz; do uta ${CONF_OPTS} load-geneinfo "$$f"; done
+	for f in ${DATA_DIR}/*.txinfo.gz  ; do uta ${CONF_OPTS} load-txinfo   "$$f"; done
+	for f in ${DATA_DIR}/*.exonset.gz ; do uta ${CONF_OPTS} load-exonsets "$$f"; done
 
-	uta --conf=${CONF_FN} align-exons ${SEQ_DIR}
+db-align:
+	uta ${CONF_OPTS} align-exons
+
+
+
 
 
 ############################################################################
