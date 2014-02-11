@@ -11,12 +11,14 @@
 #
 from __future__ import with_statement
 import argparse
+import operator
 import csv
-import gzip
 import operator
 import os
 import xml.etree.ElementTree
 
+import uta.formats.exonset
+import uta.formats.txinfo
 import uta.luts
 
 def main():
@@ -47,23 +49,25 @@ def main():
                 g_list.reverse()
             g_exon_coords_string = ';'.join(g_list)
 
-            exonset_lines.add('{}\t{}\t{}\t{}\t{}\n'.format(row['# LRG_TRANSCRIPT'],
-                                                     uta.luts.chr_to_NC[row['CHROMOSOME']],
-                                                     'LRG',
-                                                     row['STRAND'],
-                                                     g_exon_coords_string))
+            exonset_lines.add((row['# LRG_TRANSCRIPT'],
+                               uta.luts.chr_to_NC[row['CHROMOSOME']],
+                               'LRG',
+                               row['STRAND'],g_exon_coords_string))
             tx_acs_hgnc[row['# LRG_TRANSCRIPT']] = row['HGNC_SYMBOL']
 
 
-    with gzip.open(os.path.join(args_in.outdir, 'lrg.exonset.gz'), 'w') as f:
+    with open(os.path.join(args_in.outdir, 'lrg.exonset'), 'w') as f:
+        esw = uta.formats.exonset.ExonSetWriter(f)
         exonset_lines = list(exonset_lines)
-        exonset_lines.sort()
+        exonset_lines = sorted(exonset_lines, key=operator.itemgetter(0))
         for exonset_line in exonset_lines:
-            f.write(exonset_line)
+            exonset_row = uta.formats.exonset.ExonSet(*exonset_line)
+            esw.write(exonset_row)
 
 
     # write tx info file
-    with gzip.open(os.path.join(args_in.outdir, 'lrg.txinfo.gz'), 'w') as f_out:
+    with open(os.path.join(args_in.outdir, 'lrg.txinfo'), 'w') as f_out:
+        tw = uta.formats.txinfo.TxInfoWriter(f_out)
 
         tx_acs = tx_acs_hgnc.keys()
         tx_acs.sort()
@@ -126,9 +130,9 @@ def main():
                         tx_exon_se_i = ";".join(["{},{}".format(start, end) for (start, end) in exon_coords])
 
                         # finally - output result
-                        tx_str = '{}\t{}\t{}\t{}\t{}\n'.format('LRG', tx_ac, tx_acs_hgnc[tx_ac],
-                                                               tx_cds_se_i, tx_exon_se_i)
-                        f_out.write(tx_str)
+                        tx_row = uta.formats.txinfo.TxInfo('LRG', tx_ac, tx_acs_hgnc[tx_ac],
+                                                             tx_cds_se_i, tx_exon_se_i)
+                        tw.write(tx_row)
 
                         break
 
