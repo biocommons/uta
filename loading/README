@@ -58,6 +58,8 @@ IN (instance name) may be main, test, or quick.  test is the default.  See
 the configuration in IN.conf. (Currently, main loads into a uta_stage
 database, and test and quick load into a uta_dev database.)
 
+uta --conf=main.conf align-exons --sql "AND tx_ac ~ '^NM_' AND alt_ac~'^NC_00000'"
+
 *) push to RDS
 
 I build locally, then push to RDS like this:
