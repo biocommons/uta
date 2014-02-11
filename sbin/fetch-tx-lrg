@@ -37,7 +37,6 @@ def main():
         _ = f.readline()   # discard the 1st line - timestamp
         reader = csv.DictReader(f, delimiter='\t')
         exonset_lines = set()
-        chr_nc_map = uta.luts.chr_to_NC['GRCh37.p10-Primary Assembly']
 
         for row in reader:
             # setup exon pair string
@@ -49,8 +48,8 @@ def main():
             g_exon_coords_string = ';'.join(g_list)
 
             exonset_lines.add('{}\t{}\t{}\t{}\t{}\n'.format(row['# LRG_TRANSCRIPT'],
-                                                     chr_nc_map[row['CHROMOSOME']],
-                                                     'LRG_download',
+                                                     uta.luts.chr_to_NC[row['CHROMOSOME']],
+                                                     'LRG',
                                                      row['STRAND'],
                                                      g_exon_coords_string))
             tx_acs_hgnc[row['# LRG_TRANSCRIPT']] = row['HGNC_SYMBOL']
