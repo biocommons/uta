@@ -32,7 +32,7 @@ def parse_args(argv):
     return opts
 
 
-ac_re = re.compile('(?:ref)\|([^|]+)')
+ac_re = re.compile('(?:ref|gb)\|([^|]+)')
 #ac_re = re.compile('(?:gi|ref)\|([^|]+)')
 def parse_acs(compound_ac):
     return ac_re.findall(compound_ac)
