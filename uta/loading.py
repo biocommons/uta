@@ -438,7 +438,7 @@ def load_sequences(session,opts,cf):
     select S.seq_id,S.len,array_agg(SA.ac order by SA.ac) as acs
     from seq S
     join seq_anno SA on S.seq_id=SA.seq_id
-    where SA.ac ~ '^(NP|NG|ENST|NM)_' and S.seq is NULL
+    where SA.ac ~ '^(U|NP|NG|ENST|NM)' and S.seq is NULL
     group by S.seq_id,len
     """
 
