@@ -63,6 +63,7 @@ def create_views(session,opts,cf):
 
 def initialize_schema(session,opts,cf):
     """Create and populate initial schema"""
+    session.execute('set session authorization %s;', [cf.get('uta','loading_role')])
 
     session.add(
         usam.Origin(
@@ -549,15 +550,27 @@ def load_ncbi_seqgene(session,opts,cf):
 
 
 def grant_permissions(session,opts,cf):
+    schema = 'uta1'
     cmds = [
-        'grant usage on schema uta1 to uta_public',
+        'grant usage on schema '+schema+' to uta_public',
         ]
 
-    sql = "select concat(table_schema,'.',table_name) as fqrn from information_schema.tables where table_schema='uta1'"
+    sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(
+        schema=schema)
     cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn'])
               for row in session.execute(sql) ]
 
-    for cmd in cmds:
+    sql = "select concat(schemaname,'.',viewname) as fqrn from pg_views where schemaname='{schema}'".format(
+        schema=schema)
+    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn'])
+              for row in session.execute(sql) ]
+
+    sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
+        schema=schema)
+    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn'])
+              for row in session.execute(sql) ]
+
+    for cmd in sorted(cmds):
         logger.info(cmd)
         session.execute(cmd)
     session.commit()
