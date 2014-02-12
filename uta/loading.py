@@ -574,25 +574,25 @@ def grant_permissions(session,opts,cf):
 
     schema = 'uta1'
     cmds = [
-        'grant usage on schema '+schema+' to uta_public',
+        'grant usage on schema '+schema+' to PUBLIC',
         ]
 
     sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(
         schema=schema)
     rows = list(session.execute(sql))
-    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn']) for row in rows ]
+    cmds += [ "grant select on {fqrn} to PUBLIC".format(fqrn=row['fqrn']) for row in rows ]
     cmds += [ "alter table {fqrn} owner to uta_admin".format(fqrn=row['fqrn']) for row in rows ]
 
     sql = "select concat(schemaname,'.',viewname) as fqrn from pg_views where schemaname='{schema}'".format(
         schema=schema)
     rows = list(session.execute(sql))
-    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn']) for row in rows ]
+    cmds += [ "grant select on {fqrn} to PUBLIC".format(fqrn=row['fqrn']) for row in rows ]
     cmds += [ "alter view {fqrn} owner to uta_admin".format(fqrn=row['fqrn']) for row in rows ]
 
     sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
         schema=schema)
     rows = list(session.execute(sql))
-    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn']) for row in rows ]
+    cmds += [ "grant select on {fqrn} to PUBLIC".format(fqrn=row['fqrn']) for row in rows ]
     cmds += [ "alter materialized view {fqrn} owner to uta_admin".format(fqrn=row['fqrn']) for row in rows ]
 
     for cmd in sorted(cmds):
