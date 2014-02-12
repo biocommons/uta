@@ -31,7 +31,6 @@ help:
 ############################################################################
 #=> db-build -- 
 db-create:
-	#uta ${CONF_OPTS} drop-schema
 	uta ${CONF_OPTS} create-schema
 	uta ${CONF_OPTS} create-views ../sql/views.sql
 	uta ${CONF_OPTS} initialize-schema
@@ -49,7 +48,11 @@ db-align:
 	uta ${CONF_OPTS} align-exons
 
 
-
+.PHONY: push
+push: push.log
+push.log:
+	(time pg_dump -c -d uta_dev -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
+	mv $@.tmp $@
 
 
 ############################################################################

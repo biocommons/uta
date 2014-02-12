@@ -36,6 +36,7 @@ def drop_schema(session,opts,cf):
 
 def create_schema(session,opts,cf):
     """Create and populate initial schema"""
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 
     if session.bind.name == 'postgresql' and usam.use_schema:
         session.execute('create schema '+usam.schema_name)
@@ -54,6 +55,8 @@ def create_schema(session,opts,cf):
 
 def create_views(session,opts,cf):
     """Create views"""
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     for fn in opts['FILES']:
         logger.info('loading '+fn)
         session.execute( open(fn).read() )
@@ -63,7 +66,8 @@ def create_views(session,opts,cf):
 
 def initialize_schema(session,opts,cf):
     """Create and populate initial schema"""
-    session.execute('set session authorization %s;', [cf.get('uta','loading_role')])
+
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 
     session.add(
         usam.Origin(
@@ -124,6 +128,8 @@ def initialize_schema(session,opts,cf):
 def load_seqinfo(session,opts,cf):
     """load Seq entries with accessions from fasta file
     """
+
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 
     sir = ufsi.SeqInfoReader(gzip.open(opts['FILE']))
     logger.info('opened '+opts['FILE'])
@@ -186,6 +192,8 @@ def load_exonsets(session,opts,cf):
     # unlike seq and seq_anno loading, where annotations may be updated at any time,
     # exonsets are loaded discretely -- that is, we never *add* new exons to exonsets.
 
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     known_es = set([ (u_es.tx_ac,u_es.alt_ac,u_es.alt_aln_method) for u_es in session.query(usam.ExonSet) ])
     logger.info("{n} known exon_set keys; will skip those during loading".format(n=len(known_es)))
 
@@ -231,6 +239,8 @@ def load_exonsets(session,opts,cf):
 ############################################################################
 
 def load_geneinfo(session,opts,cf):
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     gir = ufgi.GeneInfoReader(gzip.open(opts['FILE']))
     logger.info('opened '+opts['FILE'])
 
@@ -249,6 +259,8 @@ def load_geneinfo(session,opts,cf):
 
 def load_txinfo(session,opts,cf):
     #TODO: add cds_md5 column and load here
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     self_aln_method = 'transcript'
 
     from bdi.multifastadb import MultiFastaDB
@@ -357,6 +369,8 @@ def align_exons(session, opts, cf):
     import uta.utils.alignment as uua
     import locus_lib_bio.align.algorithms as llbaa
 
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
     con = session.bind.pool.connect()
 
@@ -421,6 +435,8 @@ def load_ncbi_geneinfo(session, opts, cf):
     """
     import uta.parsers.geneinfo
     
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     o = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI Gene').one()
     gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(opts['FILE']))
     for gi in gip:
@@ -444,6 +460,8 @@ def load_ncbi_geneinfo(session, opts, cf):
 
 def load_sequences(session,opts,cf):
     from bdi.multifastadb import MultiFastaDB
+
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 
     mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
 
@@ -518,6 +536,8 @@ def load_ncbi_seqgene(session,opts,cf):
 
     import uta.parsers.seqgene
 
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     o_refseq = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI RefSeq').one()
     o_seqgene = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI seq_gene').one()
 
@@ -550,6 +570,8 @@ def load_ncbi_seqgene(session,opts,cf):
 
 
 def grant_permissions(session,opts,cf):
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+
     schema = 'uta1'
     cmds = [
         'grant usage on schema '+schema+' to uta_public',
@@ -557,18 +579,21 @@ def grant_permissions(session,opts,cf):
 
     sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(
         schema=schema)
-    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn'])
-              for row in session.execute(sql) ]
+    rows = list(session.execute(sql))
+    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn']) for row in rows ]
+    cmds += [ "alter table {fqrn} owner to uta_admin".format(fqrn=row['fqrn']) for row in rows ]
 
     sql = "select concat(schemaname,'.',viewname) as fqrn from pg_views where schemaname='{schema}'".format(
         schema=schema)
-    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn'])
-              for row in session.execute(sql) ]
+    rows = list(session.execute(sql))
+    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn']) for row in rows ]
+    cmds += [ "alter view {fqrn} owner to uta_admin".format(fqrn=row['fqrn']) for row in rows ]
 
     sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
         schema=schema)
-    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn'])
-              for row in session.execute(sql) ]
+    rows = list(session.execute(sql))
+    cmds += [ "grant select on {fqrn} to uta_public".format(fqrn=row['fqrn']) for row in rows ]
+    cmds += [ "alter materialized view {fqrn} owner to uta_admin".format(fqrn=row['fqrn']) for row in rows ]
 
     for cmd in sorted(cmds):
         logger.info(cmd)
