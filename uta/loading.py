@@ -572,8 +572,10 @@ def load_ncbi_seqgene(session,opts,cf):
 def grant_permissions(session,opts,cf):
     session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 
-    schema = 'uta1'
+    schema = 'uta1'                       # see models.py also
     cmds = [
+        'alter database {db} set search_path = {schema}'.format(db=cf.get('uta','database'),
+                                                                schema=schema),
         'grant usage on schema '+schema+' to PUBLIC',
         ]
 
