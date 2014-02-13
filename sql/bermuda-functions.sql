@@ -128,3 +128,18 @@ $$;
 
 
 
+CREATE OR REPLACE FUNCTION cigar_stats_is_trivial(RECORD)
+RETURNS BOOLEAN LANGUAGE plperl STRICT IMMUTABLE AS 
+$$
+use strict;
+use warnings;
+
+my ($r) = @_;
+return (
+	   ($r->{n_ops} <= 4)
+	   and ($r->{n_d} + $r->{n_i} <= 2)
+	   )	   
+	   ? 1 : 0;
+$$;
+
+
