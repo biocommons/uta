@@ -91,7 +91,8 @@ create or replace function cigar_stats(
        OUT t_e int,
        OUT t_x int,
        OUT t_d int,
-       OUT t_i int
+       OUT t_i int,
+	   OUT stats text
        )
 strict immutable language plperl as
 $$
@@ -122,7 +123,7 @@ $$
     
     $rv{'l1'} = $rv{'t_e'} + $rv{'t_x'} + $rv{'t_d'};
     $rv{'l2'} = $rv{'t_e'} + $rv{'t_x'} + $rv{'t_i'};
-
+    $rv{'stats'} = join('; ', map {sprintf("%s:%s",$_,$rv{$_})} qw(l1 l2 n_ex n_ops n_e n_x n_d n_i t_e t_x t_d t_i));
     return \%rv;
 $$;
 
