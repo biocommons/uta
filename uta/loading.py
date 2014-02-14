@@ -269,7 +269,6 @@ def load_txinfo(session,opts,cf):
     mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
 
     known_acs = set([ u_ti.ac for u_ti in session.query(usam.Transcript) ])
-
     n_lines = len(gzip.open(opts['FILE']).readlines())
     tir = ufti.TxInfoReader(gzip.open(opts['FILE']))
     logger.info('opened '+opts['FILE'])
@@ -369,10 +368,12 @@ def align_exons(session, opts, cf):
     import uta.utils.alignment as uua
     import locus_lib_bio.align.algorithms as llbaa
 
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    update_period = 50
 
     mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
     con = session.bind.pool.connect()
+    cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+    cur.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 
     sql = aln_sel_sql
     if opts['--sql']:
@@ -381,7 +382,6 @@ def align_exons(session, opts, cf):
         sql += ' ' + opts['SQL']
     sql += ' ORDER BY hgnc';
 
-    cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
     cur.execute(sql)
     rows = cur.fetchall()
     n_rows = len(rows)
@@ -414,7 +414,7 @@ def align_exons(session, opts, cf):
         cur.execute(aln_ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar.to_string(),added,tx_aseq,alt_aseq])
         tx_acs.add(r.tx_ac)
 
-        if i_r == n_rows-1 or i_r % 50 == 0:
+        if i_r == n_rows-1 or i_r % update_period == 0:
             con.commit()
             speed = (i_r+1) / (time.time() - t0);      # aln/sec
             etr = (n_rows-i_r-1) / speed               # etr in secs
