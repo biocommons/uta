@@ -1,0 +1,47 @@
+UTA uses an abstraction of transcripts and sequences that is necessary to
+represent some transcript sources.  It is described here.
+
+A transcript has two closely related meanings that are important to
+distinguish for the purposes of UTA.  The first is as a set of exons
+(i.e., start,end coordinates) on *some* sequence, such as a reference
+genome.  The second is as a set of exons on a *specific* sequence, such as
+a RefSeq.  The distinction is important because UTA needs to generalize
+the same set of exons on multiple sequences.  This concept is called an
+exon_set.  A transcript is an instance of a specific exon_set on a
+specific sequence.  Confusingly, but by necessity, certain exon_sets have
+the same name as the sequence, such as for a RefSeq on its associated
+sequence.
+
+To make this clear, (give example of gene, RefSeq, exon_set projection onto a sequence).
+
+
+
+
+* Multiple DB backends
+I'd really like to be able to use SQLAlchemy to support multiple database
+backends.  There's currently an annoying problem with inconsistent schema
+support across backends to deal with. An alternative is to implement DB
+interfaces directly.
+
+* Why use aliases?
+Unfortunately, we have identified cases where RefSeq exon structures
+changed without updating the accession version.  The only way to catch
+these is to use an id that is guaranteed to not change.
+
+* Why not get records from seqgene?
+Seqgene does not contain all the data we need. We have to look up some
+(like exon names) in eutils anyway, and other data we'd have to
+infer/compute with new code (like TSS, and genome alignment) and I'm
+unsure that we can do this without changing current behavior in corner
+cases.  And our eutils interface is already built.
+
+* Why interbase coordinates?
+Interbase coordinates are really the only way to think about sequence
+coordinates that handles all types of edits without corner cases.  For
+example, consider an insertion between nt 2 and 3 (in human
+coordinates). In HGVS, this is written like AC:c.2_3insT.  Fine, but what
+if the inserted sequence is before base 1?  We could write 0_1 I suppose,
+but that leads to the corner case that a user might reasonably ask for the
+nt at imaginary position 0.  Interbase eliminates a lot of annoying corner
+cases like this which are not intellectually challenging, but create
+spaghetti in code that is difficult to debug.
