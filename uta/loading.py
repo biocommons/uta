@@ -407,6 +407,8 @@ def align_exons(session, opts, cf):
         if r.alt_strand == -1:
             alt_seq = uug.reverse_complement(alt_seq)
 
+        tx_seq = tx_seq.upper()
+        alt_seq = alt_seq.upper()
         score,cigar = llbaa.needleman_wunsch_gotoh_align(tx_seq,alt_seq,extended_cigar=True)
         tx_aseq,alt_aseq = llbaa.cigar_alignment(tx_seq,alt_seq,cigar,hide_match=False)
         
@@ -483,7 +485,7 @@ def load_sequences(session,opts,cf):
         return None
 
     for row in session.execute(sql):
-        seq = _fetch_first(row['acs'])
+        seq = _fetch_first(row['acs']).upper()
         if seq is None:
             logger.warn("No sequence found for {acs}".format(acs=row['acs']))
             continue
