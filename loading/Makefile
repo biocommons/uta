@@ -51,7 +51,7 @@ db-align:
 .PHONY: push
 push: push.log
 push.log:
-	(time pg_dump -c -d uta_dev -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
+	(time pg_dump -U uta_admin -d uta_dev -c -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
 	mv $@.tmp $@
 
 

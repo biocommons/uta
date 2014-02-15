@@ -72,8 +72,33 @@ ci-test jenkins:
 	make ve \
 	&& source ve/bin/activate \
 	&& make install \
-	&& make test \
-	&& make docs
+	&& make test
+
+
+############################################################################
+#= UTILITY TARGETS
+
+#=> lint -- run lint, flake, etc
+# TBD
+
+#=> docs-aux -- make generated docs for sphinx
+docs-aux:
+	make -C misc/railroad doc-install
+	make -C examples doc-install
+
+#=> ve -- create a *local* virtualenv (not typically needed)
+VE_DIR:=ve
+VE_MAJOR:=1
+VE_MINOR:=10
+VE_PY_DIR:=virtualenv-${VE_MAJOR}.${VE_MINOR}
+VE_PY:=${VE_PY_DIR}/virtualenv.py
+${VE_PY}:
+	curl -sO  https://pypi.python.org/packages/source/v/virtualenv/virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
+	tar -xvzf virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
+	rm -f virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
+${VE_DIR}: ${VE_PY} 
+	${SYSTEM_PYTHON} $< ${VE_DIR} 2>&1 | tee "$@.err"
+	/bin/mv "$@.err" "$@"
 
 
 ############################################################################
@@ -90,7 +115,7 @@ cleaner: clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr distribute-* *.egg *.egg-info *.tar.gz nosetests.xml
+	/bin/rm -fr distribute-* *.egg *.egg-info *.tar.gz nosetests.xml cover
 #=> pristine: above, and delete anything unknown to mercurial
 pristine: cleanest
 	hg st -un0 | xargs -0r echo /bin/rm -fv
