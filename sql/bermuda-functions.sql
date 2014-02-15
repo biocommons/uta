@@ -2,8 +2,12 @@ create or replace function sv_cmp(IN sep text, IN cigar1 text, IN cigar2 text, O
 strict immutable language plperl as
 $$
     # given two sep-separated strings, a mask with ^^^ highlighting disagreement
+
+    use strict;
+    use warnings;
+
     my ($sep,$c1,$c2) = @_;
-    
+
     my @e1 = split($sep,$c1);
     my @e2 = split($sep,$c2);
 
@@ -43,37 +47,6 @@ $$
     
     my $rv = "$N$L$X$D$I";
     return $rv;
-
-$$;
-
-
-create or replace function cigar_stats_str(
-       IN cigar text,
-       out stats text
-       )
-strict immutable language plperl as
-$$
-    use strict;
-    use warnings;
-
-    my ($cigars) = @_;
-    my (%rv) = map {$_=>0} qw(e x d i);
-
-    $cigars =~ s/,//g;
-    my @elems = $cigars =~ m/\d+\D/g;
-    
-    $rv{n} = $#elems + 1;
-    foreach my $e (@elems) {
-        my ($n,$op) = $e =~ m/(\d+)(\D)/;
-        $op = $op eq '=' ? 'e' : lc($op);
-        $rv{$op} += $n;
-    }
-    
-    $rv{'l1'} = $rv{'e'} + $rv{'x'} + $rv{'d'};
-    $rv{'l2'} = $rv{'e'} + $rv{'x'} + $rv{'i'};
-
-    return "l1:$rv{l1}; l2:$rv{l2}; n:$rv{n}; =:$rv{e}; x:$rv{x}; d:$rv{d}; i:$rv{i}";
-    return \%rv;
 $$;
 
 
@@ -128,7 +101,6 @@ $$
 $$;
 
 
-
 CREATE OR REPLACE FUNCTION cigar_stats_is_trivial(RECORD)
 RETURNS BOOLEAN LANGUAGE plperl STRICT IMMUTABLE AS 
 $$
@@ -136,11 +108,14 @@ use strict;
 use warnings;
 
 my ($r) = @_;
+
+# tide = trivial indel at end -- does not count as indel 
+my ($tide) = $r->{'collapsed_cigar'} =~ m/\d[DI]\d=$/ ? 1 : 0;
+
 return (
-	   ($r->{n_ops} <= 4)
-	   and ($r->{n_d} + $r->{n_i} <= 2)
-	   )	   
+	   ($r->{n_x} <= 10)
+	   and ($r->{n_d} + $r->{n_i} <= 3 + $tide)
+	   and ($r->{t_d} + $r->{t_i} <= 50)
+	   )
 	   ? 1 : 0;
 $$;
-
-

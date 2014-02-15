@@ -2,19 +2,31 @@
 -- see Bermuda.txt for background
 
 
-CREATE OR REPLACE FUNCTION cigar_stats_is_trivial(RECORD)
-RETURNS BOOLEAN LANGUAGE plperl STRICT IMMUTABLE AS 
-$$
-use strict;
-use warnings;
-
-my ($r) = @_;
-return (
-	   ($r->{n_ops} <= 4)
-	   and ($r->{n_d} + $r->{n_i} <= 2)
-	   )	   
-	   ? 1 : 0;
-$$;
+drop view tx_3way_v;
+create or replace view tx_3way_v as
+select T.hgnc,T.ac,EST.alt_ac,ET.ord,
+	   (ET.end_i-ET.start_i) - (ES.end_i-ES.start_i) as ts_len_diff,
+	   (ET.end_i-ET.start_i) - (EB.end_i-EB.start_i) as tb_len_diff,
+	   (ES.start_i - EB.start_i) as sb_start_i_diff,
+	   (ES.end_i - EB.end_i) as sb_end_i_diff,
+	   ET.start_i as t_start_i,ET.end_i as t_end_i,ET.end_i-ET.start_i as t_len,
+	   ES.start_i as s_start_i,ES.end_i as s_end_i,ES.end_i-ES.start_i as s_len,
+	   EB.start_i as b_start_i,EB.end_i as b_end_i,EB.end_i-EB.start_i as b_len,
+	   EATS.cigar as ts_cigar, EATB.cigar as tb_cigar,
+	   EST.exon_set_id as t_exon_set_id, ESS.exon_set_id as s_exon_set_id, ESB.exon_set_id as b_exon_set_id,
+	   ET.exon_id as t_exon_id,ES.exon_id as s_exon_id,EB.exon_id as b_exon_id,
+	   EATS.exon_aln_id as ts_exon_aln_id, EATB.exon_aln_id as tb_exon_aln_id
+from transcript T
+left join exon_set EST on T.ac=EST.tx_ac and EST.alt_aln_method='transcript'
+left join exon_set ESS on T.ac=ESS.tx_ac and ESS.alt_aln_method='splign'
+left join exon_set ESB on T.ac=ESB.tx_ac and ESB.alt_aln_method='blat' and ESS.alt_ac=ESB.alt_ac
+left join exon ET on EST.exon_set_id=ET.exon_set_id
+left join exon ES on ESS.exon_set_id=ES.exon_set_id and ET.ord=ES.ord
+left join exon EB on ESB.exon_set_id=EB.exon_set_id and ET.ord=EB.ord
+left join exon_aln EATS on ET.exon_id=EATS.tx_exon_id and ES.exon_id=EATS.alt_exon_id
+left join exon_aln EATB on ET.exon_id=EATB.tx_exon_id and EB.exon_id=EATB.alt_exon_id
+where T.ac ~ '^NM_';
+;
 
 
 CREATE OR REPLACE VIEW nm_enst_equivalence_v AS 
