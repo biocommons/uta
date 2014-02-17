@@ -29,6 +29,7 @@ setup(
     install_requires = [
         'colorlog',
         'docopt',
+        'eutils',
         'nose',
         'psycopg2',
         'sqlalchemy',
