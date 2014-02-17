@@ -3,12 +3,14 @@
 .PHONY : FORCE
 .DELETE_ON_ERROR:
 
-SHELL:=/bin/bash -o pipefail
+SHELL:=/bin/bash -o pipefail -e
 PATH:=../sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
 
-DATA_DIR:=${DATA}
+DATA=main
 CONF=uta_dev@localhost
+
+DATA_DIR:=${DATA}
 CONF_FN=../etc/${CONF}.conf
 GLOBAL_CONF_FN:=../etc/global.conf
 CONF_OPTS:=--conf=${GLOBAL_CONF_FN} --conf=${CONF_FN}
@@ -29,23 +31,35 @@ help:
 
 
 ############################################################################
-#=> db-build -- 
+#= db-build and friends
+db-build: db-create db-grant db-load db-align-exons
+
 db-create:
 	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} create-views ../sql/views.sql
+	uta ${CONF_OPTS} load-sql ../sql/functions.sql ../sql/utils.sql ../sql/views.sql
 	uta ${CONF_OPTS} initialize-schema
 
 db-grant:
 	uta ${CONF_OPTS} grant-permissions
 
-db-load:
-	for f in ${DATA_DIR}/*.seqinfo.gz ; do uta ${CONF_OPTS} load-seqinfo  "$$f"; done
-	for f in ${DATA_DIR}/*.geneinfo.gz; do uta ${CONF_OPTS} load-geneinfo "$$f"; done
-	for f in ${DATA_DIR}/*.txinfo.gz  ; do uta ${CONF_OPTS} load-txinfo   "$$f"; done
-	for f in ${DATA_DIR}/*.exonset.gz ; do uta ${CONF_OPTS} load-exonsets "$$f"; done
+db-load: db-load-seqinfo.log db-load-geneinfo.log db-load-txinfo.log db-load-exonsets.log
+db-load-seqinfo.log:
+	for f in ${DATA_DIR}/*.seqinfo.gz ; do time -p uta ${CONF_OPTS} load-seqinfo  "$$f"; done >$@.tmp 2>&1
+	mv $@.tmp $@
+db-load-geneinfo.log:
+	for f in ${DATA_DIR}/*.geneinfo.gz; do time -p uta ${CONF_OPTS} load-geneinfo "$$f"; done >$@.tmp 2>&1
+	mv $@.tmp $@
+db-load-txinfo.log:
+	for f in ${DATA_DIR}/*.txinfo.gz  ; do time -p uta ${CONF_OPTS} load-txinfo   "$$f"; done >$@.tmp 2>&1
+	mv $@.tmp $@
+db-load-exonsets.log:
+	for f in ${DATA_DIR}/*.exonset.gz ; do time -p uta ${CONF_OPTS} load-exonsets "$$f"; done >$@.tmp.tmp 2>&1
+	mv $@.tmp $@
 
-db-align:
-	uta ${CONF_OPTS} align-exons
+db-align-exons: db-align-exons.log
+db-align-exons.log:
+	time -p uta ${CONF_OPTS} align-exons >$@.tmp 2>&1
+	mv $@.tmp $@
 
 
 .PHONY: push

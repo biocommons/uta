@@ -53,7 +53,7 @@ def create_schema(session,opts,cf):
 
 ############################################################################
 
-def create_views(session,opts,cf):
+def load_sql(session,opts,cf):
     """Create views"""
     session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 
