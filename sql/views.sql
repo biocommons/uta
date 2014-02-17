@@ -2,6 +2,22 @@ create or replace view uta1.gene_aliases_v as
 select hgnc,unnest(array_append(string_to_array(aliases,','),hgnc)) as alias from gene ;
 
 
+CREATE OR REPLACE VIEW tx_exon_aln_v AS 
+SELECT T.hgnc,T.ac as tx_ac,AES.alt_ac,AES.alt_aln_method,AES.alt_strand,
+	   TE.ord, TE.start_i as tx_start_i,TE.end_i as tx_end_i,
+	   AE.start_i as alt_start_i, AE.end_i as alt_end_i,
+	   EA.cigar, EA.tx_aseq, EA.alt_aseq,
+	   TES.exon_set_id AS tx_exon_set_id,AES.exon_set_id as alt_exon_set_id,
+	   TE.exon_id as tx_exon_id, AE.exon_id as alt_exon_id,
+	   EA.exon_aln_id
+FROM transcript T
+JOIN exon_set TES ON T.ac=TES.tx_ac AND TES.alt_aln_method ='transcript'
+JOIN exon_set AES on T.ac=AES.tx_ac and AES.alt_aln_method!='transcript'
+JOIN exon TE ON TES.exon_set_id=TE.exon_set_id
+JOIN exon AE ON AES.exon_set_id=AE.exon_set_id AND TE.ord=AE.ord
+LEFT JOIN exon_aln EA ON TE.exon_id=EA.tx_exon_id AND AE.exon_id=EA.alt_exon_id;
+
+
 create or replace view tx_alt_exon_pairs_v as
 select T.hgnc,TES.exon_set_id as tes_exon_set_id,AES.exon_set_id as aes_exon_set_id,
 TES.tx_ac as tx_ac,AES.alt_ac as alt_ac,AES.alt_strand,AES.alt_aln_method,
