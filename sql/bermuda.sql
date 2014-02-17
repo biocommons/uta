@@ -4,7 +4,7 @@
 
 drop view tx_3way_v;
 create or replace view tx_3way_v as
-select T.hgnc,T.ac,EST.alt_ac,ET.ord,
+select T.hgnc,T.ac,ESS.alt_ac,ET.ord,
 	   (ET.end_i-ET.start_i) - (ES.end_i-ES.start_i) as ts_len_diff,
 	   (ET.end_i-ET.start_i) - (EB.end_i-EB.start_i) as tb_len_diff,
 	   (ES.start_i - EB.start_i) as sb_start_i_diff,
@@ -30,7 +30,8 @@ where T.ac ~ '^NM_';
 
 
 CREATE OR REPLACE VIEW nm_enst_equivalence_v AS 
-SELECT N.tx_ac,array_agg(format('%s/C%s',E.tx_ac,CASE WHEN N.es_fingerprint=E.es_fingerprint THEN 'E' ELSE 'e' END) ORDER BY NOT N.es_fingerprint=E.es_fingerprint) as enst_equivs
+SELECT N.tx_ac,array_agg(format('%s/C%s',E.tx_ac,CASE WHEN N.es_fingerprint=E.es_fingerprint THEN 'E' ELSE 'e' END)
+	   							ORDER BY NOT N.es_fingerprint=E.es_fingerprint) as enst_equivs
 FROM tx_def_summary_v N 
 JOIN tx_def_summary_v E on N.cds_md5=E.cds_md5
 WHERE N.tx_ac ~ '^NM_' and E.tx_ac ~ '^ENST'
