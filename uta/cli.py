@@ -10,7 +10,7 @@ Usage:
   uta (-C CONF ...) [options] shell
   uta (-C CONF ...) [options] drop-schema
   uta (-C CONF ...) [options] create-schema
-  uta (-C CONF ...) [options] create-views FILES ...
+  uta (-C CONF ...) [options] load-sql FILES ...
   uta (-C CONF ...) [options] initialize-schema
   uta (-C CONF ...) [options] rebuild
   uta (-C CONF ...) [options] load-seqinfo FILE
@@ -72,7 +72,7 @@ def run(argv=None):
         ('grant-permissions',           ul.grant_permissions),
         ('rebuild',                     rebuild),
 
-        ('create-views',                ul.create_views),
+        ('load-sql', 	                ul.load_sql),
 
         ('load-exonsets',               ul.load_exonsets),
         ('load-geneinfo',               ul.load_geneinfo),
