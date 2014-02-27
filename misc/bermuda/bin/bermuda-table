@@ -1,0 +1,208 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+import logging
+import re
+import sys
+
+import psycopg2
+import psycopg2.extras
+
+dsn = "host=localhost dbname=uta_dev"
+
+
+def build_sel_sql(preds=[]):
+    sel_preds = [ 
+        ]
+    sel_preds += preds
+    query = ' '.join([
+            'SELECT * FROM bermuda2.bermuda_data_mv',
+            '' if len(sel_preds) == 0 else 'WHERE ' + ' AND '.join(sel_preds),
+            'ORDER BY hgnc,tx_ac',
+            ])
+    return query
+
+def ex_op_pos(cigar):
+    '''Add positions to operations in cigar string, treating deletes as
+    zero-width (relative to comparison sequence).'''
+    u = re.compile('(?P<n>\d+)(?P<op>[MXID])')
+    ops = []
+    ex_pos = 0                  # exon pos, rel tx, disregarding deletes
+    for op in [m.groupdict() for m in u.finditer(cigar)]:
+        op['pos'] = ex_pos
+        if op['op'] != 'D':     # deletes are zero-width operations
+            ex_pos += int(op['n'])
+        ops += [op]
+    return ops
+
+def op_pos(cigars,lengths,cds_start_i,cds_end_i):
+    net_pos = 0
+    ops = []
+    for i in range(len(cigars)):
+        for op in ex_op_pos(cigars[i]):
+            op['net_pos'] = net_pos + op['pos']
+            op['cds_pos'] = op['net_pos'] - cds_start_i
+            op['cds?'] = (op['net_pos']+int(op['n'])>cds_start_i and op['net_pos']<cds_end_i)
+            op['exon'] = i+1
+            ops += [op]
+        net_pos += lengths[i]
+    return ops
+
+def _pm(i):
+    if i==-1: return '-'
+    if i== 1: return '+'
+    return None
+
+def op_fmt(ops):
+    op_map = { 'X': 'S', 'D': 'D', 'I': 'I' }
+    def _op_fmt(op):
+        n = '' if op['n'] == '1' else op['n']
+        return '%s:%d(%s)%s%s' % (
+            op['exon'], op['pos']+1, op['cds_pos']+1, op_map[op['op']], n )
+    return ','.join(map(_op_fmt,ops))
+
+
+def enst_equivs_summary(enst_equivs):
+    if '/CE' in enst_equivs:
+        return 'yes, incl. UTR'
+    elif '/CC' in enst_equivs:
+        return 'yes, CDS only'
+    return 'no'
+
+def row_str(row):
+    notes = []
+    warnings = []
+    ensts = []
+    e_align = []
+
+    cds_start_i,cds_end_i = row['cds_start_i'],row['cds_end_i']
+
+    lengths = ops = []
+    if row['s_cigars'] is not None:
+        lengths = [ int(l) for l in row['t_lengths'].split(';') ]
+        ops = [ o for o in op_pos(row['s_cigars'].split(';'),lengths,
+                                  cds_start_i,cds_end_i) ]
+    subs = [ o for o in ops if o['op'] == 'X' ]
+    indels = [ o for o in ops if o['op'] in 'DI' ]
+    cds_indels = [ o for o in indels if o['cds?'] ]
+    utr_indels = [ o for o in indels if not o['cds?'] ]
+
+    if row['s_status'] is None:
+        warnings += ['avoid -- no splign alignment']
+    elif 'n' in row['s_status']:
+        warnings += ['avoid -- exon # mismatch']
+    elif 'l' in row['s_status']:
+        warnings += ['avoid -- exon length mismatch']
+
+    # alignment quality
+    sb = (row['s_se_i'] is not None, row['b_se_i'] is not None)
+    if sb == (True,True):
+        if row['s_se_i'] == row['b_se_i']:
+            alignment_quality = 'high'
+            notes += [ 'splign and blat coordinates agree precisely' ]
+        else:
+            alignment_quality = 'intermediate'
+            warnings += [ 'splign and blat coordinates differ' ]
+    elif sb == (True,False):
+        alignment_quality = 'intermediate'
+        warnings += [ 'not aligned by blat' ]
+    elif sb == (False,True):
+        alignment_quality = 'intermediate'
+        warnings += [ 'not aligned by splign' ]
+    else:
+        alignment_quality = 'poor'
+        warnings += [ 'no alignments available' ]
+
+    # splign_refagree
+    if row['s_status'] == 'NLxdi':
+        splign_refagree = 'exact'
+    elif row['s_minor']:
+        edits = []
+        if 'X' in row['s_status']:
+            edits += [ 'sub' ]
+        if 'D' in row['s_status']:
+            edits += [ 'del' ]
+        if 'I' in row['s_status']:
+            edits += [ 'ins' ]
+        splign_refagree = 'minor ('+','.join(edits)+')'
+    else:
+        splign_refagree = 'severe'
+
+    return( '\t'.join([
+                row['hgnc'],
+                row['tx_ac'],
+                row['alt_coords'] or '',
+
+                alignment_quality,
+                splign_refagree,
+                enst_equivs_summary(row['enst_equivs'] or ''),
+                'yes' if row['is_hgmd_tx'] else 'no',
+
+                op_fmt(cds_indels),
+                op_fmt(utr_indels),
+                op_fmt(subs),
+                row['patches'] or '',
+                row['enst_equivs'] or '',
+
+                '; '.join(warnings),
+                '; '.join(notes),
+                ]))
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+
+    con = psycopg2.connect(dsn)
+
+    print( '\t'.join([
+        "Gene (HGNC)",
+        "Accession",
+        "GRCh37 coordinates",
+        "Alignment Quality",
+        "Reference Agreement",
+        "has Ensembl equivalents?",
+        "is HGMD transcript?",
+        "CDS indels",
+        "UTR indels",
+        "Substitutions"
+        "Patch Alignments",
+        "Ensembl Equivalents",
+        "Warnings",
+        "Notes",                    
+        ]))
+    # add ensembl verison, hgmd version
+
+    sel_cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    if len(sys.argv) > 1:
+        sel_sql = build_sel_sql(preds = [ 'hgnc = %(hgnc)s' ])
+        print(sel_sql)
+        for hgnc in sys.argv[1:]:
+            sel_cur.execute(sel_sql,{'hgnc': hgnc})
+            for row in sel_cur:
+                print( row_str(row) )
+    else:
+        sel_sql = build_sel_sql()
+        sel_cur.execute(sel_sql)
+        for row in sel_cur:
+            print( row_str(row) )
+
+
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>

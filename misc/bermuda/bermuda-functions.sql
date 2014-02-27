@@ -120,7 +120,7 @@ $$
 $$;
 
 
-CREATE OR REPLACE FUNCTION cigar_stats_is_trivial(RECORD)
+CREATE OR REPLACE FUNCTION cigar_stats_is_minor(RECORD)
 RETURNS BOOLEAN LANGUAGE plperl STRICT IMMUTABLE AS 
 $$
 use strict;
