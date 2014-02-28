@@ -29,3 +29,7 @@ b) psql
 \i hgmd-gene-transcripts.sql
 \copy hgmd_gene_transcripts from misc/bermuda/hgmd-gene-transcripts.tsv delimiter '     ' csv header null 'NULL';
 
+
+4) Refreshing views
+perl -lne 'print "refresh materialized view $1;" if m/create.*materialized view\s+(\S+)/' ../sql/views.sql
+perl -lne 'print "refresh materialized view $1;" if m/create.*materialized view\s+(\S+)/' sandbox.sql  bermuda-prep.sql bermuda.sql 
