@@ -50,8 +50,10 @@ class CIGAROp(recordtype.recordtype('CIGAROp',
         return self.r_start_i<=self.tx.cds_end_i and self.r_end_i>=self.tx.cds_start_i
 
     def as_string(self):
-        c_start = self.c_start_i + 1
-        c_end = self.c_end_i
+        if self.op == 'I':
+            c_start,c_end = self.c_start_i   , self.c_end_i+1
+        else:
+            c_start,c_end = self.c_start_i+1 , self.c_end_i
         c_pos = str(c_start) if c_start == c_end else "{c_start}_{c_end}".format(c_start=c_start,c_end=c_end)
         return "{self.exon}:{self.count}{self.op}(c.{c_pos})".format(
             self = self,
@@ -87,7 +89,7 @@ def build_sel_sql(preds=[]):
         ]
     sel_preds += preds
     query = ' '.join([
-            'SELECT * FROM bermuda2.bermuda_data_mv',
+            'SELECT * FROM bermuda.bermuda_data_mv',
             '' if len(sel_preds) == 0 else 'WHERE ' + ' AND '.join(sel_preds),
             'ORDER BY hgnc,tx_ac',
             ])
@@ -120,13 +122,13 @@ def row_str(row):
             notes += [ 'splign and blat coordinates agree precisely' ]
         else:
             alignment_quality = 'intermediate'
-            warnings += [ 'splign and blat coordinates differ' ]
+            warnings += [ 'splign and blat coordinates differ; alignment is ambiguous' ]
     elif sb == (True,False):
         alignment_quality = 'intermediate'
-        warnings += [ 'not aligned by blat' ]
+        warnings += [ 'not aligned by blat; splign alignment available' ]
     elif sb == (False,True):
         alignment_quality = 'intermediate'
-        warnings += [ 'not aligned by splign' ]
+        warnings += [ 'not aligned by splign; blat alignment available (requires engineering)' ]
     else:
         alignment_quality = 'poor'
         warnings += [ 'no alignments available' ]
@@ -149,10 +151,7 @@ def row_str(row):
     # ensembl equivalents
     enst_equivs = 'no'
     if row['enst_equivs'] is not None:
-        if '/CE' in row['enst_equivs']:
-            return 'yes, CDS+UTR'
-        elif '/CC' in enst_equivs:
-            return 'yes, CDS only'
+        enst_equivs = 'CDS+UTR' if '/CE' in row['enst_equivs'] else 'CDS only'
 
     return( '\t'.join([
                 row['hgnc'],

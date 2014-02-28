@@ -59,7 +59,7 @@ $$
     my (@alt_lens) = map( { $_->[1]-$_->[0] } @alt_se_i );
 
     my $N = $#tx_se_i == $#alt_se_i ? 'N' : 'n';
-    my $L = join(',',@tx_lens) eq join(',',@alt_lens) ? 'L' : 'l';
+    my $L = join(';',@tx_lens) eq join(';',@alt_lens) ? 'L' : 'l';
     my $X = $cigars =~ 'X' ? 'X' : 'x';
     my $D = $cigars =~ 'D' ? 'D' : 'd';
     my $I = $cigars =~ 'I' ? 'I' : 'i';
@@ -96,10 +96,10 @@ $$
                               n_e n_x n_d n_i
                               t_e t_x t_d t_i);
 
-    $rv{'n_ex'} = $cigars =~ tr/,/,/ + 1;
+    $rv{'n_ex'} = $cigars =~ tr/;/;/ + 1;
 
     my $cigar = $cigars;
-    $cigar =~ s/,//g;
+    $cigar =~ s/;//g;
     while ($cigar =~ s/(\d+)(\D)(\d+)\2/sprintf("%d%s",$1+$3,$2)/eg) {};
     $rv{'collapsed_cigar'} = $cigar;
 
