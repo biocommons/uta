@@ -1,5 +1,6 @@
-set search_path = sandbox;
-create materialized view alns_mv as select distinct hgnc,split_part(tx_ac,'.',1) as tx_ac_b,tx_ac,alt_ac,alt_aln_method from uta1.tx_exon_aln_v;
+create materialized view alns_mv as
+select distinct hgnc,split_part(tx_ac,'.',1) as tx_ac_b,tx_ac,alt_ac,alt_aln_method from uta1.tx_exon_aln_v WITH NO DATA;
+
 create or replace view ealns_v as select * from alns_mv where tx_ac~'^NM_' and alt_ac~'^NC_0000';
 create or replace view s_alns_v as select hgnc,tx_ac_b,tx_ac,alt_ac from ealns_v where alt_aln_method='splign';
 create or replace view b_alns_v as select hgnc,tx_ac_b,tx_ac,alt_ac from ealns_v where alt_aln_method='blat';
@@ -165,20 +166,3 @@ create materialized view u1sb_mv as select * from u1sb_v WITH NO DATA;
 
 
 
-
-create or replace view bermuda_data_pivot_v as
-select transcript_class(sb_se_i_eq, sb_status_eq, s_refagree, b_refagree, s_trivial, b_trivial),*
-from (
-	   select sb_se_i_eq,sb_status_eq,s_refagree,b_refagree,s_trivial,b_trivial,
-	   round(avg(max_coord_diff)) as avg_max_coord_diff,
-	   count(*) as n,
-	   count(distinct tx_ac) as n_tx_ac,
-	   count(distinct B.hgnc) as n_hgnc,
-	   coalesce(sum(case when ck then 1 else 0 end),0) as ck,
-	   coalesce(sum(case when acmg then 1 else 0 end),0) as acmg,
-	   coalesce(sum(case when htd then 1 else 0 end),0) as htd
-	   from bermuda_data_mv B
-	   group by sb_se_i_eq,sb_status_eq,s_refagree,b_refagree,s_trivial,b_trivial
-) X
-order by 1,2,3,4,5,6,7;
-;

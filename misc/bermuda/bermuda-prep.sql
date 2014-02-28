@@ -1,4 +1,4 @@
-create table ac_alts as
+create materialized view ac_alts as
 select tx_ac as ac,array_to_string(array_agg(alt_ac),',') as alts
 from uta1.tx_aln_summary_mv
 where alt_ac~'^NC_0000' and alt_aln_method='splign' group by tx_ac;

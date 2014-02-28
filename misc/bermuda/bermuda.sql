@@ -3,7 +3,7 @@ select TDS.hgnc,
 	   GSP.ck_release as ck, GSP.acmg_mr as acmg, GSP.htd,
 	   exists(select * from hgmd_gene_transcripts HGT where TDS.hgnc=HGT.hgnc and TDS.tx_ac=HGT.ac) as is_hgmd_tx,
 	   TDS.tx_ac, TDS.cds_start_i, TDS.cds_end_i,
-	   TASS.alt_ac, TASS.alt_strand, regexp_replace(TASS.se_i,',.+,','-') as "alt_coords",
+	   TASS.alt_ac, TASS.alt_strand, regexp_replace(TASS.se_i,',.+,','-') as "alt_bounds",
 	   P.patches,
 	   TDS.n_exons,
 	   aln_status(TDS.se_i,TASS.se_i,TASS.cigars) = 'NLxdi' as s_refagree,
@@ -46,3 +46,23 @@ order by hgnc,tx_ac,alt_ac;
 
 create materialized view bermuda_data_mv as select * from bermuda_data_dv WITH NO DATA;
 grant select on bermuda_data_mv to public;
+
+
+
+
+create or replace view bermuda_data_pivot_v as
+select transcript_class(sb_se_i_eq, sb_status_eq, s_refagree, b_refagree, s_minor, b_minor),*
+from (
+	   select sb_se_i_eq,sb_status_eq,s_refagree,b_refagree,s_minor,b_minor,
+	   round(avg(max_coord_diff)) as avg_max_coord_diff,
+	   count(*) as n,
+	   count(distinct tx_ac) as n_tx_ac,
+	   count(distinct B.hgnc) as n_hgnc,
+	   coalesce(sum(case when ck then 1 else 0 end),0) as ck,
+	   coalesce(sum(case when acmg then 1 else 0 end),0) as acmg,
+	   coalesce(sum(case when htd then 1 else 0 end),0) as htd
+	   from bermuda_data_mv B
+	   group by sb_se_i_eq,sb_status_eq,s_refagree,b_refagree,s_minor,b_minor
+) X
+order by 1,2,3,4,5,6,7;
+;
