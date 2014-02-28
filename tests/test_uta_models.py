@@ -8,7 +8,8 @@ usam = uta.models                         # backward compatibility
 
 data_dir = os.path.realpath(os.path.realpath( os.path.join(__file__,'../data')))
 cp = ConfigParser.SafeConfigParser()
-cp.readfp( open( os.path.join(data_dir,'test.conf') ) )
+
+cp.readfp( open( os.path.join(data_dir,os.environ.get('TEST_CONF','test.conf')) ) )
 
 
 class Test_uta_models(unittest.TestCase):

@@ -27,10 +27,14 @@ setup(
 
 
     install_requires = [
+        'biopython',
         'colorlog',
         'docopt',
+        'eutils',
         'nose',
         'psycopg2',
+        'pytz',
+        'recordtype',
         'sqlalchemy',
         ],
 

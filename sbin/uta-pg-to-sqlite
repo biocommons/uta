@@ -1,11 +1,11 @@
 #!/bin/bash -e
-# make a sqlite database from uta0
+# make a sqlite database from uta1
 # use: uta-pg-to-sqlite <-t>
 # -t: make a test DB instead
 
 make_test=0
 nm="('NM_006158.3', 'NM_000399.3', 'NM_000257.2', 'NM_024740.2', 'NM_000314.4', 'NM_152274.3', 'NM_003060.3', 'NM_000249.3', 'NM_020451.2')"
-np="('NP_689487.2', 'NP_000390.2', 'NP_079016.2', 'NP_003051.1', 'NP_000248.2', 'NP_006149.2', 'NP_000305.3', 'NP_000240.1', 'NP_065184.2')"
+#np="('NP_689487.2', 'NP_000390.2', 'NP_079016.2', 'NP_003051.1', 'NP_000248.2', 'NP_006149.2', 'NP_000305.3', 'NP_000240.1', 'NP_065184.2')"
 
 while test $# -gt 0
 do
@@ -18,7 +18,7 @@ done
 
 # NOTE - may need to update the psql call depending on the host, port and user
 psql_do () {
-	psql -d uta -AtX -F$'\t' -c "$@";
+	psql -h uta.invitae.com -d uta_dev -U uta_public -AtX -F$'\t' -c "$@";
 }
 
 cleanup () {
@@ -30,7 +30,7 @@ trap cleanup EXIT
 data_tmpfn=$(mktemp /tmp/XXXXX.tsv)
 sqlitedb_tmpfn=$(mktemp /tmp/XXXXX.db)
 
-schema_version=$(psql_do "select value from uta0.meta where key='schema_version'")
+schema_version=$(psql_do "select value from uta1.meta where key='schema_version'")
 version=$schema_version
 if [ $make_test = 0 ]; then
 	sqlite_fn="/tmp/uta$testname-$version.db"
@@ -42,50 +42,140 @@ fi
 sqlite3 $sqlitedb_tmpfn <<EOF
 create table meta (key text,value text);
 
-create table protein_hash (ac text primary key, md5 text not null, seguid text not null);
-create index protein_hash_md5 on protein_hash(md5);
-create index protein_hash_seguid on protein_hash(seguid);
+create table exon_set (exon_set_id integer not null primary key, tx_ac text not null, alt_ac text not null, alt_strand smallint not null, alt_aln_method text not null, added timestamp without time zone not null);
+create index exon_set_alt_aln_method_ix on exon_set(alt_aln_method);
 
-create table transcript (ac text, gene text, cds_start_i int, cds_end_i int, added timestamp with time zone, seq text);
-create index transcript_ac on transcript(ac);
-create index transcript_gene on transcript(gene);
+create table exon (exon_id integer not null primary key, exon_set_id integer not null, start_i integer not null, end_i integer not null, ord integer not null, name text);
+create index end_i_must_be_unique_in_exon_set on exon(exon_set_id, end_i);
+create index start_i_must_be_unique_in_exon_set on exon(exon_set_id, start_i);
+create index exon_exon_set_id_ix on exon(exon_set_id);
 
-create table tx_exons (ac text, ord smallint, name text, t_start_i integer, t_end_i integer, ref text, g_start_i integer, g_end_i integer, g_cigar text, g_seq_a text, t_seq_a text);
-create index tx_exons_ac on tx_exons(ac);
+create table exon_aln (exon_aln_id integer not null primary key, tx_exon_id integer not null, alt_exon_id integer not null, cigar text not null, added timestamp without time zone not null, tx_aseq text not null, alt_aseq text not null);
+create index exon_aln_alt_exon_id_ix on exon_aln(alt_exon_id);
+create index exon_aln_tx_exon_id_ix on  exon_aln(tx_exon_id);
 
-create table tx_info (gene  text, chr  text, strand  smallint, ac  text, cds_start_i  integer, cds_end_i  integer, descr  text, summary  text);
-create index tx_info_gene on tx_info(gene);
-create index tx_info_ac on tx_info(ac);
+create table seq (seq_id text primary key, len integer not null, seq text);
+
+create table seq_anno (seq_anno_id integer not null primary key, seq_id text, origin_id integer not null, ac text not null, descr text not null, added timestamp without time zone not null);
+create index seq_anno_ac_unique_in_origin on seq_anno(origin_id, ac);
+
+create table gene (hgnc text not null primary key, maploc text, descr text, summary text, aliases text, added timestamp without time zone not null);
+
+create table transcript (ac text not null primary key, origin_id integer not null, hgnc text, cds_start_i integer not null, cds_end_i integer not null, cds_md5 text not null, added timestamp without time zone not null);
+create index transcript_cds_md5_ix on transcript(cds_md5);
+create index transcript_hgnc_ix on transcript(hgnc);
+
+create table tx_exon_set_summary_mv (hgnc text, cds_md5 text, es_fingerprint text, tx_ac text, alt_ac text, alt_aln_method text, alt_strand smallint, exon_set_id integer, n_exons bigint, se_i text, starts_i integer[], ends_i integer[], lengths integer[]);
+create index tx_exon_set_summary_mv_alt_ac_ix on tx_exon_set_summary_mv(alt_ac);
+create index tx_exon_set_summary_mv_alt_aln_method_ix on tx_exon_set_summary_mv(alt_aln_method);
+create index tx_exon_set_summary_mv_cds_md5_ix on tx_exon_set_summary_mv(cds_md5);
+create index tx_exon_set_summary_mv_es_fingerprint_ix on tx_exon_set_summary_mv(es_fingerprint);
+create index tx_exon_set_summary_mv_tx_ac_ix on tx_exon_set_summary_mv(tx_ac);
+
+create view tx_exon_aln_v as  SELECT t.hgnc,
+    t.ac AS tx_ac,
+    aes.alt_ac,
+    aes.alt_aln_method,
+    aes.alt_strand,
+    te.ord,
+    te.start_i AS tx_start_i,
+    te.end_i AS tx_end_i,
+    ae.start_i AS alt_start_i,
+    ae.end_i AS alt_end_i,
+    ea.cigar,
+    ea.tx_aseq,
+    ea.alt_aseq,
+    tes.exon_set_id AS tx_exon_set_id,
+    aes.exon_set_id AS alt_exon_set_id,
+    te.exon_id AS tx_exon_id,
+    ae.exon_id AS alt_exon_id,
+    ea.exon_aln_id
+   FROM transcript t
+   JOIN exon_set tes ON t.ac = tes.tx_ac AND tes.alt_aln_method = 'transcript'
+   JOIN exon_set aes ON t.ac = aes.tx_ac AND aes.alt_aln_method <> 'transcript'
+   JOIN exon te ON tes.exon_set_id = te.exon_set_id
+   JOIN exon ae ON aes.exon_set_id = ae.exon_set_id AND te.ord = ae.ord
+   LEFT JOIN exon_aln ea ON te.exon_id = ea.tx_exon_id AND ae.exon_id = ea.alt_exon_id;
+
+create view tx_def_summary_v as  SELECT tess.hgnc,
+    tess.cds_md5,
+    tess.es_fingerprint,
+    tess.tx_ac,
+    tess.alt_ac,
+    tess.alt_aln_method,
+    tess.alt_strand,
+    tess.exon_set_id,
+    tess.n_exons,
+    tess.se_i,
+    tess.starts_i,
+    tess.ends_i,
+    tess.lengths,
+    t.cds_start_i,
+    t.cds_end_i
+   FROM tx_exon_set_summary_mv tess
+   JOIN transcript t ON tess.tx_ac = t.ac
+  WHERE tess.alt_aln_method = 'transcript';
+
+
 EOF
 
 
+
 if [ $make_test = 0 ]; then
-	nm_where=""
-	np_where=""
+	nm_where_seq=""
+	nm_where_exon=""
+	nm_where_seq_anno=""
+	nm_where_gene=""
+	nm_where_exon_set=""
+	nm_where_transcript=""
+	nm_where_exon_aln=""
+	nm_where_tx_exon_set_summary_mv=""
 else
-	nm_where="where ac in ${nm}"
-	np_where="where ac in ${np}"
+	nm_where_seq="JOIN uta1.seq_anno AS sa ON s.seq_id=sa.seq_id AND sa.ac IN ${nm}"
+	nm_where_exon="JOIN uta1.exon_set AS es ON e.exon_set_id=es.exon_set_id AND es.tx_ac IN ${nm}"
+	nm_where_seq_anno="WHERE sa.ac IN ${nm}"
+	nm_where_gene="JOIN uta1.transcript as t ON t.hgnc=g.hgnc AND t.ac IN ${nm}"
+	nm_where_exon_set="WHERE es.tx_ac IN ${nm}"
+	nm_where_transcript="WHERE t.ac IN ${nm}"
+	nm_where_exon_aln="JOIN uta1.exon AS e ON ea.tx_exon_id=e.exon_id JOIN uta1.exon_set AS es ON e.exon_set_id=es.exon_set_id AND es.tx_ac IN ${nm}"
+	nm_where_tx_exon_set_summary_mv="WHERE tessm.tx_ac IN ${nm}"
 fi
 
-psql_do 'select key,value from uta0.meta'  >$data_tmpfn
+psql_do 'SELECT key,value FROM uta1.meta'  >$data_tmpfn
 sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn meta"
 printf "%d/%d rows loaded into meta\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from meta') $(wc -l <$data_tmpfn)
 
-psql_do "select ac,md5,seguid from uta0.protein_hash ${np_where}" >$data_tmpfn
-sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn protein_hash"
-printf "%d/%d rows loaded into protein_hash\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from protein_hash') $(wc -l <$data_tmpfn)
+psql_do "SELECT s.seq_id, s.len, s.seq FROM uta1.seq AS s ${nm_where_seq}" >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn seq"
+printf "%d/%d rows loaded into seq\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from seq') $(wc -l <$data_tmpfn)
 
-psql_do "select ac,gene,cds_start_i,cds_end_i,added,seq from uta0.transcript ${nm_where} order by ac"  >$data_tmpfn
+psql_do "SELECT e.exon_id, e.exon_set_id, e.start_i, e.end_i, e.ord, e.name FROM uta1.exon AS e ${nm_where_exon}" >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn exon"
+printf "%d/%d rows loaded into exon\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from exon') $(wc -l <$data_tmpfn)
+
+psql_do "SELECT sa.seq_anno_id, sa.seq_id, sa.origin_id, sa.ac, sa.descr, sa.added FROM uta1.seq_anno AS sa ${nm_where_seq_anno}" >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn seq_anno"
+printf "%d/%d rows loaded into seq_anno\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from seq_anno') $(wc -l <$data_tmpfn)
+
+psql_do "SELECT g.hgnc, g.maploc, g.descr, g.summary, g.aliases, g.added FROM uta1.gene AS g ${nm_where_gene}" >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn gene"
+printf "%d/%d rows loaded into gene\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from gene') $(wc -l <$data_tmpfn)
+
+psql_do "SELECT es.exon_set_id, es.tx_ac, es.alt_ac, es.alt_strand, es.alt_aln_method, es.added FROM uta1.exon_set AS es ${nm_where_exon_set}" >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn exon_set"
+printf "%d/%d rows loaded into exon_set\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from exon_set') $(wc -l <$data_tmpfn)
+
+psql_do "SELECT t.ac, t.origin_id, t.hgnc, t.cds_start_i, t.cds_end_i, t.cds_md5, t.added FROM uta1.transcript AS t ${nm_where_transcript}" >$data_tmpfn
 sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn transcript"
 printf "%d/%d rows loaded into transcript\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from transcript') $(wc -l <$data_tmpfn)
 
-psql_do "select ac, ord, name, t_start_i, t_end_i, ref, g_start_i, g_end_i, g_cigar, g_seq_a, t_seq_a from uta0.tx_exons ${nm_where} order by ac,ord"  >$data_tmpfn
-sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn tx_exons"
-printf "%d/%d rows loaded into tx_exons\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from tx_exons') $(wc -l <$data_tmpfn)
+psql_do "SELECT ea.exon_aln_id, ea.tx_exon_id, ea.alt_exon_id, ea.cigar, ea.added, ea.tx_aseq, ea.alt_aseq from uta1.exon_aln AS ea ${nm_where_exon_aln}" >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn exon_aln"
+printf "%d/%d rows loaded into exon_aln\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from exon_aln') $(wc -l <$data_tmpfn)
 
-psql_do "select gene, chr, strand, ac, cds_start_i, cds_end_i, descr, summary from uta0.tx_info ${nm_where} order by gene,ac"  >$data_tmpfn
-sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn tx_info"
-printf "%d/%d rows loaded into tx_info\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from tx_info') $(wc -l <$data_tmpfn)
+psql_do "SELECT tessm.hgnc, tessm.cds_md5, tessm.es_fingerprint, tessm.tx_ac, tessm.alt_ac, tessm.alt_aln_method, tessm.alt_strand, tessm.exon_set_id, tessm.n_exons, tessm.se_i, tessm.starts_i, tessm.ends_i, tessm.lengths FROM uta1.tx_exon_set_summary_mv AS tessm ${nm_where_tx_exon_set_summary_mv}" >$data_tmpfn
+sqlite3 -separator $'\t' "$sqlitedb_tmpfn" ".import $data_tmpfn tx_exon_set_summary_mv"
+printf "%d/%d rows loaded into tx_exon_set_summary_mv\n" $(sqlite3 "$sqlitedb_tmpfn" 'select count(*) from tx_exon_set_summary_mv') $(wc -l <$data_tmpfn)
 
 sqlite3 $sqlitedb_tmpfn <<EOF
 insert into meta (key,value) values ('exported',strftime('%Y-%m-%d %H:%M:%SZ'));
