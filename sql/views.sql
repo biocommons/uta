@@ -64,7 +64,7 @@ grant select on exon_set_exons_fp_mv to public;
 
 create or replace view tx_aln_cigar_dv as
 select AES.tx_ac,AES.alt_ac,AES.alt_strand,AES.alt_aln_method,
-	   count(*) as n_exons, string_agg(EA.cigar,','  order by TEX.ord) as cigars
+	   count(*) as n_exons, string_agg(EA.cigar,';'  order by TEX.ord) as cigars
 from exon_set TES
 join exon_set AES on TES.tx_ac=AES.tx_ac and TES.alt_aln_method='transcript' and AES.alt_aln_method!='transcript'
 join exon TEX on TES.exon_set_id=TEX.exon_set_id

@@ -9,8 +9,78 @@ import sys
 import psycopg2
 import psycopg2.extras
 
+import recordtype
+
 dsn = "host=localhost dbname=uta_dev"
 
+
+############################################################################
+
+cigarop_re = re.compile('(?P<count>\d+)(?P<op>[=XDI])')
+
+class Tx(recordtype.recordtype('Tx',
+                               ['ac','cds_start_i','cds_end_i'])):
+    pass
+
+
+class CIGAROp(recordtype.recordtype('CIGAROp',
+                                    ['tx','exon','exon_start_i','op','count','r_start_i'])):
+    @property
+    def src_len(self):
+        return 0 if self.op == 'I' else self.count
+
+    @property
+    def tgt_len(self):
+        return 0 if self.op == 'D' else self.count
+
+    @property
+    def r_end_i(self):
+        return self.r_start_i + self.src_len
+
+    @property
+    def c_start_i(self):
+        return self.r_start_i - self.tx.cds_start_i
+
+    @property
+    def c_end_i(self):
+        return self.r_end_i - self.tx.cds_start_i
+
+    @property
+    def in_cds(self):
+        return self.r_start_i<=self.tx.cds_end_i and self.r_end_i>=self.tx.cds_start_i
+
+    def as_string(self):
+        c_start = self.c_start_i + 1
+        c_end = self.c_end_i
+        c_pos = str(c_start) if c_start == c_end else "{c_start}_{c_end}".format(c_start=c_start,c_end=c_end)
+        return "{self.exon}:{self.count}{self.op}(c.{c_pos})".format(
+            self = self,
+            c_pos = c_pos
+            )
+
+
+def cigar_to_ops(tx,cigars):
+    """for a list of cigar ops, return a list of CIGAROp objects"""
+    ops = []
+    r_pos = 0
+    for i,cigar in enumerate(cigars):
+        exon_pos = 0
+        for op_d in [ op_m.groupdict() for op_m in cigarop_re.finditer(cigar)]:
+            op = CIGAROp(
+                tx = tx,
+                exon = i+1,
+                exon_start_i = exon_pos,
+                op = op_d['op'],
+                count = int(op_d['count']),
+                r_start_i = r_pos,
+                )
+            r_pos += op.src_len
+            exon_pos += op.src_len
+            ops.append(op)
+    return ops
+
+
+############################################################################
 
 def build_sel_sql(preds=[]):
     sel_preds = [ 
@@ -23,81 +93,28 @@ def build_sel_sql(preds=[]):
             ])
     return query
 
-def ex_op_pos(cigar):
-    '''Add positions to operations in cigar string, treating deletes as
-    zero-width (relative to comparison sequence).'''
-    u = re.compile('(?P<n>\d+)(?P<op>[MXID])')
-    ops = []
-    ex_pos = 0                  # exon pos, rel tx, disregarding deletes
-    for op in [m.groupdict() for m in u.finditer(cigar)]:
-        op['pos'] = ex_pos
-        if op['op'] != 'D':     # deletes are zero-width operations
-            ex_pos += int(op['n'])
-        ops += [op]
-    return ops
-
-def op_pos(cigars,lengths,cds_start_i,cds_end_i):
-    net_pos = 0
-    ops = []
-    for i in range(len(cigars)):
-        for op in ex_op_pos(cigars[i]):
-            op['net_pos'] = net_pos + op['pos']
-            op['cds_pos'] = op['net_pos'] - cds_start_i
-            op['cds?'] = (op['net_pos']+int(op['n'])>cds_start_i and op['net_pos']<cds_end_i)
-            op['exon'] = i+1
-            ops += [op]
-        net_pos += lengths[i]
-    return ops
-
-def _pm(i):
-    if i==-1: return '-'
-    if i== 1: return '+'
-    return None
-
-def op_fmt(ops):
-    op_map = { 'X': 'S', 'D': 'D', 'I': 'I' }
-    def _op_fmt(op):
-        n = '' if op['n'] == '1' else op['n']
-        return '%s:%d(%s)%s%s' % (
-            op['exon'], op['pos']+1, op['cds_pos']+1, op_map[op['op']], n )
-    return ','.join(map(_op_fmt,ops))
-
-
-def enst_equivs_summary(enst_equivs):
-    if '/CE' in enst_equivs:
-        return 'yes, incl. UTR'
-    elif '/CC' in enst_equivs:
-        return 'yes, CDS only'
-    return 'no'
-
 def row_str(row):
     notes = []
     warnings = []
-    ensts = []
-    e_align = []
 
-    cds_start_i,cds_end_i = row['cds_start_i'],row['cds_end_i']
+    tx = Tx(row['tx_ac'], row['cds_start_i'], row['cds_end_i'])
 
-    lengths = ops = []
-    if row['s_cigars'] is not None:
-        lengths = [ int(l) for l in row['t_lengths'].split(';') ]
-        ops = [ o for o in op_pos(row['s_cigars'].split(';'),lengths,
-                                  cds_start_i,cds_end_i) ]
-    subs = [ o for o in ops if o['op'] == 'X' ]
-    indels = [ o for o in ops if o['op'] in 'DI' ]
-    cds_indels = [ o for o in indels if o['cds?'] ]
-    utr_indels = [ o for o in indels if not o['cds?'] ]
+    ops = [] if row['s_cigars'] is None else cigar_to_ops(tx,row['s_cigars'].split(';'))
 
-    if row['s_status'] is None:
-        warnings += ['avoid -- no splign alignment']
-    elif 'n' in row['s_status']:
-        warnings += ['avoid -- exon # mismatch']
-    elif 'l' in row['s_status']:
-        warnings += ['avoid -- exon length mismatch']
+    subs =       [ o for o in ops    if     o.op == 'X'  ]
+    indels =     [ o for o in ops    if     o.op in 'DI' ]
+    cds_indels = [ o for o in indels if     o.in_cds ]
+    utr_indels = [ o for o in indels if not o.in_cds ]
 
     # alignment quality
     sb = (row['s_se_i'] is not None, row['b_se_i'] is not None)
-    if sb == (True,True):
+    if row['s_status'] is None:
+        alignment_quality = 'poor'
+        warnings += ['avoid -- no splign alignment']
+    elif 'n' in row['s_status']:
+        alignment_quality = 'poor'
+        warnings += ['avoid -- exon # mismatch']
+    elif sb == (True,True):
         if row['s_se_i'] == row['b_se_i']:
             alignment_quality = 'high'
             notes += [ 'splign and blat coordinates agree precisely' ]
@@ -127,21 +144,30 @@ def row_str(row):
             edits += [ 'ins' ]
         splign_refagree = 'minor ('+','.join(edits)+')'
     else:
-        splign_refagree = 'severe'
+        splign_refagree = 'poor'
+
+    # ensembl equivalents
+    enst_equivs = 'no'
+    if row['enst_equivs'] is not None:
+        if '/CE' in row['enst_equivs']:
+            return 'yes, CDS+UTR'
+        elif '/CC' in enst_equivs:
+            return 'yes, CDS only'
 
     return( '\t'.join([
                 row['hgnc'],
                 row['tx_ac'],
-                row['alt_coords'] or '',
+                format("{pm}{row[alt_ac]}:{row[alt_bounds]}".format(
+                    row = row, pm = '+' if row['alt_strand'] == 1 else '-')),
 
                 alignment_quality,
                 splign_refagree,
-                enst_equivs_summary(row['enst_equivs'] or ''),
+                enst_equivs,
                 'yes' if row['is_hgmd_tx'] else 'no',
 
-                op_fmt(cds_indels),
-                op_fmt(utr_indels),
-                op_fmt(subs),
+                ','.join([op.as_string() for op in cds_indels]),
+                ','.join([op.as_string() for op in utr_indels]),
+                ','.join([op.as_string() for op in subs]),
                 row['patches'] or '',
                 row['enst_equivs'] or '',
 
@@ -149,6 +175,7 @@ def row_str(row):
                 '; '.join(notes),
                 ]))
 
+############################################################################
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -166,7 +193,7 @@ if __name__ == '__main__':
         "is HGMD transcript?",
         "CDS indels",
         "UTR indels",
-        "Substitutions"
+        "Substitutions",
         "Patch Alignments",
         "Ensembl Equivalents",
         "Warnings",
@@ -184,7 +211,7 @@ if __name__ == '__main__':
             for row in sel_cur:
                 print( row_str(row) )
     else:
-        sel_sql = build_sel_sql()
+        sel_sql = build_sel_sql() #preds=["tx_ac = 'NM_144670.4'"])
         sel_cur.execute(sel_sql)
         for row in sel_cur:
             print( row_str(row) )
