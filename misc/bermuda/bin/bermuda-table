@@ -182,35 +182,36 @@ if __name__ == '__main__':
 
     con = psycopg2.connect(dsn)
 
-    print( '\t'.join([
-        "Gene (HGNC)",
-        "Accession",
-        "GRCh37 coordinates",
-        "Alignment Quality",
-        "Reference Agreement",
-        "has Ensembl equivalents?",
-        "is HGMD transcript?",
-        "CDS indels",
-        "UTR indels",
-        "Substitutions",
-        "Patch Alignments",
-        "Ensembl Equivalents",
-        "Warnings",
-        "Notes",                    
-        ]))
-    # add ensembl verison, hgmd version
+    heading = [
+        [ "Gene",                     "HGNC", ],
+        [ "Accession",                "", ],
+        [ "GRCh37 coordinates",       "", ],
+        [ "Alignment Quality",        "splign = blat?", ],
+        [ "Reference Agreement",      "", ],
+        [ "has Ensembl equivalents?", "v70", ],
+        [ "is HGMD transcript?",      "2013.03", ],
+        [ "CDS indels",               "", ],
+        [ "UTR indels",               "", ],
+        [ "Substitutions",            "", ],
+        [ "Patch Alignments",         "GRCh37.p13", ],
+        [ "Ensembl Equivalents",      "v70", ],
+        [ "Warnings",                 "", ],
+        [ "Notes",                    "", ],
+        ]
+
+    for hrow in zip(*heading):
+        print( '\t'.join(hrow))
 
     sel_cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if len(sys.argv) > 1:
         sel_sql = build_sel_sql(preds = [ 'hgnc = %(hgnc)s' ])
-        print(sel_sql)
         for hgnc in sys.argv[1:]:
             sel_cur.execute(sel_sql,{'hgnc': hgnc})
             for row in sel_cur:
                 print( row_str(row) )
     else:
-        sel_sql = build_sel_sql() #preds=["tx_ac = 'NM_144670.4'"])
+        sel_sql = build_sel_sql()
         sel_cur.execute(sel_sql)
         for row in sel_cur:
             print( row_str(row) )
