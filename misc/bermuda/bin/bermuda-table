@@ -12,7 +12,9 @@ import psycopg2.extras
 import recordtype
 
 dsn = "host=localhost dbname=uta_dev"
-
+hgmd_version = "2013.03"
+ensembl_version = "v70"
+grch_version = "GRCh37.p13"
 
 ############################################################################
 
@@ -96,8 +98,12 @@ def build_sel_sql(preds=[]):
     return query
 
 def row_str(row):
-    notes = []
-    warnings = []
+    avoid = []
+    warn = []
+    notes = [
+        's_status: ' + str(row['s_status']),
+        's_cigars: ' + str(row['s_cigars']),
+        ]
 
     tx = Tx(row['tx_ac'], row['cds_start_i'], row['cds_end_i'])
 
@@ -107,31 +113,6 @@ def row_str(row):
     indels =     [ o for o in ops    if     o.op in 'DI' ]
     cds_indels = [ o for o in indels if     o.in_cds ]
     utr_indels = [ o for o in indels if not o.in_cds ]
-
-    # alignment quality
-    sb = (row['s_se_i'] is not None, row['b_se_i'] is not None)
-    if row['s_status'] is None:
-        alignment_quality = 'poor'
-        warnings += ['avoid -- no splign alignment']
-    elif 'n' in row['s_status']:
-        alignment_quality = 'poor'
-        warnings += ['avoid -- exon # mismatch']
-    elif sb == (True,True):
-        if row['s_se_i'] == row['b_se_i']:
-            alignment_quality = 'high'
-            notes += [ 'splign and blat coordinates agree precisely' ]
-        else:
-            alignment_quality = 'intermediate'
-            warnings += [ 'splign and blat coordinates differ; alignment is ambiguous' ]
-    elif sb == (True,False):
-        alignment_quality = 'intermediate'
-        warnings += [ 'not aligned by blat; splign alignment available' ]
-    elif sb == (False,True):
-        alignment_quality = 'intermediate'
-        warnings += [ 'not aligned by splign; blat alignment available (requires engineering)' ]
-    else:
-        alignment_quality = 'poor'
-        warnings += [ 'no alignments available' ]
 
     # splign_refagree
     if row['s_status'] == 'NLxdi':
@@ -148,29 +129,72 @@ def row_str(row):
     else:
         splign_refagree = 'poor'
 
+    # alignment quality
+    sb = (row['s_se_i'] is not None, row['b_se_i'] is not None)
+    if row['s_status'] is None:
+        alignment_quality = 'poor'
+        avoid += [ 'fatal alignment problem' ]
+        notes += [ 'no splign alignment' ]
+    elif 'n' in row['s_status']:
+        alignment_quality = 'poor'
+        avoid += [ 'fatal alignment problem' ]
+        notes += [ 'exon number mismatch' ]
+    elif sb == (True,True):
+        if row['s_se_i'] == row['b_se_i']:
+            alignment_quality = 'high'
+        else:
+            alignment_quality = 'poor'
+            avoid += [ 'fatal alignment problem' ]
+            notes += [ 'splign and blat coordinates differ -- alignment is ambiguous' ]
+    elif sb == (True,False):
+        if splign_refagree == 'exact':
+            alignment_quality = 'high'
+        else:
+            alignment_quality = 'intermediate'
+    elif sb == (False,True):
+        if row['b_status'] == 'NLxdi':
+            alignment_quality = 'intermediate'
+            warn += [ 'resolve issue before using transcript' ]
+            notes += [ 'blat alignment okay, but no splign alignment' ]
+    else:
+        alignment_quality = 'poor'
+        avoid += [ 'no alignments available' ]
+
     # ensembl equivalents
     enst_equivs = 'no'
     if row['enst_equivs'] is not None:
         enst_equivs = 'CDS+UTR' if '/CE' in row['enst_equivs'] else 'CDS only'
+    else:
+        avoid += [ 'no ENST available' ]
+
+    grch37_coords = "{row[alt_ac]}:{row[alt_bounds]} ({pm})".format(
+        row = row, pm = '+' if row['alt_strand'] == 1 else '-')
+
+    if len(avoid) > 0:
+        summary = 'avoid: ' + '; '.join(avoid)
+    elif len(warn) > 0:
+        summary = 'warn: ' + '; '.join(warn)
+    else:
+        summary = ''
 
     return( '\t'.join([
                 row['hgnc'],
                 row['tx_ac'],
-                format("{pm}{row[alt_ac]}:{row[alt_bounds]}".format(
-                    row = row, pm = '+' if row['alt_strand'] == 1 else '-')),
+                'yes' if row['is_hgmd_tx'] else 'no',
 
                 alignment_quality,
                 splign_refagree,
                 enst_equivs,
-                'yes' if row['is_hgmd_tx'] else 'no',
+
+                summary,
 
                 ','.join([op.as_string() for op in cds_indels]),
                 ','.join([op.as_string() for op in utr_indels]),
                 ','.join([op.as_string() for op in subs]),
+                grch37_coords,
                 row['patches'] or '',
                 row['enst_equivs'] or '',
 
-                '; '.join(warnings),
                 '; '.join(notes),
                 ]))
 
@@ -183,20 +207,24 @@ if __name__ == '__main__':
     con = psycopg2.connect(dsn)
 
     heading = [
-        [ "Gene",                     "HGNC", ],
-        [ "Accession",                "", ],
-        [ "GRCh37 coordinates",       "", ],
-        [ "Alignment Quality",        "splign = blat?", ],
-        [ "Reference Agreement",      "", ],
-        [ "has Ensembl equivalents?", "v70", ],
-        [ "is HGMD transcript?",      "2013.03", ],
-        [ "CDS indels",               "", ],
-        [ "UTR indels",               "", ],
-        [ "Substitutions",            "", ],
-        [ "Patch Alignments",         "GRCh37.p13", ],
-        [ "Ensembl Equivalents",      "v70", ],
-        [ "Warnings",                 "", ],
-        [ "Notes",                    "", ],
+        [ "Gene",                     "HGNC",           ],
+        [ "Accession",                "",               ],
+        [ "is HGMD transcript?",      hgmd_version,     ],
+
+        [ "Alignment Quality",        "",               ],
+        [ "Reference Agreement",      "",               ],
+        [ "has Ensembl equivalents?", ensembl_version,  ],
+
+        [ "Summary",                  "",               ],
+
+        [ "CDS indels",               "",               ],
+        [ "UTR indels",               "",               ],
+        [ "Substitutions",            "",               ],
+        [ "GRCh37 coordinates",       "",               ],
+        [ "Patch Alignments",         grch_version,     ],
+        [ "Ensembl Equivalents",      ensembl_version,  ],
+
+        [ "Notes",                    "",               ],
         ]
 
     for hrow in zip(*heading):
