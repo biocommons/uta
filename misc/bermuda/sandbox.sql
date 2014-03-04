@@ -128,7 +128,8 @@ select T.hgnc, AA.alts, u0.ac, u0.u0_strand,
 	   u0.u0_t_se_i, u1.u1_t_se_i, 
 	   u0.u0_gs_se_i, u1.u1_gs_se_i,
 
-	   u0.u0_tgs_cigars, u1.u1_tgs_cigars
+	   replace(u0.u0_tgs_cigars,',',';') as u0_tgs_cigars,
+	   u1.u1_tgs_cigars
 
 from u0_tgs_summary_v as u0
 join u1_tgs_summary_v u1 on u0.ac=u1.ac
