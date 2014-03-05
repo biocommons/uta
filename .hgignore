@@ -26,6 +26,8 @@ cover
 dist
 distribute-*
 doc/build
+examples/.ipynb_checkpoints
+examples/*_files
 hgtools-*
 lib/python/cover
 lib/python/uta/_release.py
@@ -50,3 +52,4 @@ workspace
 
 syntax: regexp
 (.*/)?\#[^/]*\#$
+^examples/.+\.rst

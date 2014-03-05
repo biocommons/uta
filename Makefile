@@ -8,9 +8,10 @@
 SHELL:=/bin/bash -o pipefail
 SELF:=$(firstword $(MAKEFILE_LIST))
 
-UTA_DB_URL=postgresql://uta_public:uta_public@uta.invitae.com/uta
+#UTA_DB_URL=postgresql://uta_public:uta_public@uta.invitae.com/uta
 #UTA_DB_URL=sqlite:///tmp/uta-0.0.5.db
 #UTA_DB_URL=postgresql://localhost/uta
+#UTA_DB_URL=postgresql://localhost/uta_dev
 
 ############################################################################
 #= BASIC USAGE
@@ -54,7 +55,6 @@ upload_all: upload upload_iv upload_docs
 #=> develop, build_sphinx, sdist, upload_sphinx
 bdist bdist_egg build build_sphinx develop install sdist upload_sphinx upload_docs: %:
 	python setup.py $*
-
 
 
 ############################################################################
