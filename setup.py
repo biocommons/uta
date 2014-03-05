@@ -19,12 +19,35 @@ setup(
     zip_safe = False,
 
     author = 'UTA Contributors',
-    author_email='reece+uta@invitae.com',
+    author_email='reecehart+uta@gmail.com',
     description='Universal Transcript Archive',
     name = "uta",
     packages = find_packages(),
     url = 'https://bitbucket.org/invitae/uta',
 
+    classifiers = [
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Healthcare Industry",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python",
+        "Topic :: Database :: Front-Ends",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Medical Science Apps.",
+        ],
+    keywords = [
+        'bioinformatics',
+        'computational biology',
+        'genome variants',
+        'genome variation',
+        'genomic variants',
+        'genomic variation',
+        'genomics',
+        'hgvs',
+        ],
 
     install_requires = [
         'biopython',
