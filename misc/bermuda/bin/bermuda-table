@@ -15,7 +15,7 @@ dsn = "host=localhost dbname=uta_dev"
 hgmd_version = "2013.04"
 ensembl_version = "v70"
 grch_version = "GRCh37.p13"
-add_notes = True
+add_notes = False
 
 ############################################################################
 
@@ -119,7 +119,7 @@ def row_str(row):
             notes += [ 'splign and blat coordinates are identical' ]
         else:
             alignment_quality = 'intermediate'
-            warn += [ 'splign and blat differ; alignment is ambiguous' ]
+            warn += [ 'ambiguous alignment; talk to Reece' ]
 
     elif sb == (True,False):
         notes += ['no blat alignment', 'splign is '+row['s_status']]
@@ -130,7 +130,7 @@ def row_str(row):
             avoid += [ 'fatal alignment problem' ]
         else:
             alignment_quality = 'intermediate'
-            warn += [ 'reference disagreement (details at right)' ]
+            warn += [ 'reference disagreement (subs and indels at right)' ]
 
     elif sb == (False,True):
         alignment_quality = 'poor'
