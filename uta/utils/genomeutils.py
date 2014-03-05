@@ -10,8 +10,10 @@ def chr22XY(c):
 
 def reverse_complement(seq):
     """return reverse complement of DNA seq
-    >>>reverse_complement('AATGGC')
+
+    >>> reverse_complement('AATGGC') 
     'GCCATT'
+
     """
     return Bio.Seq.Seq(seq).reverse_complement().tostring()
 
