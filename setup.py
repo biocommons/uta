@@ -15,7 +15,7 @@ with open(os.path.join(root_dir, 'doc/source/description.rst')) as f:
 setup(
     license = 'Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
     long_description = long_description,
-    use_hg_version = True,
+    use_vcs_version = True,
     zip_safe = False,
 
     author = 'UTA Contributors',
@@ -38,6 +38,7 @@ setup(
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "Topic :: Scientific/Engineering :: Medical Science Apps.",
         ],
+
     keywords = [
         'bioinformatics',
         'computational biology',
@@ -63,14 +64,13 @@ setup(
 
     setup_requires = [
         'hgtools',
+        'nose',
         'sphinx',
-        'sphinx_rtd_theme',
-        'sphinxcontrib-httpdomain',
+        'sphinxcontrib-fulltoc',
         ],
 
     tests_require = [
         'coverage',
-        'nose',
         ],
 )
 

@@ -13,25 +13,31 @@ def reverse_complement(seq):
 
     >>> reverse_complement('AATGGC') 
     'GCCATT'
-
+    
     """
     return Bio.Seq.Seq(seq).reverse_complement().tostring()
 
 def prepend_chr(chr):
     """prefix chr with 'chr' if not present
+
     >>> prepend_chr('22')
     'chr22'
+
     >>> prepend_chr('chr22')
     'chr22'
+
     """
     return chr if chr[0:3] == 'chr' else 'chr'+chr
 
 def strip_chr(chr):
     """remove 'chr' prefix if it exists
+
     >>> strip_chr('22')
     '22'
+
     >>> strip_chr('chr22')
     '22'
+
     """
     return chr[3:] if chr[0:3] == 'chr' else chr        
 
