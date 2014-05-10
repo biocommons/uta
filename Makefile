@@ -30,8 +30,7 @@ config:
 #= SETUP, INSTALLATION, PACKAGING
 
 # => setup
-setup: requirements.txt #build
-	pip install -r $<
+setup: develop
 
 #=> docs -- make sphinx docs
 docs: setup build_sphinx
@@ -52,8 +51,11 @@ upload_iv:
 #=> upload_all: upload, upload_iv, and upload_docs
 upload_all: upload upload_iv upload_docs
 
-#=> develop, build_sphinx, sdist, upload_sphinx
-bdist bdist_egg build build_sphinx develop install sdist upload_sphinx upload_docs: %:
+#=> develop, build_sphinx, sdist, upload_docs, etc
+develop: %:
+	pip install --upgrade setuptools
+	python setup.py $*
+bdist bdist_egg build build_sphinx install sdist upload_sphinx upload_docs: %:
 	python setup.py $*
 
 
@@ -64,15 +66,16 @@ bdist bdist_egg build build_sphinx develop install sdist upload_sphinx upload_do
 test-setup: develop
 
 #=> test, test-with-coverage -- per-commit test target for CI
-test test-with-coverage: test-setup
+test test-with-coverage:
 	python setup.py nosetests --with-xunit --with-coverage --cover-erase --cover-html 
 
-#=> ci-test-nightly -- per-commit test target for CI
-ci-test jenkins:
-	make ve \
-	&& source ve/bin/activate \
-	&& make install \
-	&& make test
+#=> ci-test -- per-commit test target for CI
+ci-test: test-with-coverage
+
+ci-test-ve: ve
+	source ve/bin/activate; \
+	make ci-test
+
 
 
 ############################################################################
