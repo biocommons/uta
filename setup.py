@@ -74,6 +74,7 @@ setup(
 
     tests_require = [
         'coverage',
+        'testing.postgresql',
         ],
 )
 

@@ -2,8 +2,11 @@ import ConfigParser
 import os
 import unittest
 
+import sqlalchemy
+import testing.postgresql
+
 import uta
-usam = uta.models                         # backward compatibility
+usam = uta.models
 
 
 transcripts = {
@@ -44,16 +47,16 @@ transcripts = {
 
 class Test_uta_models(unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        data_dir = os.path.realpath(os.path.realpath( os.path.join(__file__,'../data')))
-        cp = ConfigParser.SafeConfigParser()
-        cp.readfp( open( os.path.join(data_dir,os.environ.get('TEST_CONF','test.conf')) ) )
+    def setUpClass(cls):
+        cls._postgresql = testing.postgresql.Postgresql()
 
-        self.session = uta.connect(cp.get('uta','db_url'))
-        self.session.bind.engine.execute('drop schema if exists uta1 cascade')
-        self.session.bind.engine.execute('create schema uta1')
-        usam.Base.metadata.create_all(self.session.bind) 
-        self.session.commit()
+        engine = sqlalchemy.create_engine(cls._postgresql.url())
+        engine.execute('drop schema if exists uta1 cascade')
+        engine.execute('create schema uta1')
+        engine.dispose()
+
+        cls.session = uta.connect(cls._postgresql.url())
+        usam.Base.metadata.create_all(cls.session.bind.engine) 
 
         # Test data are from:
         # http://www.ncbi.nlm.nih.gov/nuccore/NM_033304.2
@@ -63,7 +66,7 @@ class Test_uta_models(unittest.TestCase):
             url = 'http://bogus.com/',
             url_ac_fmt = 'http://bogus.com/{ac}',
             )
-        self.session.add(o)
+        cls.session.add(o)
 
         g = usam.Gene(
             hgnc = 'ADRA1A',
@@ -80,34 +83,34 @@ class Test_uta_models(unittest.TestCase):
             different isoforms with distinct C-termini but having similar
             ligand binding properties. [provided by RefSeq, Jul 2008]'''.replace('\n',' ')
             )
-        self.session.add(g)
+        cls.session.add(g)
 
 
         chr8_n = usam.Seq(
             seq = '',
             )
-        self.session.add(chr8_n)
+        cls.session.add(chr8_n)
 
         chr8_sa_n = usam.SeqAnno(
             seq = chr8_n,
             origin = o,
             ac = 'NC_000008.10',
             )
-        self.session.add(chr8_sa_n)
+        cls.session.add(chr8_sa_n)
 
 
         for ac,tx_info in transcripts.iteritems():
             t_seq_n = usam.Seq(
                 seq = tx_info['seq']
                 )
-            self.session.add(t_seq_n)
+            cls.session.add(t_seq_n)
 
             t_sa_n = usam.SeqAnno(
                 seq = t_seq_n,
                 origin = o,
                 ac = ac,
                 )
-            self.session.add(t_sa_n)
+            cls.session.add(t_sa_n)
 
             t = usam.Transcript(
                 ac = ac,
@@ -117,7 +120,7 @@ class Test_uta_models(unittest.TestCase):
                 cds_end_i = tx_info['t_cds_end_i'],
                 cds_md5 = 'd41d8cd98f00b204e9800998ecf8427e',
                 )
-            self.session.add(t)
+            cls.session.add(t)
 
             # ExonSet and Exons on Transcript seq
             t_es = usam.ExonSet(
@@ -126,7 +129,7 @@ class Test_uta_models(unittest.TestCase):
                 alt_strand = 1,
                 alt_aln_method = 'transcript',
                 )
-            self.session.add(t_es)
+            cls.session.add(t_es)
 
             for i,se in enumerate(zip(tx_info['t_starts_i'],tx_info['t_ends_i'],tx_info['names'])):
                 e = usam.Exon(
@@ -136,7 +139,7 @@ class Test_uta_models(unittest.TestCase):
                     name = se[2],
                     ord = i
                     )
-                self.session.add(e)
+                cls.session.add(e)
 
             # ExonSet and Exons on chromosome seq
             g_es = usam.ExonSet(
@@ -145,7 +148,7 @@ class Test_uta_models(unittest.TestCase):
                 alt_strand = tx_info['g_strand'],
                 alt_aln_method = 'splign',
                 )
-            self.session.add(g_es)
+            cls.session.add(g_es)
 
             for i,se in enumerate(zip(tx_info['g_starts_i'],tx_info['g_ends_i'])):
                 e = usam.Exon(
@@ -154,10 +157,18 @@ class Test_uta_models(unittest.TestCase):
                     end_i = se[1],
                     ord = i,
                     )
-                self.session.add(e)
+                cls.session.add(e)
 
-        self.session.commit()
+        cls.session.commit()
 
+
+    @classmethod
+    def tearDownClass(cls):
+        # sqlalchemy is keeping connections open and I can't figure out where
+        # kill the database (we started it)
+        import signal
+        cls._postgresql.stop(_signal=signal.SIGKILL)
+        cls._postgresql.cleanup()
 
 
     def test_origin(self):
