@@ -5,27 +5,34 @@ import Bio.Emboss.Applications as bea
 import cStringIO
 
 
-def align2(seqa,seqb,gapopen=10,gapextend=0.5):
-    """Globally align two sequences.
-    This function currently uses EMBOSS' needle command, which ideally
-    would be replaced by a forkless version in Python.
+## I haven't figured out a nice way to test align2() conditionally based
+## on whether needle is available. Since the code exists mostly for
+## historical comparison, it's now commented out.
+##
+## def align2(seqa,seqb,gapopen=10,gapextend=0.5):
+##     """Globally align two sequences.
+##     This function currently uses EMBOSS' needle command, which ideally
+##     would be replaced by a forkless version in Python.
+## 
+##     >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
+##     >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
+## 
+##     >>> a1,a2 = align2(seq1,seq2)
+##     >>> a1
+##     'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
+##     >>> a2
+##     'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+## 
+##     """
+##     if seqa == seqb:
+##         return seqa,seqb
+##     cline = bea.NeedleCommandline(asequence='asis:'+seqa, bsequence='asis:'+seqb,
+##                                   gapopen=gapopen,gapextend=gapextend,
+##                                   auto=True,filter=True,stdout=True)
+##     o,e = cline()
+##     aln = Bio.AlignIO.read(cStringIO.StringIO(o),'emboss')
+##     return aln[0].seq.tostring(),aln[1].seq.tostring()
 
-    >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
-    >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
-    >>> a1,a2 = align2(seq1,seq2)
-    >>> a1
-    'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
-    >>> a2
-    'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
-    """
-    if seqa == seqb:
-        return seqa,seqb
-    cline = bea.NeedleCommandline(asequence='asis:'+seqa, bsequence='asis:'+seqb,
-                                  gapopen=gapopen,gapextend=gapextend,
-                                  auto=True,filter=True,stdout=True)
-    o,e = cline()
-    aln = Bio.AlignIO.read(cStringIO.StringIO(o),'emboss')
-    return aln[0].seq.tostring(),aln[1].seq.tostring()
 
 def alignment_match_string(aseq1,aseq2):
     """for aligned sequences aseq1 and aseq2, both of length n, return an
@@ -35,10 +42,11 @@ def alignment_match_string(aseq1,aseq2):
     match/mismatch under some substitution matrix.  See
     http://goo.gl/fek4t for a short summary.
 
-    >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
-    >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
-    >>> alignment_match_string( *align2(seq1,seq2) )
+    >>> aseq1 = 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
+    >>> aseq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+    >>> alignment_match_string( aseq1,aseq2 )
     'MMMXMXMMMMMMMMMMMMMMMMMMMMMIIIIMMMMMMMMMMMMMMMMMMMMMMMDDDDDDDMMMMMM'
+
     """
     assert len(aseq1) == len(aseq2)
     def _cigar_char(c1,c2): 
@@ -54,9 +62,9 @@ def alignment_cigar_list(aseq1,aseq2):
     """Return a list of cigar operations for the aligned sequences aseq1
     and aseq2.  Each tuple is (pos, operation, count).
     
-    >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
-    >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
-    >>> for a in alignment_cigar_list( *align2(seq1,seq2) ):
+    >>> aseq1 = 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
+    >>> aseq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+    >>> for a in alignment_cigar_list( aseq1,aseq2 ):
     ...   print a
     (0, 'M', 3)
     (3, 'X', 1)
@@ -67,6 +75,7 @@ def alignment_cigar_list(aseq1,aseq2):
     (31, 'M', 23)
     (54, 'D', 7)
     (61, 'M', 6)
+
     """
     # compute "cigar vector" (cv), which is really just RLE of edits
     cv = [ (c,len(list(group)))
@@ -84,24 +93,32 @@ def alignment_cigar_string(aseq1,aseq2):
     """return a CIGAR string for aligned sequences aseq1 and aseq2,
     which must be of equal length.
 
-    >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
-    >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
-    >>> alignment_cigar_string( *align2(seq1,seq2) )
+    >>> aseq1 = 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
+    >>> aseq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+    >>> alignment_cigar_string( aseq1,aseq2 )
     '3M1X1M1X21M4I23M7D6M'
+
     """
     return ''.join([ str(l)+c 
                      for _,c,l in alignment_cigar_list(aseq1,aseq2) ])
 
 def explode_cigar(cigar):
-    '''return a vector of column matches for a given cigar string
+    """return a vector of column matches for a given cigar string
 
     >>> explode_cigar('5M2I4X1D')
     'MMMMMIIXXXXD'
-    '''
+
+    """
     import re
     u = re.compile('(?P<n>\d+)(?P<op>[MXID])')
     return ''.join([ md['op']*int(md['n']) 
                      for md in [m.groupdict() for m in u.finditer(cigar)] ])
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
+
 
 ## <LICENSE>
 ## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
