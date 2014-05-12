@@ -24,16 +24,8 @@ default: ${SCHEMA}-schema.pgd.gz ${SCHEMA}-schema.pgd.gz.sha1 ${SCHEMA}.pgd.gz $
 	sha1sum $< >$@
 
 
-
-bermuda-schema.pgd.gz: %-schema.pgd.gz:
-	pg_dump -U reece --no-owner -n $* --schema-only | gzip -cq >$@
-
-bermuda.pgd.gz: %.pgd.gz: 
-	pg_dump -U reece --no-owner -n $*               | gzip -cq >$@
-
-
-
 uta-push-%: %.pgd.gz
 	gzip -cdq <$< | time psql -1 -v ON_ERROR_STOP=1 -h uta.invitae.com -U uta_admin -d uta -f -
+
 db-push-%: %.pgd.gz
 	gzip -cdq <$< | time psql -1 -v ON_ERROR_STOP=1 -h db.locusdev.net -U reece -d uta -f -
