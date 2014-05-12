@@ -91,21 +91,23 @@ dump was generated without users or roles, so no new roles are needed.
 
    **Optional**: Create the database with ``createdb uta``.
 
-#. **Optional**: Test an installation run.
+#. **Optional**: Install schema without data.
+
+   Installing the schema is a quick way to identify permissions issues.
 
    Fetch a schema dump from
    https://bitbucket.org/invitae/uta/downloads. Schema dumps have
    ``-schema`` in the filename.
    ::
 
-   $ gzip -cdq uta_20140210-schema.pgd.gz | psql -v ON_ERROR_STOP=1 -d uta -f-
+   $ gzip -cdq uta_20140210-schema.pgd.gz | psql -1 -v ON_ERROR_STOP=1 -d uta -f-
   
 #. Install UTA.
 
    Download a database dump from https://bitbucket.org/invitae/uta/downloads.
    ::
 
-   $ gzip -cdq uta_20140210.pgd.gz | psql -v ON_ERROR_STOP=1 -d $DB -f-
+   $ gzip -cdq uta_20140210.pgd.gz | psql -1 -v ON_ERROR_STOP=1 -d uta -f-
 
 #. **Optional**: Manually refresh materialized views.
 
