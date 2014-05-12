@@ -37,15 +37,15 @@ Accessing the Public UTA Instance
 
 Invitae provides a public instance of UTA.  The connection parameters are:
 
-  ============  ===================
-  **param**     **value**
-  ============  ===================
-  **host**      ``uta.invitae.com``
-  **port**      ``5432`` (default)
-  **database**  ``uta``
-  **login**     ``uta_public``
-  **password**  ``uta_public``
-  ============  ===================
+============  ===================
+**param**     **value**
+============  ===================
+**host**      ``uta.invitae.com``
+**port**      ``5432`` (default)
+**database**  ``uta``
+**login**     ``uta_public``
+**password**  ``uta_public``
+============  ===================
 
 
 For example::
@@ -54,12 +54,12 @@ For example::
 
 Or, in Python::
 
-  >>> import psycopg2, psycopg2.extras
-  >>> conn = psycopg2.connect("host=uta.invitae.com dbname=uta user=uta_public password=uta_public")
-  >>> cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-  >>> cur.execute("select * from uta_20140210.tx_def_summary_v where hgnc='BRCA1'")
-  >>> row = cur.fetchone()
-  >>> dict(row)
+  > import psycopg2, psycopg2.extras
+  > conn = psycopg2.connect("host=uta.invitae.com dbname=uta user=uta_public password=uta_public")
+  > cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+  > cur.execute("select * from uta_20140210.tx_def_summary_v where hgnc='BRCA1'")
+  > row = cur.fetchone()
+  > dict(row)
   {
   'hgnc': 'BRCA1', 
   'tx_ac': 'ENST00000586385', 
@@ -106,6 +106,14 @@ dump was generated without users or roles, so no new roles are needed.
    ::
 
    $ gzip -cdq uta_20140210.pgd.gz | psql -v ON_ERROR_STOP=1 -d $DB -f-
+
+#. **Optional**: Manually refresh materialized views.
+
+   UTA uses materialized views to speed up some queries. You probably want
+   to refresh those with ``refresh materialized view <viewname>``.  At
+   this time, there is no automated way to do this.  ``\dm`` lists
+   materialized views.
+
 
 
 Package Installation
