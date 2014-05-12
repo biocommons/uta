@@ -65,12 +65,14 @@ upload_%:
 test-setup: develop
 
 #=> test, test-with-coverage -- per-commit test target for CI
+# see test configuration in setup.cfg
 test test-with-coverage:
-	python setup.py nosetests --with-xunit --with-coverage --cover-erase --cover-html 
+	python setup.py nosetests
 
 #=> ci-test -- per-commit test target for CI
-ci-test: test-with-coverage
+ci-test: test
 
+#=> ci-test-ve -- test in virtualenv
 ci-test-ve: ve
 	source ve/bin/activate; \
 	make ci-test
