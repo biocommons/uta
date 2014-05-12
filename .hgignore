@@ -7,9 +7,12 @@ syntax: glob
 *.err
 *.log
 *.orig
+*.pgd.gz
 *.pyc
 *.pylint
 *.pyo
+*.sha1
+*.sql.gz
 *.sqlite3
 *.tar.gz
 *~
