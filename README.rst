@@ -4,7 +4,9 @@ UTA -- Universal Transcript Archive
 
 *bringing smiles to transcript users since 2013*
 
-`Docs <http://pythonhosted.org/uta/>`_ | `PyPI <https://pypi.python.org/pypi/uta>`_ | |build_status|
+.. `Docs <http://pythonhosted.org/uta/>`_ | 
+
+`PyPI <https://pypi.python.org/pypi/uta>`_ | |build_status|
 
 
 Overview
@@ -31,6 +33,7 @@ transcript, and protein coordinates.
 This code repository is primarily used for *generating* the UTA database.
 The primary interface for the database itself is via direct PostgreSQL
 access.
+
 
 Accessing the Public UTA Instance
 ---------------------------------
