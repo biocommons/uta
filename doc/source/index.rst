@@ -28,7 +28,7 @@ Additional Resources
 
 * `UTA Code Repository and Issue Tracker`_
 
-.. _UTA Code Repository and Issue Tracker: https://bitbucket.org/invitae/uta
+.. _UTA Code Repository and Issue Tracker: https://bitbucket.org/uta/uta
 
 
 Indices and tables

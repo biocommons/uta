@@ -70,7 +70,7 @@ def url_for_slice(c,s,e):
 
 
 ## <LICENSE>
-## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## Copyright 2014 UTA Contributors (https://bitbucket.org/uta/uta)
 ## 
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
