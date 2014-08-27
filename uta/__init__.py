@@ -44,7 +44,7 @@ def connect(db_url=default_db_url):
         sqlite:////tmp/uta-0.0.5.db
 
     SQLite database snapshots are available at:
-      `https://bitbucket.org/invitae/uta/downloads`_
+      `https://bitbucket.org/uta/uta/downloads`_
     """
 
     # TODO: Verify schema version
@@ -61,7 +61,7 @@ def connect(db_url=default_db_url):
 
 
 ## <LICENSE>
-## Copyright 2014 UTA Contributors (https://bitbucket.org/invitae/uta)
+## Copyright 2014 UTA Contributors (https://bitbucket.org/uta/uta)
 ## 
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
