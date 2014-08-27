@@ -59,6 +59,7 @@ setup(
         'eutils',
         'nose',
         'psycopg2',
+        'MySQL-python',
         'pytz',
         'recordtype',
         'sqlalchemy',
