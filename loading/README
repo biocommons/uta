@@ -22,6 +22,10 @@ TODO: Detail requirements (eutils, bdi, perl+ensembl)
 How Reece does it
 -----------------
 
+*) checkout uta
+
+*) make develop
+
 *) prepare a database
 (These instructions are approximate.)
 
@@ -33,6 +37,14 @@ createdb -O uta_admin uta_dev
 in psql:
 grant uta_admin to reece;
 grant uta_public to reece;
+
+*) enable authentication as uta_admin to uta_dev
+Options: .pgpass, pg_hba.conf, etc/global.conf and etc/uta_dev@localhost.conf
+
+In pg_hba, change md5 to trust like so:
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            trust
+
 
 
 *) Extraction
