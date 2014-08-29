@@ -8,30 +8,31 @@ import cStringIO
 ## I haven't figured out a nice way to test align2() conditionally based
 ## on whether needle is available. Since the code exists mostly for
 ## historical comparison, it's now commented out.
-##
-## def align2(seqa,seqb,gapopen=10,gapextend=0.5):
-##     """Globally align two sequences.
-##     This function currently uses EMBOSS' needle command, which ideally
-##     would be replaced by a forkless version in Python.
-## 
-##     >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
-##     >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
-## 
-##     >>> a1,a2 = align2(seq1,seq2)
-##     >>> a1
-##     'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
-##     >>> a2
-##     'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
-## 
-##     """
-##     if seqa == seqb:
-##         return seqa,seqb
-##     cline = bea.NeedleCommandline(asequence='asis:'+seqa, bsequence='asis:'+seqb,
-##                                   gapopen=gapopen,gapextend=gapextend,
-##                                   auto=True,filter=True,stdout=True)
-##     o,e = cline()
-##     aln = Bio.AlignIO.read(cStringIO.StringIO(o),'emboss')
-##     return aln[0].seq.tostring(),aln[1].seq.tostring()
+
+def align2(seqa,seqb,gapopen=10,gapextend=0.5):
+    """Globally align two sequences.
+    This function currently uses EMBOSS' needle command, which ideally
+    would be replaced by a forkless version in Python.
+
+    >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
+    >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
+
+    # TODO: Work out conditional test based on whether emboss is available
+    # >>> a1,a2 = align2(seq1,seq2)
+    # >>> a1
+    # 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
+    # >>> a2
+    # 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+
+    """
+    if seqa == seqb:
+        return seqa, seqb
+    cline = bea.NeedleCommandline(asequence='asis:'+seqa, bsequence='asis:'+seqb,
+                                  gapopen=gapopen,gapextend=gapextend,
+                                  auto=True,filter=True,stdout=True)
+    o, e = cline()
+    aln = Bio.AlignIO.read(cStringIO.StringIO(o), 'emboss')
+    return aln[0].seq.tostring(), aln[1].seq.tostring()
 
 
 def alignment_match_string(aseq1,aseq2):
@@ -89,7 +90,7 @@ def alignment_cigar_list(aseq1,aseq2):
     return pcv
 
 
-def alignment_cigar_string(aseq1,aseq2):
+def alignment_cigar_string(aseq1, aseq2):
     """return a CIGAR string for aligned sequences aseq1 and aseq2,
     which must be of equal length.
 

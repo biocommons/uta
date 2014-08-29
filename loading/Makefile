@@ -53,7 +53,7 @@ db-load-txinfo.log:
 	for f in ${DATA_DIR}/*.txinfo.gz  ; do time -p uta ${CONF_OPTS} load-txinfo   "$$f"; done >$@.tmp 2>&1
 	mv $@.tmp $@
 db-load-exonsets.log:
-	for f in ${DATA_DIR}/*.exonset.gz ; do time -p uta ${CONF_OPTS} load-exonsets "$$f"; done >$@.tmp.tmp 2>&1
+	for f in ${DATA_DIR}/*.exonset.gz ; do time -p uta ${CONF_OPTS} load-exonsets "$$f"; done >$@.tmp 2>&1
 	mv $@.tmp $@
 
 db-align-exons: db-align-exons.log
@@ -62,11 +62,11 @@ db-align-exons.log:
 	mv $@.tmp $@
 
 
-.PHONY: push
-push: push.log
-push.log:
-	(time pg_dump -U uta_admin -d uta_dev -c -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
-	mv $@.tmp $@
+# .PHONY: push
+# push: push.log
+# push.log:
+# 	(time pg_dump -U uta_admin -d uta_dev -c -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
+# 	mv $@.tmp $@
 
 
 ############################################################################
@@ -157,19 +157,10 @@ setup-perl:
 .PHONY: clean cleaner cleanest pristine
 #=> clean: clean up editor backups, etc.
 clean:
-	find . -name \*~ -print0 | xargs -0r /bin/rm
+	/bin/rm -fr *~ *.bak *.tmp
 #=> cleaner: above, and remove generated files
 cleaner: clean
-	find . -name \*.pyc -print0 | xargs -0r /bin/rm -f
-	/bin/rm -fr distribute-* *.egg *.egg-info *.tar.gz nosetests.xml
-	/bin/rm -fr .uta.conf.mk
-	make -C doc clean
+	/bin/rm -fr .*.mk
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
-	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr build bdist dist sdist ve virtualenv*
-#=> pristine: above, and delete anything unknown to mercurial
-pristine: cleanest
-	# deleting anything unknown to mercurial, including your
-	# precious uncommitted changes
-	hg st -un0 | xargs -0r echo /bin/rm -fv
+	/bin/rm -fr *.log

@@ -3,77 +3,125 @@ Loading UTA
 Loading is largely driven by the Makefile in loading/Makefile. You don't
 have to do it this way, but the details of the loading appear there.
 
-Loading occurs in two distinct stages: extraction and translations from
-data sources into intermediate files, and loading from intermediates into
-UTA.  The extraction scripts, which are specific for each source, are in
-uta/sbin/ and write one or more intermediates in formats that are
-specified in uta/formats/.  The loading process is based on intermediate
-file format type but is identical across sources.  An outline of this is
-in ../doc/misc-figures.pdf.
 
-Source extraction requires dependencies that are not part of the UTA
-python project dependencies.  This is not expected to be a problem for
-users (who don't need to load data), but it requires special attention for
-admins.  
+Loading occurs in three distinct stages:
+  1. extraction and translations from data sources into intermediate files
+  2. loading from intermediates into UTA.
+  3. generating new exon alignments
 
-TODO: Detail requirements (eutils, bdi, perl+ensembl)
+The extraction scripts, which are specific for each source, are in
+uta/sbin/. Each script reads from one source and writes one or more
+intermediates in formats that are specified in uta/formats/.  The
+intermediate file formats are indpendent of source.  See
+uta/doc/misc-figures.pdf.
 
 
 How Reece does it
 -----------------
 
-*) checkout uta
+Updated 2014-08-29
+Tested with Ubuntu 14.04, x86_64, PostgreSQL 9.3.4
 
-*) make develop
+
+*) install postgresql
+
+Source or distribution.
+
+
+*) Create the uta_dev database
+
+$ export PGDATA=/local/home/reece/var/pg/9.3-test
+$ export PGPORT=5433
+$ export PGDATABASE=uta_dev
+
+# PGDATA and PGPORT are listed on the command lines below to be
+# explicit but are not strictly required because postgresql tools
+# recognize those variables.
+
+$ initdb -D $PGDATA
+$ perl -i.bak -pe "s/#port = 5432/port = $PGPORT/" $PGDATA/postgresql.conf
+$ pg_ctl -D $PGDATA -l logfile start
+(trust authentication enabled and required for these instructions)
+
+
+*) prepare a virtualenv
+
+$ mkvirtualenv uta
+
+
+*) prepare the uta working directory
+
+$ hg clone ssh://hg@bitbucket.org/uta/uta uta_dev
+$ cd uta_dev
+$ make develop
+TODO: error the first time (re: distribute package). Second time was clean. Figure this out.
+$ make develop
+
+
+*) install non-public tools manually
+
+pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-core
+pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-lib-bio
+
 
 *) prepare a database
-(These instructions are approximate.)
 
-createuser uta_admin
-createuser uta_public
-createuser reece
-createdb -O uta_admin uta_dev
-
-in psql:
-grant uta_admin to reece;
-grant uta_public to reece;
-
-*) enable authentication as uta_admin to uta_dev
-Options: .pgpass, pg_hba.conf, etc/global.conf and etc/uta_dev@localhost.conf
-
-In pg_hba, change md5 to trust like so:
-# IPv4 local connections:
-host    all             all             127.0.0.1/32            trust
+$ createuser uta_admin
+$ createuser uta_public
+$ createdb -O uta_admin uta_dev
 
 
+*) create and load a test database
 
-*) Extraction
+The general command to load data is
+$ make build-db DATA=<dataset> CONF=<confname>
 
-make main-data
+For testing, type
+
+$ make build-db DATA=test CONF=test
+
+DATA=test refers to the directory uta/loading/test for source data
+CONF=test refers to the file ../etc/test.conf for connection parameters.
+
+uta/loading/test contains excerpts of a full load. Those files are
+part of the repo to enable easy testing of loading.
+
+If that fails, 
+
+$ psql -d <db> -c 'drop schema uta1 cascade'
+$ make cleanest
+
+and retry.
+
+
+## Everything past this is for a full load
+
+
+*) Extraction and translation
+
+$ make main-data
+
+This will take a long time. 36 hours maybe.
+
 
 *) uncompress resulting fasta files into the fasta directory (see
 main.conf)
 
-*) Option: make test data
+
+*) Optional: make test data
 These data are used for testing and therefore committed with the repo.
 You probably don't need to rebuild them.
 
 make test-data
 
+
 *) create and load a database
 
-The general command is
+$ make build-db DATA=main CONF=test
 
-make build-db IN=<dataset>
-
-IN (instance name) may be main, test, or quick.  test is the default.  See
-the configuration in IN.conf. (Currently, main loads into a uta_stage
-database, and test and quick load into a uta_dev database.)
-
-uta --conf=main.conf align-exons --sql "AND tx_ac ~ '^NM_' AND alt_ac~'^NC_00000'"
 
 *) push to RDS
 
-I build locally, then push to RDS like this:
+$ make push
 
-pg_dump -d uta_dev | psql -h uta.invitae.com -U uta_admin -d uta_dev
+
