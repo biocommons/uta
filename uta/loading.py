@@ -263,8 +263,9 @@ def load_txinfo(session,opts,cf):
 
     self_aln_method = 'transcript'
 
-    from bdi.multifastadb import MultiFastaDB
-    from bdi.utils.aminoacids import seq_md5
+    # TODO: wean hgvs dependency out of UTA
+    from hgvs.dataproviders.multifastadb import MultiFastaDB
+    from hgvs.utils.aminoacids import seq_md5
 
     mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
 
@@ -363,12 +364,28 @@ def align_exons(session, opts, cf):
     # imports below are loading depenencies only and are not in setup.py.
     import psycopg2.extras
     from eutils.sqlitecache import SQLiteCache
-    from bdi.multifastadb import MultiFastaDB
+    from hgvs.dataproviders.multifastadb import MultiFastaDB
     import uta.utils.genomeutils as uug
-    import uta.utils.alignment as uua
-    import locus_lib_bio.align.algorithms as llbaa
 
     update_period = 50
+    aligner = 'uua'
+
+    if aligner == 'llbaa':
+        import locus_lib_bio.align.algorithms as llbaa
+        def align_with_llb(s1,s2):
+            score,cigar = llbaa.needleman_wunsch_gotoh_align(s1,s2,extended_cigar=True)
+            tx_aseq,alt_aseq = llbaa.cigar_alignment(tx_seq,alt_seq,cigar,hide_match=False)
+            return tx_aseq,alt_aseq,cigar.to_string()
+        align = align_with_llb
+    elif aligner == 'uua':
+        import uta.utils.alignment as uua
+        def align_with_uua(s1,s2):
+            tx_aseq,alt_aseq = uua.align2(s1,s2)
+            return tx_aseq,alt_aseq,uua.alignment_cigar_string(tx_aseq,alt_aseq)
+        align = align_with_uua
+    else:
+        raise RuntimeError("No aligner specified")
+
 
     mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
     con = session.bind.pool.connect()
@@ -406,14 +423,13 @@ def align_exons(session, opts, cf):
 
         if r.alt_strand == -1:
             alt_seq = uug.reverse_complement(alt_seq)
-
         tx_seq = tx_seq.upper()
         alt_seq = alt_seq.upper()
-        score,cigar = llbaa.needleman_wunsch_gotoh_align(tx_seq,alt_seq,extended_cigar=True)
-        tx_aseq,alt_aseq = llbaa.cigar_alignment(tx_seq,alt_seq,cigar,hide_match=False)
-        
+
+        tx_aseq,alt_aseq,cigar_str = align(tx_seq,alt_seq)
+
         added = datetime.datetime.now()
-        cur.execute(aln_ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar.to_string(),added,tx_aseq,alt_aseq])
+        cur.execute(aln_ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar_str,added,tx_aseq,alt_aseq])
         tx_acs.add(r.tx_ac)
 
         if i_r == n_rows-1 or i_r % update_period == 0:
@@ -461,7 +477,7 @@ def load_ncbi_geneinfo(session, opts, cf):
 ############################################################################
 
 def load_sequences(session,opts,cf):
-    from bdi.multifastadb import MultiFastaDB
+    from hgvs.dataproviders.multifastadb import MultiFastaDB
 
     session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
 

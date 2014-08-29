@@ -57,6 +57,7 @@ setup(
         'colorlog',
         'docopt',
         'eutils',
+        'hgvs',                 # TODO: eliminate dependency on hgvs
         'nose',
         'psycopg2',
         'MySQL-python',
