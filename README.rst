@@ -30,9 +30,11 @@ alignment methods.  Specifically, it facilitates the following:
 UTA is used by the `hgvs`_ package to map variants between genomic,
 transcript, and protein coordinates.
 
-This code repository is primarily used for *generating* the UTA database.
-The primary interface for the database itself is via direct PostgreSQL
-access.
+This code repository is primarily used for *generating* the UTA
+database.  The primary interface for the database itself is via direct
+PostgreSQL access.  (A `REST interface
+<https://bitbucket.org/uta/uta/issue/164/>`_ is planned, but not yet
+available.)
 
 
 Accessing the Public UTA Instance
