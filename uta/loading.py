@@ -291,12 +291,10 @@ def load_txinfo(session,opts,cf):
         ori = session.query(usam.Origin).filter(usam.Origin.name == ti.origin).one()
         cds_start_i,cds_end_i = map(int,ti.cds_se_i.split(','))
 
-        try:
-            cds_seq = mfdb.fetch(ti.ac,cds_start_i,cds_end_i)
-        except KeyError:
-            logger.error("{ac}: not in fasta database; skipping transcript".format(
+        cds_seq = mfdb.fetch(ti.ac,cds_start_i,cds_end_i)
+        if not cds_seq:
+            raise RuntimeError("{ac}: not in FASTA database".format(
                 ac=ti.ac))
-            continue
         cds_md5 = seq_md5(cds_seq)
 
         u_tx = usam.Transcript(

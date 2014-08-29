@@ -74,11 +74,11 @@ $ createdb -O uta_admin uta_dev
 *) create and load a test database
 
 The general command to load data is
-$ make build-db DATA=<dataset> CONF=<confname>
+$ make db-build DATA=<dataset> CONF=<confname>
 
 For testing, type
 
-$ make build-db DATA=test CONF=test
+$ make db-build DATA=test CONF=test
 
 DATA=test refers to the directory uta/loading/test for source data
 CONF=test refers to the file ../etc/test.conf for connection parameters.
@@ -117,7 +117,7 @@ make test-data
 
 *) create and load a database
 
-$ make build-db DATA=main CONF=test
+$ make db-build DATA=main CONF=test
 
 
 *) push to RDS
