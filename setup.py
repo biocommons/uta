@@ -54,6 +54,7 @@ setup(
 
     install_requires = [
         'biopython',
+        'bioutils',
         'colorlog',
         'docopt',
         'eutils',
