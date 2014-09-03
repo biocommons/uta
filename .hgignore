@@ -5,6 +5,8 @@ syntax: glob
 *.egg
 *.egg-info
 *.err
+*.fai
+*.gzi
 *.log
 *.orig
 *.pgd.gz

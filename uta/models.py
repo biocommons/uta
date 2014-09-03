@@ -7,8 +7,6 @@ import sqlalchemy as sa
 import sqlalchemy.orm as sao
 import sqlalchemy.ext.declarative as saed
 
-import uta.utils
-
 
 ############################################################################
 ## schema name support

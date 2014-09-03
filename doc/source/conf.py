@@ -48,7 +48,7 @@ copyright = u'2013, InVitae'
 # built documents.
 #
 # The short X.Y version.
-import uta.version
+import uta
 version = uta.__version__
 release = version
 

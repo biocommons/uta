@@ -11,9 +11,7 @@ import sys
 import operator
 
 import psycopg2, psycopg2.extras
-
-import uta.luts as ul
-import uta.utils.genomeutils as uug
+from bioutils.accessions import prepend_chr, NC_to_chr
 
 def parse_args(argv):
 	ap = argparse.ArgumentParser(
@@ -74,7 +72,7 @@ if __name__ == '__main__':
 		thick_end = chrom_end
 
 		print('\t'.join([
-			uug.prepend_chr(ul.NC_to_chr[row.alt_ac]),	 # chrom 'chr..'
+			prepend_chr(NC_to_chr[row.alt_ac]),	 # chrom 'chr..'
 			str(chrom_start),
 			str(chrom_end),
 			row.tx_ac,									 # name

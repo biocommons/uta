@@ -9,7 +9,7 @@ import sys
 import MySQLdb
 
 from uta.formats.exonset import ExonSet,ExonSetWriter
-from uta.luts import chr_to_NC
+from bioutils.accessions import chr_to_NC, strip_chr
 
 ucsc_align_method = 'blat'
 
@@ -52,7 +52,7 @@ WHERE name like 'NM_%' and chrom not like '%\_%'
             reverse=row['strand']=='-')
         es = ExonSet(
             tx_ac=row['ac'],
-            alt_ac=chr_to_NC[row['chrom']],
+            alt_ac=chr_to_NC[strip_chr(row['chrom'])],
             method=ucsc_align_method,
             strand=-1 if row['strand'] == '-' else 1,
             exons_se_i=";".join( str(se[0])+","+str(se[1]) for se in exons_se_i )
