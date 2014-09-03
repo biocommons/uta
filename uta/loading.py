@@ -347,7 +347,16 @@ def align_exons(session, opts, cf):
     update_period = 50
     aligner = cf.get('loading', 'aligner', 'needle')
 
-    if aligner == 'llbaa':
+    if aligner == 'utaa':
+        import uta_tools_align.align.algorithms as utaaa
+        def align_with_utaaa(s1, s2):
+            score, cigar = utaaa.needleman_wunsch_gotoh_align(str(s1),
+                                                              str(s2),
+                                                              extended_cigar=True)
+            tx_aseq, alt_aseq = utaaa.cigar_alignment(tx_seq, alt_seq, cigar, hide_match=False)
+            return tx_aseq, alt_aseq, cigar.to_string()
+        align = align_with_utaaa
+    elif aligner == 'llbaa':
         import locus_lib_bio.align.algorithms as llbaa
         def align_with_llb(s1, s2):
             score, cigar = llbaa.needleman_wunsch_gotoh_align(s1, s2, extended_cigar=True)
