@@ -22,6 +22,22 @@ How Reece does it
 Updated 2014-08-29
 Tested with Ubuntu 14.04, x86_64, PostgreSQL 9.3.4
 
+*) get sequence fasta files
+
+Loading requires a lot of fasta files to be available.  Non-Invitae
+users should populate a directory with fasta files with all sequences
+you intend to load. Typically, this includes chromosome sequence fasta
+files (with NC annotations) and RefSeq fasta files (with NM at least).
+Possible sources are ftp://ftp.ncbi.nlm.nih.gov/genomes/H_sapiens/
+(only fa.gz files are required) and
+ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/ (only .faa.gz
+and .fna.gz).  Then, update uta/etc/global.conf with the path to the
+downloads.
+
+Invitae users may wish to rsync /locus/data/core-rest/2014-01/ to
+their machine (6.7GB).  That directory includes Ensembl, BIC,
+RefSeqGene, and older NCBI RefSeqs.
+
 
 *) install postgresql
 
@@ -62,6 +78,10 @@ $ make develop
 
 pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-core
 pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-lib-bio
+
+NOTE: Reece is currently (2014-09-03) working on extracting the
+essential elements of these repos into a public package.  To be
+discussd with Geoff prior to release.
 
 
 *) prepare a database
