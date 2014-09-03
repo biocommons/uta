@@ -17,9 +17,10 @@ import operator
 import os
 import xml.etree.ElementTree
 
+from bioutils.accessions import chr_to_NC
+
 import uta.formats.exonset
 import uta.formats.txinfo
-import uta.luts
 
 def main():
     parser = argparse.ArgumentParser(description='convert LRG files to format to import to UTA')
@@ -50,7 +51,7 @@ def main():
             g_exon_coords_string = ';'.join(g_list)
 
             exonset_lines.add((row['# LRG_TRANSCRIPT'],
-                               uta.luts.chr_to_NC[row['CHROMOSOME']],
+                               chr_to_NC[row['CHROMOSOME']],
                                'LRG',
                                row['STRAND'],g_exon_coords_string))
             tx_acs_hgnc[row['# LRG_TRANSCRIPT']] = row['HGNC_SYMBOL']

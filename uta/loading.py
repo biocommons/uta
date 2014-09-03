@@ -1,48 +1,41 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import csv
 import datetime
 import gzip
-import hashlib
 import itertools
 import logging
-import os
 import time
 
-import eutils.client
-    
+from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
+
 import uta
-import uta.luts
-import uta.utils
 import uta.formats.exonset as ufes
 import uta.formats.geneinfo as ufgi
 import uta.formats.seqinfo as ufsi
 import uta.formats.txinfo as ufti
+
 usam = uta.models                         # backward compatibility
 
 logger = logging.getLogger(__name__)
 
 
-############################################################################
-
-def drop_schema(session,opts,cf):
+def drop_schema(session, opts, cf):
     if session.bind.name == 'postgresql' and usam.use_schema:
-        ddl = 'drop schema if exists '+usam.schema_name+' cascade'
+        ddl = 'drop schema if exists ' + usam.schema_name + ' cascade'
         session.execute(ddl)
         session.commit()
         logger.info(ddl)
 
-############################################################################
 
-def create_schema(session,opts,cf):
+def create_schema(session, opts, cf):
     """Create and populate initial schema"""
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     if session.bind.name == 'postgresql' and usam.use_schema:
-        session.execute('create schema '+usam.schema_name)
+        session.execute('create schema ' + usam.schema_name)
         session.execute('alter database {db} set search_path = {search_path}'.format(
             db=session.bind.url.database, search_path=usam.schema_name))
-        session.execute('set search_path = '+usam.schema_name)
+        session.execute('set search_path = ' + usam.schema_name)
         session.commit()
 
     usam.Base.metadata.create_all(session.bind)
@@ -51,23 +44,21 @@ def create_schema(session,opts,cf):
     session.commit()
     logger.info('created schema')
 
-############################################################################
 
-def load_sql(session,opts,cf):
+def load_sql(session, opts, cf):
     """Create views"""
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     for fn in opts['FILES']:
-        logger.info('loading '+fn)
+        logger.info('loading ' + fn)
         session.execute( open(fn).read() )
     session.commit()
 
-############################################################################
 
-def initialize_schema(session,opts,cf):
+def initialize_schema(session, opts, cf):
     """Create and populate initial schema"""
 
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     session.add(
         usam.Origin(
@@ -123,19 +114,17 @@ def initialize_schema(session,opts,cf):
     logger.info('initialized schema')
 
 
-############################################################################
-
-def load_seqinfo(session,opts,cf):
+def load_seqinfo(session, opts, cf):
     """load Seq entries with accessions from fasta file
     """
 
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     sir = ufsi.SeqInfoReader(gzip.open(opts['FILE']))
-    logger.info('opened '+opts['FILE'])
+    logger.info('opened ' + opts['FILE'])
 
     i_md5 = 0
-    for md5,si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
+    for md5, si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
                                   key=lambda si: si.md5):
         sis = list(si_iter)
         si = sis[0]
@@ -174,7 +163,7 @@ def load_seqinfo(session,opts,cf):
                     if si.descr and u_seqanno.descr != si.descr:
                         u_seqanno.descr = si.descr
                         session.merge(u_seqanno)
-                        logger.info('updated description for '+si.ac)
+                        logger.info('updated description for ' + si.ac)
                 else:
                     # create the new descr
                     u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
@@ -186,27 +175,25 @@ def load_seqinfo(session,opts,cf):
                 md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
 
 
-############################################################################
-
-def load_exonsets(session,opts,cf):
+def load_exonsets(session, opts, cf):
     # unlike seq and seq_anno loading, where annotations may be updated at any time,
     # exonsets are loaded discretely -- that is, we never *add* new exons to exonsets.
 
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
-    known_es = set([ (u_es.tx_ac,u_es.alt_ac,u_es.alt_aln_method) for u_es in session.query(usam.ExonSet) ])
+    known_es = set([ (u_es.tx_ac, u_es.alt_ac, u_es.alt_aln_method) for u_es in session.query(usam.ExonSet) ])
     logger.info("{n} known exon_set keys; will skip those during loading".format(n=len(known_es)))
 
     n_lines = len(gzip.open(opts['FILE']).readlines())
     esr = ufes.ExonSetReader(gzip.open(opts['FILE']))
-    logger.info('opened '+opts['FILE'])
+    logger.info('opened ' + opts['FILE'])
 
-    for i_es,es in enumerate(esr):
-        key = (es.tx_ac,es.alt_ac,es.method)
+    for i_es, es in enumerate(esr):
+        key = (es.tx_ac, es.alt_ac, es.method)
 
-        if i_es % 50 == 0 or i_es+1==n_lines:
+        if i_es % 50 == 0 or i_es + 1==n_lines:
             logger.info('{i_es}/{n_lines} {p:.1f}%: loading exonset  ({key})'.format(
-                i_es=i_es,n_lines=n_lines,p=(i_es+1)/n_lines*100,key=str(key)))
+                i_es=i_es, n_lines=n_lines, p=(i_es + 1)/n_lines*100, key=str(key)))
 
         if key in known_es:
             continue
@@ -220,10 +207,10 @@ def load_exonsets(session,opts,cf):
             )
         session.add(u_es)
 
-        exons = [ map(int,ex.split(',')) for ex in es.exons_se_i.split(';') ]
-        exons.sort(reverse=int(es.strand)==-1)
-        for i_ex,ex in enumerate(exons):
-            s,e = ex
+        exons = [ map(int, ex.split(',')) for ex in es.exons_se_i.split(';') ]
+        exons.sort(reverse=int(es.strand)==MINUS_STRAND)
+        for i_ex, ex in enumerate(exons):
+            s, e = ex
             u_ex = usam.Exon(
                 exon_set=u_es,
                 start_i=s,
@@ -235,16 +222,13 @@ def load_exonsets(session,opts,cf):
         session.commit()
 
 
-
-############################################################################
-
-def load_geneinfo(session,opts,cf):
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+def load_geneinfo(session, opts, cf):
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     gir = ufgi.GeneInfoReader(gzip.open(opts['FILE']))
-    logger.info('opened '+opts['FILE'])
+    logger.info('opened ' + opts['FILE'])
 
-    for i_gi,gi in enumerate(gir):
+    for i_gi, gi in enumerate(gir):
         session.add(
             usam.Gene(
                 hgnc=gi.hgnc,
@@ -255,32 +239,30 @@ def load_geneinfo(session,opts,cf):
                 ))
     session.commit()
 
-############################################################################
 
-def load_txinfo(session,opts,cf):
-    #TODO: add cds_md5 column and load here
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+def load_txinfo(session, opts, cf):
+    # TODO: add cds_md5 column and load here
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     self_aln_method = 'transcript'
 
-    # TODO: wean hgvs dependency out of UTA
-    from hgvs.dataproviders.multifastadb import MultiFastaDB
-    from hgvs.utils.aminoacids import seq_md5
+    from bioutils.digests import seq_md5
+    from multifastadb import MultiFastaDB
 
-    mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
+    mfdb = MultiFastaDB([cf.get('sequences', 'fasta_directory')], use_meta_index=True)
 
-    known_acs = set([ u_ti.ac for u_ti in session.query(usam.Transcript) ])
+    known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
     n_lines = len(gzip.open(opts['FILE']).readlines())
     tir = ufti.TxInfoReader(gzip.open(opts['FILE']))
-    logger.info('opened '+opts['FILE'])
+    logger.info('opened ' + opts['FILE'])
 
-    for i_ti,ti in enumerate(tir):
-        if i_ti % 50 == 0 or i_ti+1==n_lines:
+    for i_ti, ti in enumerate(tir):
+        if i_ti % 50 == 0 or i_ti + 1 == n_lines:
             logger.info('{i_ti}/{n_lines} {p:.1f}%: loading transcript {ac}'.format(
-                i_ti=i_ti, n_lines=n_lines, p=(i_ti+1)/n_lines*100, ac=ti.ac))
+                i_ti=i_ti, n_lines=n_lines, p=(i_ti + 1)/n_lines*100, ac=ti.ac))
 
         if ti.ac in known_acs:
-            logger.warning("skipping new definition of transcript "+ti.ac)
+            logger.warning("skipping new definition of transcript " + ti.ac)
             continue
         known_acs.add(ti.ac)
 
@@ -289,9 +271,9 @@ def load_txinfo(session,opts,cf):
             continue
 
         ori = session.query(usam.Origin).filter(usam.Origin.name == ti.origin).one()
-        cds_start_i,cds_end_i = map(int,ti.cds_se_i.split(','))
+        cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(','))
 
-        cds_seq = mfdb.fetch(ti.ac,cds_start_i,cds_end_i)
+        cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
         if not cds_seq:
             raise RuntimeError("{ac}: not in FASTA database".format(
                 ac=ti.ac))
@@ -315,9 +297,9 @@ def load_txinfo(session,opts,cf):
             )
         session.add(u_es)
 
-        exons = [ map(int,ex.split(',')) for ex in ti.exons_se_i.split(';') ]
-        for i_ex,ex in enumerate(exons):
-            s,e = ex
+        exons = [ map(int, ex.split(',')) for ex in ti.exons_se_i.split(';') ]
+        for i_ex, ex in enumerate(exons):
+            s, e = ex
             u_ex = usam.Exon(
                 exon_set=u_es,
                 start_i=s,
@@ -329,8 +311,6 @@ def load_txinfo(session,opts,cf):
         session.commit()
 
 
-
-############################################################################
 
 aln_sel_sql = """
 SELECT * FROM tx_alt_exon_pairs_v TAEP
@@ -360,35 +340,36 @@ INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUE
 def align_exons(session, opts, cf):
     # N.B. setup.py declares dependencies for using uta as a client.  The
     # imports below are loading depenencies only and are not in setup.py.
+    from bioutils.sequences import reverse_complement
     import psycopg2.extras
-    from eutils.sqlitecache import SQLiteCache
-    from hgvs.dataproviders.multifastadb import MultiFastaDB
-    import uta.utils.genomeutils as uug
+    from multifastadb import MultiFastaDB
 
     update_period = 50
-    aligner = 'uua'
+    aligner = cf.get('loading', 'aligner', 'needle')
 
     if aligner == 'llbaa':
         import locus_lib_bio.align.algorithms as llbaa
-        def align_with_llb(s1,s2):
-            score,cigar = llbaa.needleman_wunsch_gotoh_align(s1,s2,extended_cigar=True)
-            tx_aseq,alt_aseq = llbaa.cigar_alignment(tx_seq,alt_seq,cigar,hide_match=False)
-            return tx_aseq,alt_aseq,cigar.to_string()
+        def align_with_llb(s1, s2):
+            score, cigar = llbaa.needleman_wunsch_gotoh_align(s1, s2, extended_cigar=True)
+            tx_aseq, alt_aseq = llbaa.cigar_alignment(tx_seq, alt_seq, cigar, hide_match=False)
+            return tx_aseq, alt_aseq, cigar.to_string()
         align = align_with_llb
-    elif aligner == 'uua':
+    elif aligner == 'needle':
         import uta.utils.alignment as uua
-        def align_with_uua(s1,s2):
-            tx_aseq,alt_aseq = uua.align2(s1,s2)
-            return tx_aseq,alt_aseq,uua.alignment_cigar_string(tx_aseq,alt_aseq)
+        def align_with_uua(s1, s2):
+            tx_aseq, alt_aseq = uua.align2(s1, s2)
+            return tx_aseq, alt_aseq, uua.alignment_cigar_string(tx_aseq, alt_aseq)
         align = align_with_uua
-    else:
+    elif aligner is None:
         raise RuntimeError("No aligner specified")
+    else:
+        raise RuntimeError("aligner '" + aligner + "' not recognized")
 
 
-    mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
+    mfdb = MultiFastaDB([cf.get('sequences', 'fasta_directory')], use_meta_index=True)
     con = session.bind.pool.connect()
     cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-    cur.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    cur.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     sql = aln_sel_sql
     if opts['--sql']:
@@ -403,7 +384,7 @@ def align_exons(session, opts, cf):
     ac_warning = set()
     t0 = time.time()
     tx_acs = set()
-    for i_r,r in enumerate(rows):
+    for i_r, r in enumerate(rows):
         if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
             continue
         try:
@@ -419,24 +400,24 @@ def align_exons(session, opts, cf):
             ac_warning.add(r.alt_ac)
             continue
 
-        if r.alt_strand == -1:
-            alt_seq = uug.reverse_complement(alt_seq)
+        if r.alt_strand == MINUS_STRAND:
+            alt_seq = reverse_complement(alt_seq)
         tx_seq = tx_seq.upper()
         alt_seq = alt_seq.upper()
 
-        tx_aseq,alt_aseq,cigar_str = align(tx_seq,alt_seq)
+        tx_aseq, alt_aseq, cigar_str = align(tx_seq, alt_seq)
 
         added = datetime.datetime.now()
-        cur.execute(aln_ins_sql, [r.tx_exon_id,r.alt_exon_id,cigar_str,added,tx_aseq,alt_aseq])
+        cur.execute(aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added, tx_aseq, alt_aseq])
         tx_acs.add(r.tx_ac)
 
         if i_r == n_rows-1 or i_r % update_period == 0:
             con.commit()
-            speed = (i_r+1) / (time.time() - t0);      # aln/sec
+            speed = (i_r + 1) / (time.time() - t0);      # aln/sec
             etr = (n_rows-i_r-1) / speed               # etr in secs
             etr_s = str(datetime.timedelta(seconds=round(etr)))  # etr as H:M:S
             logger.info('{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s}); {n_tx} tx'.format(
-                i_r=i_r,n_rows=n_rows,p_r=i_r/n_rows*100,speed=speed,etr=etr,etr_s=etr_s,n_tx=len(tx_acs) ))
+                i_r=i_r, n_rows=n_rows, p_r=i_r/n_rows*100, speed=speed, etr=etr, etr_s=etr_s, n_tx=len(tx_acs) ))
             tx_acs = set()
 
     cur.close()
@@ -451,7 +432,7 @@ def load_ncbi_geneinfo(session, opts, cf):
     """
     import uta.parsers.geneinfo
     
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     o = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI Gene').one()
     gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(opts['FILE']))
@@ -471,15 +452,12 @@ def load_ncbi_geneinfo(session, opts, cf):
     session.commit()
 
 
+def load_sequences(session, opts, cf):
+    from multifastadb import MultiFastaDB
 
-############################################################################
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
-def load_sequences(session,opts,cf):
-    from hgvs.dataproviders.multifastadb import MultiFastaDB
-
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
-
-    mfdb = MultiFastaDB([cf.get('sequences','fasta_directory')], use_meta_index=True)
+    mfdb = MultiFastaDB([cf.get('sequences', 'fasta_directory')], use_meta_index=True)
 
     sql = """
     select S.seq_id,S.len,array_agg(SA.ac order by SA.ac) as acs
@@ -509,28 +487,21 @@ def load_sequences(session,opts,cf):
         logger.info("loaded sequence of length {len} for {md5} ({acs})".format(
             len=len(seq), md5=row['seq_id'], acs=row['acs']))
         session.commit()
-    
 
 
-
-############################################################################
-
-def load_ncbi_seqgene(session,opts,cf):
+def load_ncbi_seqgene(session, opts, cf):
     """
     import data as downloaded (by you) as from
     ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz
     """
-    def _strand_pm_to_int(s):
-        return None if s is None else 1 if s is '+' else -1 if s is '-' else None
-    
-    def _seqgene_recs_to_tx_info(ac,assy,recs):
+    def _seqgene_recs_to_tx_info(ac, assy, recs):
         ti = {
             'ac': ac,
             'assy': assy,
-            'strand': _strand_pm_to_int(recs[0]['chr_orient']),
-            'gene_id': int(recs[0]['feature_id'].replace('GeneID:','')) if 'GeneID' in recs[0]['feature_id'] else None,
+            'strand': strand_pm_to_int(recs[0]['chr_orient']),
+            'gene_id': int(recs[0]['feature_id'].replace('GeneID:', '')) if 'GeneID' in recs[0]['feature_id'] else None,
             }
-        segs = [ (r['feature_type'],int(r['chr_start'])-1,int(r['chr_stop'])) for r in recs ]
+        segs = [ (r['feature_type'],int(r['chr_start'])-1, int(r['chr_stop'])) for r in recs ]
         cds_seg_idxs = [ i for i in range(len(segs)) if segs[i][0] == 'CDS' ]
         # merge UTR-CDS and CDS-UTR exons if end of first == start of second
         # prefer this over general adjacent exon merge in case of alignment artifacts
@@ -538,35 +509,35 @@ def load_ncbi_seqgene(session,opts,cf):
         ei = cds_seg_idxs[-1]
         ti['cds_end_i'] = segs[ei][2]
         if ei < len(segs)-1:
-            if segs[ei][2] == segs[ei+1][1]:
-                segs[ei:ei+2] = [('M',segs[ei][1],segs[ei+1][2])]
+            if segs[ei][2] == segs[ei + 1][1]:
+                segs[ei:ei + 2] = [('M', segs[ei][1],segs[ei + 1][2])]
         # first exon
         ei = cds_seg_idxs[0]
         ti['cds_start_i'] = segs[ei][1]
         if ei > 0:
             if segs[ei-1][2] == segs[ei][1]:
-                segs[ei-1:ei+1] = [('M',segs[ei-1][1],segs[ei][2])]
+                segs[ei-1:ei + 1] = [('M', segs[ei-1][1],segs[ei][2])]
         ti['exon_se_i'] = [ s[1:3] for s in segs ]
         return ti
 
 
     import uta.parsers.seqgene
 
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     o_refseq = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI RefSeq').one()
     o_seqgene = session.query(usam.Origin).filter(usam.Origin.name == 'NCBI seq_gene').one()
 
     sg_filter = lambda r: (r['transcript'].startswith('NM_')
                            and r['group_label'] == 'GRCh37.p10-Primary Assembly'
-                           and r['feature_type'] in ['CDS','UTR'])
+                           and r['feature_type'] in ['CDS', 'UTR'])
     sgparser = uta.parsers.seqgene.SeqGeneParser(gzip.open(opts['FILE']),
                                                  filter = sg_filter)
     slurp = sorted(list(sgparser), 
                    key = lambda r: (r['transcript'],r['group_label'],r['chr_start'],r['chr_stop']))
-    for k,i in itertools.groupby(slurp, key = lambda r: (r['transcript'],r['group_label'])):
-        ac,assy = k
-        ti = _seqgene_recs_to_tx_info(ac,assy,list(i))
+    for k, i in itertools.groupby(slurp, key = lambda r: (r['transcript'],r['group_label'])):
+        ac, assy = k
+        ti = _seqgene_recs_to_tx_info(ac, assy, list(i))
 
         resp = session.query(usam.Transcript).filter(usam.Transcript.ac == ac)
         if resp.count() == 0:
@@ -585,14 +556,14 @@ def load_ncbi_seqgene(session,opts,cf):
             )
 
 
-def grant_permissions(session,opts,cf):
-    session.execute("set role {admin_role};".format(admin_role=cf.get('uta','admin_role')))
+def grant_permissions(session, opts, cf):
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     schema = 'uta1'                       # see models.py also
     cmds = [
-        'alter database {db} set search_path = {schema}'.format(db=cf.get('uta','database'),
+        'alter database {db} set search_path = {schema}'.format(db=cf.get('uta', 'database'),
                                                                 schema=schema),
-        'grant usage on schema '+schema+' to PUBLIC',
+        'grant usage on schema ' + schema + ' to PUBLIC',
         ]
 
     sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(

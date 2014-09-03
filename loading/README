@@ -88,7 +88,7 @@ part of the repo to enable easy testing of loading.
 
 If that fails, 
 
-$ psql -d <db> -c 'drop schema uta1 cascade'
+$ psql -p $PGPORT -d <db> -c 'drop schema uta1 cascade'
 $ make cleanest
 
 and retry.

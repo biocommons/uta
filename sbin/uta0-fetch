@@ -8,10 +8,10 @@ import os
 import sys
 
 import psycopg2, psycopg2.extras
+from bioutils.accessions import chr_to_NC
 
 from uta.formats.txinfo import TxInfo,TxInfoWriter
 from uta.formats.exonset import ExonSet,ExonSetWriter
-from uta.luts import chr_to_NC
 
 #dsn="host=uta.invitae.com dbname=uta user=uta_public password=uta_public"
 dsn="host=localhost       dbname=uta"
