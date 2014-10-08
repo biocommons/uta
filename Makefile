@@ -41,7 +41,6 @@ build_sphinx: develop
 
 #=> develop, bdist, bdist_egg, sdist, upload_docs, etc
 develop: %:
-	pip install --upgrade setuptools
 	python setup.py $*
 
 bdist bdist_egg build build_sphinx install sdist: %:
