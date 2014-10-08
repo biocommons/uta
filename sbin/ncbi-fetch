@@ -1,5 +1,35 @@
 #!/usr/bin/env python
 
+"""Given gene symbols on the command line, fetch and write geneinfo,
+txinfo, and exonset files from NCBI using eutils.  See uta.formats for
+a description of those file formats.
+
+In a nutshell, this means that you'll get data like this:
+
+ncbi.geneinfo.gz:
+hgnc    maploc  aliases type    summary descr
+A1BG    19q13.4 A1B,ABG,GAB,HYST2477    protein-coding  The protein encoded
+
+ncbi.txinfo.gz:
+origin  ac  hgnc    cds_se_i    exons_se_i
+NCBI RefSeq NM_053283.2 DCD 62,395  0,120;120,159;159,261;261,351;351,517
+
+ncbi.exonsets.gz:
+tx_ac   alt_ac  method  strand  exons_se_i
+NM_130786.3 NC_000019.9 splign  -1  58864769,58864865;588646...
+NM_130786.3 NC_018930.2 splign  -1  58858699,58858795;588585...
+NM_130786.3 AC_000151.1 splign  -1  55173924,55174020;551738...
+NM_138933.2 NC_000010.10    splign  -1  52645340,52645435;52...
+
+ncbi.fasta.gz:
+>NM_053283.2
+GACACCCTAGATCCCAAGATCTCCAAGGATTTGGTGGCATACCCACTCCAGCACACAGAA...
+>NM_030581.3
+CGGGGCTGATTCTCTGGCTGTGTGGGGCGCACGGTCCCGGGATACTGGGGACGGCGGGGT...
+
+"""
+
+
 from __future__ import division
 
 import argparse
@@ -11,8 +41,8 @@ import re
 import sys
 
 import Bio.SeqIO
-from bdi.utils.aminoacids import seq_md5
-import eutils.client
+from bioutils.digests import seq_md5
+import eutils.clientx
 
 from uta.formats.exonset import ExonSet,ExonSetWriter
 from uta.formats.geneinfo import GeneInfo,GeneInfoWriter
@@ -69,7 +99,7 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
 
-    ec = eutils.client.Client()
+    ec = eutils.clientx.ClientX()
     opts = parse_args(sys.argv[1:])
 
     es_fn = opts.prefix + '.exonset.gz'
