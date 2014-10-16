@@ -248,7 +248,6 @@ def load_txinfo(session, opts, cf):
 
     from bioutils.digests import seq_md5
     from multifastadb import MultiFastaDB
-
     mfdb = MultiFastaDB([cf.get('sequences', 'fasta_directory')], use_meta_index=True)
 
     known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
@@ -348,13 +347,14 @@ def align_exons(session, opts, cf):
     aligner = cf.get('loading', 'aligner', 'needle')
 
     if aligner == 'utaa':
-        import uta_tools_align.align.algorithms as utaaa
+        import uta_align.align.algorithms as utaaa
         def align_with_utaaa(s1, s2):
             score, cigar = utaaa.needleman_wunsch_gotoh_align(str(s1),
                                                               str(s2),
                                                               extended_cigar=True)
             tx_aseq, alt_aseq = utaaa.cigar_alignment(tx_seq, alt_seq, cigar, hide_match=False)
             return tx_aseq, alt_aseq, cigar.to_string()
+        logger.info('aligning with uta_align')
         align = align_with_utaaa
     elif aligner == 'llbaa':
         import locus_lib_bio.align.algorithms as llbaa
@@ -362,12 +362,14 @@ def align_exons(session, opts, cf):
             score, cigar = llbaa.needleman_wunsch_gotoh_align(s1, s2, extended_cigar=True)
             tx_aseq, alt_aseq = llbaa.cigar_alignment(tx_seq, alt_seq, cigar, hide_match=False)
             return tx_aseq, alt_aseq, cigar.to_string()
+        logger.info('aligning with locus_lib_bio')
         align = align_with_llb
     elif aligner == 'needle':
         import uta.utils.alignment as uua
         def align_with_uua(s1, s2):
             tx_aseq, alt_aseq = uua.align2(s1, s2)
             return tx_aseq, alt_aseq, uua.alignment_cigar_string(tx_aseq, alt_aseq)
+        logger.info('aligning with needle')
         align = align_with_uua
     elif aligner is None:
         raise RuntimeError("No aligner specified")
