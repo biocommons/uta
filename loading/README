@@ -39,16 +39,20 @@ their machine (6.7GB).  That directory includes Ensembl, BIC,
 RefSeqGene, and older NCBI RefSeqs.
 
 
+PGDATA=/local/home/reece/var/pg/9.3-test
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=uta_dev
+
+
 *) install postgresql
 
 Source or distribution.
 
 
-*) Create the uta_dev database
+*) Create the postgresql database cluster
 
-$ export PGDATA=/local/home/reece/var/pg/9.3-test
-$ export PGPORT=5433
-$ export PGDATABASE=uta_dev
+Skip this if you already have a postgresql instance
 
 # PGDATA and PGPORT are listed on the command lines below to be
 # explicit but are not strictly required because postgresql tools
@@ -86,19 +90,19 @@ discussd with Geoff prior to release.
 
 *) prepare a database
 
-$ createuser uta_admin
-$ createuser uta_public
-$ createdb -O uta_admin uta_dev
+createuser uta_admin
+createuser uta_public
+createdb -O uta_admin uta_dev
 
 
 *) create and load a test database
 
 The general command to load data is
-$ make db-build DATA=<dataset> CONF=<confname>
+$ make uta-build DATA=<dataset> CONF=<confname>
 
 For testing, type
 
-$ make db-build DATA=test CONF=test
+$ make uta-build DATA=test CONF=test
 
 DATA=test refers to the directory uta/loading/test for source data
 CONF=test refers to the file ../etc/test.conf for connection parameters.
@@ -137,7 +141,7 @@ make test-data
 
 *) create and load a database
 
-$ make db-build DATA=main CONF=test
+$ make uta-build DATA=main CONF=test
 
 
 *) push to RDS

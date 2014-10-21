@@ -1,3 +1,5 @@
+# uta loading Makefile
+
 .SUFFIXES :
 .PRECIOUS :
 .PHONY : FORCE
@@ -31,33 +33,46 @@ help:
 
 
 ############################################################################
-#= db-build and friends
-db-build: db-create db-grant db-load db-align-exons
+#= uta-build and friends
+#=> uta-build -- all build steps
+uta-build: uta-create uta-grant uta-load uta-align-exons
 
-db-create:
+#=> uta-create -- 
+uta-create:
 	uta ${CONF_OPTS} create-schema
 	uta ${CONF_OPTS} load-sql ../sql/functions.sql ../sql/utils.sql ../sql/views.sql
 	uta ${CONF_OPTS} initialize-schema
 
-db-grant:
+#=> uta-grant -- 
+uta-grant:
 	uta ${CONF_OPTS} grant-permissions
 
-db-load: db-load-seqinfo.log db-load-geneinfo.log db-load-txinfo.log db-load-exonsets.log
-db-load-seqinfo.log:
+#=> uta-load -- 
+uta-load: uta-load-seqinfo.log uta-load-geneinfo.log uta-load-txinfo.log uta-load-exonsets.log
+
+#=> uta-load-seqinfo.log -- 
+uta-load-seqinfo.log:
 	for f in ${DATA_DIR}/*.seqinfo.gz ; do time -p uta ${CONF_OPTS} load-seqinfo  "$$f"; done >$@.tmp 2>&1
 	mv $@.tmp $@
-db-load-geneinfo.log:
+
+#=> uta-load-geneinfo.log -- 
+uta-load-geneinfo.log:
 	for f in ${DATA_DIR}/*.geneinfo.gz; do time -p uta ${CONF_OPTS} load-geneinfo "$$f"; done >$@.tmp 2>&1
 	mv $@.tmp $@
-db-load-txinfo.log:
+
+#=> uta-load-txinfo.log -- 
+uta-load-txinfo.log:
 	for f in ${DATA_DIR}/*.txinfo.gz  ; do time -p uta ${CONF_OPTS} load-txinfo   "$$f"; done >$@.tmp 2>&1
 	mv $@.tmp $@
-db-load-exonsets.log:
+
+#=> uta-load-exonsets.log -- 
+uta-load-exonsets.log:
 	for f in ${DATA_DIR}/*.exonset.gz ; do time -p uta ${CONF_OPTS} load-exonsets "$$f"; done >$@.tmp 2>&1
 	mv $@.tmp $@
 
-db-align-exons: db-align-exons.log
-db-align-exons.log:
+#=> uta-align-exons -- 
+uta-align-exons: uta-align-exons.log
+uta-align-exons.log:
 	time -p uta ${CONF_OPTS} align-exons >$@.tmp 2>&1
 	mv $@.tmp $@
 
@@ -72,32 +87,53 @@ db-align-exons.log:
 ############################################################################
 ## build main data
 
+#=> main-data -- 
 main-data: main-ensembl main-ncbi main-ucsc main-uta0
 
+#=> main-ensembl -- 
 main-ensembl: main/ensembl.seqinfo.gz 
+
+#=> main-ncbi -- 
 main-ncbi: main/ncbi.seqinfo.gz main/ncbi.exonset.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz main/ncbi.fasta.gz main/ncbi-core.seqinfo.gz
+
+#=> main-ucsc -- 
 main-ucsc: main/ucsc.exonset.gz
+
+#=> main-uta0 -- 
 main-uta0: main/uta0.exonset.gz main/uta0.txinfo.gz
 
+#=> main/ensembl.seqinfo.gz -- 
 main/ensembl.seqinfo.gz: main/ensembl.fasta.gz
 	fasta-to-seqinfo -o Ensembl $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
 
+#=> main/ncbi-core.seqinfo.gz -- 
 main/ncbi-core.seqinfo.gz:
 	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
 	| gzip -cq >$@.tmp
 	mv -bfv $@.tmp $@
 
+#=> main/ncbi.exonset.gz main/ncbi.fasta.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz -- 
 main/ncbi.exonset.gz main/ncbi.fasta.gz main/ncbi.geneinfo.gz main/ncbi.txinfo.gz: main/ncbi.log;
+
+#=> main/ncbi.log -- 
 main/ncbi.log: %.log: main/genes.hgnc.gz
 	{ gzip -cdq <$< | ncbi-fetch -p $* 2>&1 | tee $@.tmp; } && mv -bfv $@.tmp $@
 
+#=> main/ucsc.exonset.gz -- 
 main/ucsc.exonset.gz: main/ucsc.log
+
+#=> main/ucsc.log -- 
 main/ucsc.log:
 	ucsc-fetch -d ${@D} >$@.tmp 2>&1 && mv -bfv $@.tmp $@
 
+#=> main/uta0.exonset.gz main/uta0.txinfo.gz main/uta0.fasta.gz -- 
 main/uta0.exonset.gz main/uta0.txinfo.gz main/uta0.fasta.gz: main/uta0.log;
+
+#=> main/uta0.log -- 
 main/uta0.log:
 	uta0-fetch -d ${@D} >$@.tmp 2>&1 && mv -bfv $@.tmp $@
+
+#=> main/uta0.seqinfo.gz -- 
 main/uta0.seqinfo.gz: main/uta0.fasta.gz
 	fasta-to-seqinfo -o uta0  $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
 
@@ -141,6 +177,15 @@ test/%.seqinfo.gz: main/%.seqinfo.gz test/acs
 
 
 
+
+############################################################################
+## TEST BUILD
+
+test-build:
+	-dropdb -U postgres uta_dev
+	createdb -U postgres -O uta_admin uta_dev
+	rm -f *.log
+	make uta-build DATA=test
 
 
 ############################################################################

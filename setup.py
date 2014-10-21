@@ -56,6 +56,7 @@ setup(
         'docopt',
         'eutils',
         'hgvs',                 # TODO: eliminate dependency on hgvs
+        'multifastadb',
         'nose',
         'psycopg2',
         'MySQL-python',
