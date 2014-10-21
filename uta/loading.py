@@ -248,6 +248,7 @@ def load_txinfo(session, opts, cf):
 
     from bioutils.digests import seq_md5
     from multifastadb import MultiFastaDB
+
     mfdb = MultiFastaDB([cf.get('sequences', 'fasta_directory')], use_meta_index=True)
 
     known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
@@ -346,7 +347,7 @@ def align_exons(session, opts, cf):
     update_period = 50
     aligner = cf.get('loading', 'aligner', 'needle')
 
-    if aligner == 'utaa':
+    if aligner == 'utaaa':
         import uta_align.align.algorithms as utaaa
         def align_with_utaaa(s1, s2):
             score, cigar = utaaa.needleman_wunsch_gotoh_align(str(s1),
