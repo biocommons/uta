@@ -28,7 +28,7 @@ Additional Resources
 
 * `UTA Code Repository and Issue Tracker`_
 
-.. _UTA Code Repository and Issue Tracker: https://bitbucket.org/uta/uta
+.. _UTA Code Repository and Issue Tracker: https://bitbucket.org/biocommons/uta
 
 
 Indices and tables
