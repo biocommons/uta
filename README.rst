@@ -33,7 +33,7 @@ transcript, and protein coordinates.
 This code repository is primarily used for *generating* the UTA
 database.  The primary interface for the database itself is via direct
 PostgreSQL access.  (A `REST interface
-<https://bitbucket.org/uta/uta/issue/164/>`_ is planned, but not yet
+<https://bitbucket.org/biocommons/uta/issue/164/>`_ is planned, but not yet
 available.)
 
 
@@ -101,7 +101,7 @@ dump was generated without users or roles, so no new roles are needed.
    Installing the schema is a quick way to identify permissions issues.
 
    Fetch a schema dump from
-   https://bitbucket.org/uta/uta/downloads. Schema dumps have
+   https://bitbucket.org/biocommons/uta/downloads. Schema dumps have
    ``-schema`` in the filename.
    ::
 
@@ -109,7 +109,7 @@ dump was generated without users or roles, so no new roles are needed.
   
 #. Install UTA.
 
-   Download a database dump from https://bitbucket.org/uta/uta/downloads.
+   Download a database dump from https://bitbucket.org/biocommons/uta/downloads.
    ::
 
    $ gzip -cdq uta_20140210.pgd.gz | psql -1 -v ON_ERROR_STOP=1 -d uta -f-
@@ -131,11 +131,11 @@ Package Installation
 
 Tested on Ubuntu 13.04, Python 2.7.5::
 
-  $ pip install hg+ssh://hg@bitbucket.org/uta/uta
+  $ pip install hg+ssh://hg@bitbucket.org/biocommons/uta
 
 Alternatively, you may clone and install::
 
-  $ pip clone hg+ssh://hg@bitbucket.org/uta/uta
+  $ pip clone hg+ssh://hg@bitbucket.org/biocommons/uta
   $ cd uta
   $ make install
   (or, equivalently, python setup.py install)
@@ -159,7 +159,7 @@ To develop UTA, follow these steps.
 
 2. Clone UTA.::
 
-    hg clone ssh://hg@bitbucket.org/uta/uta
+    hg clone ssh://hg@bitbucket.org/biocommons/uta
     cd uta
     make develop
 
@@ -176,6 +176,6 @@ To develop UTA, follow these steps.
 .. _virtualenvwrapper: http://virtualenvwrapper.readthedocs.org/en/latest/install.html
 
 
-.. |build_status| image:: https://drone.io/bitbucket.org/uta/uta/status.png
-  :target: https://drone.io/bitbucket.org/uta/uta
+.. |build_status| image:: https://drone.io/bitbucket.org/biocommons/uta/status.png
+  :target: https://drone.io/bitbucket.org/biocommons/uta
   :align: middle

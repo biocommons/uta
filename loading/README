@@ -71,7 +71,7 @@ $ mkvirtualenv uta
 
 *) prepare the uta working directory
 
-$ hg clone ssh://hg@bitbucket.org/uta/uta uta_dev
+$ hg clone ssh://hg@bitbucket.org/biocommons/uta uta_dev
 $ cd uta_dev
 $ make develop
 TODO: error the first time (re: distribute package). Second time was clean. Figure this out.

@@ -22,7 +22,7 @@ setup(
     description='Universal Transcript Archive',
     name = "uta",
     packages = find_packages(),
-    url = 'https://bitbucket.org/uta/uta',
+    url = 'https://bitbucket.org/biocommons/uta',
 
     classifiers = [
         "Development Status :: 3 - Alpha",
@@ -79,7 +79,7 @@ setup(
 )
 
 ## <LICENSE>
-## Copyright 2014 UTA Contributors (https://bitbucket.org/uta/uta)
+## Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
 ## 
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.

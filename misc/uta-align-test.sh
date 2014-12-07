@@ -8,12 +8,12 @@ mkvirtualenv $test_env
 set -x
 
 cd $test_dir
-hg clone ssh://hg@bitbucket.org/uta/uta-align
+hg clone ssh://hg@bitbucket.org/biocommons/uta-align
 cd uta-align
 make install
 cd ..
 
-hg clone ssh://hg@bitbucket.org/uta/uta
+hg clone ssh://hg@bitbucket.org/biocommons/uta
 cd uta
 make develop
 make develop

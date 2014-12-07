@@ -107,7 +107,7 @@ def initialize_schema(session, opts, cf):
         usam.Origin(
             name='uta0',
             descr='UTA version 0',
-            url = 'http://bitbucket.org/uta/uta',
+            url = 'http://bitbucket.org/biocommons/uta',
             ))
     
     session.commit()
@@ -603,7 +603,7 @@ def grant_permissions(session, opts, cf):
 
 
 ## <LICENSE>
-## Copyright 2014 UTA Contributors (https://bitbucket.org/uta/uta)
+## Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
 ## 
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
