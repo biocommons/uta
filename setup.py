@@ -68,8 +68,8 @@ setup(
     setup_requires = [
         'hgtools',
         'nose',
-        'sphinx',
-        'sphinxcontrib-fulltoc',
+        #'sphinx',
+        #'sphinxcontrib-fulltoc',
         ],
 
     tests_require = [
