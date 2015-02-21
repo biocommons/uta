@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+
+"""write SeqInfo files from fasta"""
+
+import argparse
+import gzip
+import logging, logging.config
+import os
+import pkg_resources
+import re
+import sys
+
+import Bio.SeqIO
+from bdi.utils.aminoacids import seq_md5
+
+from uta.formats.seqinfo import SeqInfo, SeqInfoWriter
+
+
+def parse_args(argv):
+    ap = argparse.ArgumentParser(
+        description = __doc__,
+        )
+    ap.add_argument('FILES',
+                    nargs='+')
+    ap.add_argument('--origin','-o',
+                    required=True)
+    ap.add_argument('--max-seq-len','-s',
+                    type=int,
+                    default=0)
+
+    opts = ap.parse_args(argv)
+    return opts
+
+
+ac_re = re.compile('(?:ref|gb)\|([^|]+)')
+#ac_re = re.compile('(?:gi|ref)\|([^|]+)')
+def parse_acs(compound_ac):
+    return ac_re.findall(compound_ac)
+
+
+def process1(opts,siw,fn):
+    logger = logging.getLogger(__name__)
+
+    fh = gzip.open(fn) if fn.endswith('.gz') else open(fn)
+    logger.info('opened '+fn)
+
+    for record in Bio.SeqIO.parse(fh, "fasta"):
+        seq = record.seq.tostring()
+
+        acs = parse_acs(record.id)
+        if len(acs) == 0:
+            acs = [record.id]
+
+        descr = record.description
+        if descr.startswith(record.id):
+            descr = descr[len(record.id):]
+        descr = descr.strip()
+
+        si = SeqInfo(md5=seq_md5(seq), descr=descr, len=len(seq),
+                     seq=seq if len(seq)<=opts.max_seq_len else None,
+                     origin=opts.origin, ac=None)
+        
+        for ac in acs:
+            si.ac = ac
+            siw.write(si)
+            si.seq = None
+
+
+if __name__ == '__main__':
+    logging_conf_fn = pkg_resources.resource_filename('uta', 'etc/logging.conf')
+    logging.config.fileConfig(logging_conf_fn)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    opts = parse_args(sys.argv[1:])
+
+    siw = SeqInfoWriter(sys.stdout)
+    logger.info('Writing seqinfo to stdout')
+
+    for fn in opts.FILES:
+        process1(opts,siw,fn)

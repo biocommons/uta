@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+
+from __future__ import with_statement
+
+import argparse
+import gzip
+import os
+import sys
+
+import psycopg2, psycopg2.extras
+from bioutils.accessions import chr_to_NC
+
+from uta.formats.txinfo import TxInfo,TxInfoWriter
+from uta.formats.exonset import ExonSet,ExonSetWriter
+
+#dsn="host=uta.invitae.com dbname=uta user=uta_public password=uta_public"
+dsn="host=localhost       dbname=uta"
+
+def parse_args(argv):
+    ap = argparse.ArgumentParser(
+        description = __doc__
+        )
+    ap.add_argument(
+        '--out-dir', '-d',
+        required = True)
+    opts = ap.parse_args(argv)
+    return opts
+
+
+if __name__ == '__main__':
+    opts = parse_args(sys.argv[1:])
+
+    es_fn = os.path.join(opts.out_dir,'uta0.exonset.gz')
+    ti_fn = os.path.join(opts.out_dir,'uta0.txinfo.gz')
+    fa_fn = os.path.join(opts.out_dir,'uta0.fasta.gz')
+
+    conn = psycopg2.connect(dsn)
+    sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    # ExonSets
+    sel_sql = """
+    SELECT T.ac,chr,G.strand,GEv.exons_se_i
+    FROM uta0.transcript T
+    JOIN uta0.gene G on T.gene=G.gene
+    JOIN (SELECT ac,ARRAY_TO_STRING(ARRAY_AGG(FORMAT('%s,%s',GE.start_i,GE.end_i) ORDER BY GE.ord), ';') AS exons_se_i
+          FROM uta0.genomic_exon GE GROUP BY GE.ac) GEv ON T.ac=GEv.ac;
+    """
+    esw = ExonSetWriter(gzip.open(es_fn+'.tmp', 'w'))
+    sel_cur.execute(sel_sql)
+    for row in sel_cur.fetchall():
+        es = ExonSet(tx_ac=row['ac'],
+                     alt_ac=chr_to_NC[row['chr']],
+                     method='splign',
+                     strand=row['strand'],
+                     exons_se_i=row['exons_se_i'])
+        esw.write(es)
+
+
+    # Transcripts
+    sel_sql = """
+    SELECT 'NCBI RefSeq' as origin,T.ac,T.gene,format('%s,%s',T.cds_start_i,T.cds_end_i) as cds_se_i,TEv.exons_se_i,T.seq
+         FROM uta0.transcript T
+         join (select ac,array_to_string(array_agg(format('%s,%s',TE.start_i,TE.end_i) ORDER BY TE.ord), ';') AS exons_se_i from uta0.transcript_exon TE group by TE.ac) TEv on T.ac=TEv.ac;
+        """
+    tiw = TxInfoWriter(gzip.open(ti_fn+'.tmp', 'w'))
+    faw = gzip.open(fa_fn+'.tmp','w')
+    sel_cur.execute(sel_sql)
+    for row in sel_cur.fetchall():
+        ti = TxInfo(origin=row['origin'],
+                    ac=row['ac'],
+                    hgnc=row['gene'],
+                    cds_se_i=row['cds_se_i'],
+                    exons_se_i=row['exons_se_i'],)
+        tiw.write(ti)
+        faw.write(">"+row['ac']+"\n"+row['seq']+"\n")
+    
+    os.rename(es_fn+'.tmp',es_fn)
+    os.rename(ti_fn+'.tmp',ti_fn)
+    os.rename(fa_fn+'.tmp',fa_fn)
+
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>

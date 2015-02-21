@@ -1,0 +1,35 @@
+This directory contains code to generate data for the Bermuda document.
+The Bermuda document provides a 3-way comparison of genomic sequences
+(chromosomes and patches), RefSeq transcripts, and ENST transcripts. 
+
+The genome-RefSeq comparisons allow users to account for discrepancies
+between the GRCh37 primary assembly used for alignment and RefSeq
+transcripts used for reporting.  These discrepancies include natural
+variation and sequence errors.
+
+The RefSeq-Ensembl comparisons allow users to determine the equivalence of
+RefSeq and Ensembl transcripts.
+
+
+
+Instructions:
+
+1) Build UTA as described elsewhere.
+
+2) Build and load the nm_enst_equivs table.
+a) ./bin/bermuda-nm-enst-equivs >|nm_enst_equivs.tsv
+b) psql
+\i nm-enst-equivs.sql
+\copy nm-enst-equivs from 'nm-enst-equivs.tsv' delimiter '	'
+(that's a tab between the single quotes)
+
+3) Build and load the HGMD transcript table
+a) MYSQL_PWD='(your pass here)' mysql -h db.host.com -B  -e 'select gene as hgnc,refseq as ac from hgmd_pro.allgenes' >hgmd-gene-transcripts.tsv
+b) psql
+\i hgmd-gene-transcripts.sql
+\copy hgmd_gene_transcripts from misc/bermuda/hgmd-gene-transcripts.tsv delimiter '     ' csv header null 'NULL';
+
+
+4) Refreshing views
+perl -lne 'print "refresh materialized view $1;" if m/create.*materialized view\s+(\S+)/' ../sql/views.sql
+perl -lne 'print "refresh materialized view $1;" if m/create.*materialized view\s+(\S+)/' sandbox.sql  bermuda-prep.sql bermuda.sql 
