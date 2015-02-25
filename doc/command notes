@@ -1,0 +1,5 @@
+createdb -h uta.invitae.com -U ivpostgres -O uta_admin   uta_dev
+pg_dump -d uta_dev | psql -h uta.invitae.com -U uta_admin -d uta_dev
+
+
+
