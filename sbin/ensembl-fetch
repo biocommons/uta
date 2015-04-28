@@ -148,7 +148,7 @@ while (my $hgnc = <>) {
 
 
 rename("ensembl.txinfo.gz.tmp","ensembl.txinfo.gz");
-rename("ensembl.exonsets.gz.tmp","ensembl.exonsets.gz");
+rename("ensembl.exonset.gz.tmp","ensembl.exonset.gz");
 rename("ensembl.fasta.gz.tmp","ensembl.fasta.gz");
 
 
