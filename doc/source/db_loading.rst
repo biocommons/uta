@@ -14,7 +14,6 @@ intermediates in formats that are specified in uta/formats/.  The
 intermediate file formats are indpendent of source.
 
 .. figure:: images/data-flow.svg
-  :caption: Extraction, translation, and loading of data into UTA.
   :align: center
 
 Loading is largely driven by the Makefile in loading/Makefile. You don't
