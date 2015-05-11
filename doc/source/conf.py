@@ -47,7 +47,7 @@ extensions = [
     'sphinxcontrib.fulltoc',
     ]
 html_favicon = '../static/favicon.ico'
-html_logo = '../static/logo.svg'
+html_logo = '../static/logo.png'
 html_static_path = ['../static']
 html_title = '{project} {release}'.format(project = project, release = release)
 intersphinx_mapping = {
