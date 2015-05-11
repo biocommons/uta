@@ -1,7 +1,13 @@
+.. _db_loading.rst:
+
 Loading UTA
------------
+===========
 
 These docs are in flux as the database loading process matures.
+
+
+Overview
+--------
 
 Loading occurs in three distinct stages:
   1. extraction and translations from data sources into intermediate files
@@ -19,94 +25,113 @@ intermediate file formats are indpendent of source.
 Loading is largely driven by the Makefile in loading/Makefile. You don't
 have to do it this way, but the details of the loading appear there.
 
-
-How Reece does it
------------------
-
 Updated 2014-08-29
 Tested with Ubuntu 14.04, x86_64, PostgreSQL 9.3.4
 
-*) get sequence fasta files
 
-Loading requires a lot of fasta files to be available.  Non-Invitae
-users should populate a directory with fasta files with all sequences
-you intend to load. Typically, this includes chromosome sequence fasta
-files (with NC annotations) and RefSeq fasta files (with NM at least).
-Possible sources are ftp://ftp.ncbi.nlm.nih.gov/genomes/H_sapiens/
-(only fa.gz files are required) and
-ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/ (only .faa.gz
-and .fna.gz).  Then, update uta/etc/global.conf with the path to the
-downloads.
+Get sequence fasta files
+------------------------
+
+Loading requires a lot of fasta files to be available.  
 
 Invitae users may wish to rsync /locus/data/core-rest/2014-01/ to
 their machine (6.7GB).  That directory includes Ensembl, BIC,
 RefSeqGene, and older NCBI RefSeqs.
 
-
-PGDATA=/local/home/reece/var/pg/9.3-test
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=uta_dev
-
-
-*) install postgresql
-
-Source or distribution.
+Non-Invitae users should populate a directory with fasta files with
+all sequences you intend to load. Typically, this includes chromosome
+sequence fasta files (with NC annotations) and RefSeq fasta files
+(with NM at least).  Possible sources are
+ftp://ftp.ncbi.nlm.nih.gov/genomes/H_sapiens/ (only fa.gz files are
+required) and ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/
+(only .faa.gz and .fna.gz).  Then, update uta/etc/global.conf with the
+path to the downloads.
 
 
-*) Create the postgresql database cluster
+Set your environment
+--------------------
 
+Here are values used in the examples that follow. If you choose to not
+set these variables, you will have to provide suitable values on the
+command line.
+
+::
+
+    PGDATA=/local/home/reece/var/pg/9.3-test
+    PGHOST=localhost
+    PGPORT=5432
+    PGDATABASE=uta_dev
+
+
+Create the postgresql database cluster
+--------------------------------------
 Skip this if you already have a postgresql instance
 
 # PGDATA and PGPORT are listed on the command lines below to be
 # explicit but are not strictly required because postgresql tools
 # recognize those variables.
 
-$ initdb -D $PGDATA
-$ perl -i.bak -pe "s/#port = 5432/port = $PGPORT/" $PGDATA/postgresql.conf
-$ pg_ctl -D $PGDATA -l logfile start
+::
+
+    $ initdb -D $PGDATA
+    $ perl -i.bak -pe "s/#port = 5432/port = $PGPORT/" $PGDATA/postgresql.conf
+    $ pg_ctl -D $PGDATA -l logfile start
+
 (trust authentication enabled and required for these instructions)
 
 
-*) prepare a virtualenv
+Prepare a virtualenv
+--------------------
 
-$ mkvirtualenv uta
+::
 
-
-*) prepare the uta working directory
-
-$ hg clone ssh://hg@bitbucket.org/biocommons/uta uta_dev
-$ cd uta_dev
-$ make develop
-TODO: error the first time (re: distribute package). Second time was clean. Figure this out.
-$ make develop
+    $ mkvirtualenv uta
 
 
-*) install non-public tools manually
+Prepare the uta working directory
+---------------------------------
 
-pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-core
-pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-lib-bio
+::
+
+    $ hg clone ssh://hg@bitbucket.org/biocommons/uta uta_dev
+    $ cd uta_dev
+    $ make develop
+    # TODO: error the first time (re: distribute package). Second time was clean. Figure this out.
+    $ make develop
+
+
+Install non-public tools manually
+---------------------------------
+
+::
+
+    $ pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-core
+    $ pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-lib-bio
 
 NOTE: Reece is currently (2014-09-03) working on extracting the
 essential elements of these repos into a public package.  To be
 discussd with Geoff prior to release.
 
 
-*) prepare a database
+Prepare a database
+------------------
 
-createuser uta_admin
-createuser uta_public
-createdb -O uta_admin uta_dev
+::
 
+    createuser uta_admin
+    createuser uta_public
+    createdb -O uta_admin uta_dev
 
-*) create and load a test database
+Create and load a test database
+-------------------------------
 
-The general command to load data is
-$ make uta-build DATA=<dataset> CONF=<confname>
+The general command to load data is::
 
-For testing, type
+    $ make uta-build DATA=<dataset> CONF=<confname>
 
-$ make uta-build DATA=test CONF=test
+For testing, type::
+
+    $ make uta-build DATA=test CONF=test
 
 DATA=test refers to the directory uta/loading/test for source data
 CONF=test refers to the file ../etc/test.conf for connection parameters.
@@ -114,10 +139,10 @@ CONF=test refers to the file ../etc/test.conf for connection parameters.
 uta/loading/test contains excerpts of a full load. Those files are
 part of the repo to enable easy testing of loading.
 
-If that fails, 
+If that fails::
 
-$ psql -p $PGPORT -d <db> -c 'drop schema uta1 cascade'
-$ make cleanest
+    $ psql -p $PGPORT -d <db> -c 'drop schema uta1 cascade'
+    $ make cleanest
 
 and retry.
 
@@ -125,31 +150,42 @@ and retry.
 ## Everything past this is for a full load
 
 
-*) Extraction and translation
+Extraction and translation
+--------------------------
 
-$ make main-data
+::
+
+    $ make main-data
 
 This will take a long time. 36 hours maybe.
 
 
-*) uncompress resulting fasta files into the fasta directory (see
-main.conf)
+Uncompress resulting fasta files into the fasta directory (see main.conf)
+-------------------------------------------------------------------------
 
 
-*) Optional: make test data
+Optional: make test data
+------------------------
 These data are used for testing and therefore committed with the repo.
 You probably don't need to rebuild them.
 
-make test-data
+::
+
+    make test-data
 
 
-*) create and load a database
+Create and load a database
+--------------------------
 
-$ make uta-build DATA=main CONF=test
+::
+
+    $ make uta-build DATA=main CONF=test
 
 
-*) push to RDS
+Push to RDS
+-----------
 
-$ make push
+::
 
+    $ make push
 
