@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
-"""Given gene symbols on the command line, fetch and write geneinfo,
+"""
+OBSOLETE -- UTA v1 used this script to fetch data via eutils.
+Since then, NCBI has released necessary data via ftp/rsync. 
+See documentation for the current loading process.
+
+Given gene symbols on the command line, fetch and write geneinfo,
 txinfo, and exonset files from NCBI using eutils.  See uta.formats for
 a description of those file formats.
 
