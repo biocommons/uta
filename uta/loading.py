@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 def drop_schema(session, opts, cf):
     if session.bind.name == 'postgresql' and usam.use_schema:
+        session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
+
         ddl = 'drop schema if exists ' + usam.schema_name + ' cascade'
         session.execute(ddl)
         session.commit()
@@ -56,8 +58,11 @@ def load_sql(session, opts, cf):
 
 
 def initialize_schema(session, opts, cf):
-    """Create and populate initial schema"""
+    """Create and populate initial schema
 
+    TODO: Put initial origin content in a file (e.g., TSV)
+    """
+    
     session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
     session.add(
@@ -175,7 +180,7 @@ def load_seqinfo(session, opts, cf):
                 md5=md5, n=len(sis), acs=','.join(si.ac for si in sis)))
 
 
-def load_exonsets(session, opts, cf):
+def load_exonset(session, opts, cf):
     # unlike seq and seq_anno loading, where annotations may be updated at any time,
     # exonsets are loaded discretely -- that is, we never *add* new exons to exonsets.
 
@@ -249,7 +254,9 @@ def load_txinfo(session, opts, cf):
     from bioutils.digests import seq_md5
     from multifastadb import MultiFastaDB
 
-    mfdb = MultiFastaDB([cf.get('sequences', 'fasta_directory')], use_meta_index=True)
+    fa_dir = cf.get('sequences', 'fasta_directory')
+    mfdb = MultiFastaDB([fa_dir], use_meta_index=True)
+    logger.info('opened sequence directory ' + fa_dir)
 
     known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
     n_lines = len(gzip.open(opts['FILE']).readlines())
@@ -312,85 +319,44 @@ def load_txinfo(session, opts, cf):
 
 
 
-aln_sel_sql = """
-SELECT * FROM tx_alt_exon_pairs_v TAEP
-WHERE NOT EXISTS (
-    SELECT tx_exon_id,alt_exon_id
-    FROM exon_aln EA
-    WHERE EA.tx_exon_id=TAEP.tx_exon_id AND EA.alt_exon_id=TAEP.alt_exon_id
-    )
-"""
-#AND alt_ac in (
-#'NC_000001.10', 'NC_000002.11', 'NC_000003.11',
-#'NC_000004.11', 'NC_000005.9', 'NC_000006.11',
-#'NC_000007.13', 'NC_000008.10', 'NC_000009.11',
-#'NC_000010.10', 'NC_000011.9', 'NC_000012.11',
-#'NC_000013.10', 'NC_000014.8', 'NC_000015.9',
-#'NC_000016.9', 'NC_000017.10', 'NC_000018.9',
-#'NC_000019.9', 'NC_000020.10', 'NC_000021.8',
-#'NC_000022.10', 'NC_000023.10', 'NC_000024.9'
-#)
-#"""
-
-aln_ins_sql = """
-INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
-"""
-
-
 def align_exons(session, opts, cf):
     # N.B. setup.py declares dependencies for using uta as a client.  The
     # imports below are loading depenencies only and are not in setup.py.
-    from bioutils.sequences import reverse_complement
+
     import psycopg2.extras
+    from bioutils.sequences import reverse_complement
     from multifastadb import MultiFastaDB
+    import uta_align.align.algorithms as utaaa
 
     update_period = 50
-    aligner = cf.get('loading', 'aligner', 'needle')
 
-    if aligner == 'utaaa':
-        import uta_align.align.algorithms as utaaa
-        def align_with_utaaa(s1, s2):
-            score, cigar = utaaa.needleman_wunsch_gotoh_align(str(s1),
-                                                              str(s2),
-                                                              extended_cigar=True)
-            tx_aseq, alt_aseq = utaaa.cigar_alignment(tx_seq, alt_seq, cigar, hide_match=False)
-            return tx_aseq, alt_aseq, cigar.to_string()
-        logger.info('aligning with uta_align')
-        align = align_with_utaaa
-    elif aligner == 'llbaa':
-        import locus_lib_bio.align.algorithms as llbaa
-        def align_with_llb(s1, s2):
-            score, cigar = llbaa.needleman_wunsch_gotoh_align(s1, s2, extended_cigar=True)
-            tx_aseq, alt_aseq = llbaa.cigar_alignment(tx_seq, alt_seq, cigar, hide_match=False)
-            return tx_aseq, alt_aseq, cigar.to_string()
-        logger.info('aligning with locus_lib_bio')
-        align = align_with_llb
-    elif aligner == 'needle':
-        import uta.utils.alignment as uua
-        def align_with_uua(s1, s2):
-            tx_aseq, alt_aseq = uua.align2(s1, s2)
-            return tx_aseq, alt_aseq, uua.alignment_cigar_string(tx_aseq, alt_aseq)
-        logger.info('aligning with needle')
-        align = align_with_uua
-    elif aligner is None:
-        raise RuntimeError("No aligner specified")
-    else:
-        raise RuntimeError("aligner '" + aligner + "' not recognized")
+    def align(s1, s2):
+        score, cigar = utaaa.needleman_wunsch_gotoh_align(str(s1),
+                                                          str(s2),
+                                                          extended_cigar=True)
+        tx_aseq, alt_aseq = utaaa.cigar_alignment(tx_seq, alt_seq, cigar, hide_match=False)
+        return tx_aseq, alt_aseq, cigar.to_string()
 
+    aln_sel_sql = """
+    SELECT * FROM tx_alt_exon_pairs_v TAEP
+    WHERE exon_aln_id is NULL
+    ORDER BY hgnc
+    """
 
-    mfdb = MultiFastaDB([cf.get('sequences', 'fasta_directory')], use_meta_index=True)
+    aln_ins_sql = """
+    INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
+    """
+
+    fa_dir = cf.get('sequences', 'fasta_directory')
+    mfdb = MultiFastaDB([fa_dir], use_meta_index=True)
+    logger.info("Opened sequence directory "+fa_dir)
+
     con = session.bind.pool.connect()
     cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+
     cur.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
-    sql = aln_sel_sql
-    if opts['--sql']:
-        # hello injection attack! This would worry me, except that it's always run
-        # by a real person who could just as easily connect directly to do damage.
-        sql += ' ' + opts['SQL']
-    sql += ' ORDER BY hgnc';
-
-    cur.execute(sql)
+    cur.execute(aln_sel_sql)
     rows = cur.fetchall()
     n_rows = len(rows)
     ac_warning = set()

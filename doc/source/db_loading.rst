@@ -10,162 +10,111 @@ Overview
 --------
 
 Loading occurs in three distinct stages:
-  1. extraction and translations from data sources into intermediate files
-  2. loading from intermediates into UTA.
-  3. generating new exon alignments
 
-The extraction scripts, which are specific for each source, are in
-uta/sbin/. Each script reads from one source and writes one or more
-intermediates in formats that are specified in uta/formats/.  The
-intermediate file formats are indpendent of source.
+  1. extraction and translation from data sources into intermediate files;
+  2. loading from intermediates into UTA;
+  3. generating new exon alignments within UTA.
+
+The extraction/translation scripts, which are specific for each
+source, are in uta/sbin/. Each script reads from one source and writes
+one or more intermediates in formats that are specified in
+uta/formats/.  The intermediate file formats are indpendent of source.
 
 .. figure:: images/data-flow.svg
   :align: center
 
-Loading is largely driven by the Makefile in loading/Makefile. You don't
-have to do it this way, but the details of the loading appear there.
+Loading is largely driven by loading/Makefile.
 
 Updated 2014-08-29
 Tested with Ubuntu 14.04, x86_64, PostgreSQL 9.3.4
 
 
-Get sequence fasta files
-------------------------
 
-Loading requires a lot of fasta files to be available.  
+Preparing a PostgreSQL cluster and database
+-------------------------------------------
 
-Invitae users may wish to rsync /locus/data/core-rest/2014-01/ to
-their machine (6.7GB).  That directory includes Ensembl, BIC,
-RefSeqGene, and older NCBI RefSeqs.
-
-Non-Invitae users should populate a directory with fasta files with
-all sequences you intend to load. Typically, this includes chromosome
-sequence fasta files (with NC annotations) and RefSeq fasta files
-(with NM at least).  Possible sources are
-ftp://ftp.ncbi.nlm.nih.gov/genomes/H_sapiens/ (only fa.gz files are
-required) and ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/
-(only .faa.gz and .fna.gz).  Then, update uta/etc/global.conf with the
-path to the downloads.
-
-
-Set your environment
---------------------
-
-Here are values used in the examples that follow. If you choose to not
-set these variables, you will have to provide suitable values on the
-command line.
+You may specify certain PostgreSQL options using environment variables
+or command line options. For readability, these instructions use
+environment variables:
 
 ::
 
-    PGDATA=/local/home/reece/var/pg/9.3-test
-    PGHOST=localhost
-    PGPORT=5432
-    PGDATABASE=uta_dev
+    export PGDATA=/local/home/reece/var/pg/9.3-test
+    export PGHOST=localhost
+    export PGPORT=5432
+    export PGDATABASE=uta_dev
 
 
-Create the postgresql database cluster
---------------------------------------
-Skip this if you already have a postgresql instance
+First, create the PostgreSQL cluster if you do not have one already
+installed::
 
-# PGDATA and PGPORT are listed on the command lines below to be
-# explicit but are not strictly required because postgresql tools
-# recognize those variables.
+    initdb -D $PGDATA
+    perl -i.bak -pe "s/#port = 5432/port = $PGPORT/" $PGDATA/postgresql.conf
+    pg_ctl -D $PGDATA -l logfile start
 
-::
+By default, PostgreSQL specifies local "trust" authentication in
+pg_hba.conf and is required for these instructions.
 
-    $ initdb -D $PGDATA
-    $ perl -i.bak -pe "s/#port = 5432/port = $PGPORT/" $PGDATA/postgresql.conf
-    $ pg_ctl -D $PGDATA -l logfile start
-
-(trust authentication enabled and required for these instructions)
-
-
-Prepare a virtualenv
---------------------
-
-::
-
-    $ mkvirtualenv uta
-
-
-Prepare the uta working directory
----------------------------------
-
-::
-
-    $ hg clone ssh://hg@bitbucket.org/biocommons/uta uta_dev
-    $ cd uta_dev
-    $ make develop
-    # TODO: error the first time (re: distribute package). Second time was clean. Figure this out.
-    $ make develop
-
-
-Install non-public tools manually
----------------------------------
-
-::
-
-    $ pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-core
-    $ pip install hg+ssh://hg@bitbucket.org/locusdevelopment/locus-lib-bio
-
-NOTE: Reece is currently (2014-09-03) working on extracting the
-essential elements of these repos into a public package.  To be
-discussd with Geoff prior to release.
-
-
-Prepare a database
-------------------
-
-::
+Then, create users and a uta database::
 
     createuser uta_admin
     createuser uta_public
     createdb -O uta_admin uta_dev
 
-Create and load a test database
--------------------------------
 
-The general command to load data is::
+Install UTA
+-----------
 
-    $ make uta-build DATA=<dataset> CONF=<confname>
-
-For testing, type::
-
-    $ make uta-build DATA=test CONF=test
-
-DATA=test refers to the directory uta/loading/test for source data
-CONF=test refers to the file ../etc/test.conf for connection parameters.
-
-uta/loading/test contains excerpts of a full load. Those files are
-part of the repo to enable easy testing of loading.
-
-If that fails::
-
-    $ psql -p $PGPORT -d <db> -c 'drop schema uta1 cascade'
-    $ make cleanest
-
-and retry.
-
-
-## Everything past this is for a full load
-
-
-Extraction and translation
---------------------------
+The scripts necessary to build the UTA database are in the UTA repo.
 
 ::
 
-    $ make main-data
+    mkvirtualenv uta
+    hg clone ssh://hg@bitbucket.org/biocommons/uta uta_dev
+    cd uta_dev
+    make develop
+    # TODO: error the first time (re: distribute package). Second time was clean. Figure this out.
+    make develop
+
+
+Prepare intermediate files
+--------------------------
+
+Sequences
+^^^^^^^^^
+
+UTA requires sequence data for every sequence that is referenced in
+the intermediate files. Fasta files (with .fa, .fna, .faa, or .fasta
+filename extensions) should be placed at the root of a single
+directory.  The path is specified in etc/global.conf.
+
+    [sequences]
+    fasta_directory = /locus/data/core-rest/2014-01/sequences
+
+
+NCBI
+^^^^
+
+Ensembl
+^^^^^^^
+
+LRG
+^^^
+
+
+Preparing to load the whole kielbasa
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+    make main-data
 
 This will take a long time. 36 hours maybe.
 
 
-Uncompress resulting fasta files into the fasta directory (see main.conf)
--------------------------------------------------------------------------
+Preparing test data
+^^^^^^^^^^^^^^^^^^^
 
-
-Optional: make test data
-------------------------
 These data are used for testing and therefore committed with the repo.
 You probably don't need to rebuild them.
 
@@ -174,12 +123,43 @@ You probably don't need to rebuild them.
     make test-data
 
 
+Data Loading
+------------
+
+The general command to load data is::
+
+    cd loading
+    make uta-build DATA=<dataset> CONF=<confname>
+
+DATA specifies a directory of intermediate files in loading/<dataset> to be loaded
+
+CONF specifies a config file in ../etc/ for connection parameters
+
+
+Testing Loading
+^^^^^^^^^^^^^^^
+
+uta/loading/test contains a set of intermediate files to test the
+loading process. These files are part of the UTA repository. 
+
+For testing, type::
+
+    make uta-build DATA=test CONF=test
+
+If that fails::
+
+    psql -p $PGPORT -d <db> -c 'drop schema uta1 cascade'
+    make cleanest
+
+and retry.
+
+
 Create and load a database
---------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ::
 
-    $ make uta-build DATA=main CONF=test
+    make uta-build DATA=main CONF=dev
 
 
 Push to RDS
@@ -187,5 +167,5 @@ Push to RDS
 
 ::
 
-    $ make push
+    make push
 
