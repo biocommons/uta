@@ -131,6 +131,7 @@ class Transcript(Base,UTABase):
 class ExonSet(Base,UTABase):
     __tablename__ = 'exon_set'
     __table_args__ = (
+        # TODO: Drop ExonSet unique constraint to support degenerate mappings
         sa.UniqueConstraint('tx_ac','alt_ac','alt_aln_method',
                             name='<transcript,reference,method> must be unique'),
         )

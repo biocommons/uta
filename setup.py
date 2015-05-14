@@ -63,6 +63,7 @@ setup(
         'pytz',
         'recordtype',
         'sqlalchemy',
+        'uta-align',
         ],
 
     setup_requires = [
