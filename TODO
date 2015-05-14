@@ -4,7 +4,7 @@
 sa_models -> models
 import models with import uta
 check version on connect()
-
+um.ExonSet.__table__._columns['tx_ac'].type.python_type
 
 * documentation
 ** modules, classes, functions
