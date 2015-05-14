@@ -16,7 +16,7 @@ Usage:
   uta (-C CONF ...) [options] load-seqinfo FILE
   uta (-C CONF ...) [options] load-geneinfo FILE
   uta (-C CONF ...) [options] load-txinfo FILE
-  uta (-C CONF ...) [options] load-exonsets FILE
+  uta (-C CONF ...) [options] load-exonset FILE
   uta (-C CONF ...) [options] load-sequences
   uta (-C CONF ...) [options] align-exons [--sql SQL]
   uta (-C CONF ...) [options] load-ncbi-seqgene FILE
@@ -74,7 +74,7 @@ def run(argv=None):
 
         ('load-sql', 	                ul.load_sql),
 
-        ('load-exonsets',               ul.load_exonsets),
+        ('load-exonset',                ul.load_exonset),
         ('load-geneinfo',               ul.load_geneinfo),
         ('load-seqinfo',                ul.load_seqinfo),
         ('load-txinfo',                 ul.load_txinfo),

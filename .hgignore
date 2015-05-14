@@ -17,6 +17,7 @@ syntax: glob
 *.sql.gz
 *.sqlite3
 *.tar.gz
+*.tmp
 *~
 .*.conf.mk
 .DS_Store
@@ -39,7 +40,8 @@ lib/python/cover
 lib/python/uta/_release.py
 loading/*/acs
 loading/.*.conf
-loading/main
+loading/*/*.gz
+loading/mirrors-ncbi
 misc/data
 misc/exon-str-cmp
 misc/seq-info
