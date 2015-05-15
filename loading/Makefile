@@ -94,7 +94,7 @@ logs/load-%.exonset.log: data/%.exonset.gz
 
 #=> align-exons -- 
 align-exons: logs/align-exons.log
-logs/align-exons.log:
+logs/align-exons.log: FORCE
 	(time -p uta ${CONF_OPTS} align-exons) >$@.tmp 2>&1
 	mv $@.tmp $@
 
