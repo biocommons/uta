@@ -1,4 +1,34 @@
 # uta loading Makefile
+#
+# This Makefile does four things (which is probably too much):
+#
+# 1. Extracts and translates data from sources into intermediate files
+# 2. Creates self-consistent subsets of those data for testing purposes
+# 3. Loads intermediate files
+# 4. Automates some DB admin tasks (mostly for consistency)
+#
+#       {sources} --E+T--> {intermediates} ---L---> {db}
+#                           ▾          ▴
+#                           +--subset--+
+#
+# Intermediates (and subsets) are stored in data/<setname>/<file>.gz,
+# where <file> is one of the TSV formats (see uta/formats/) such as
+# exonset, seqinfo, txinfo, or geneinfo. Intermediates are always
+# gzip-compressed and this is required for loading.
+#
+# Loading any intermediate file generates a log file in
+# logs/<conf>/<setname>/<file>.log -- that is, it closely parallels
+# the structure of intermediate file paths.
+# 
+# CONFIGURATION
+# The environment/Makefile variable CONF is used to specify which conf
+# file (in ../etc/) to use. By default, CONF=test. 
+# 
+# Typical flow:
+# $ make cleanest drop create grant-permissions
+# $ make load-<dataset> # repeat for all desired sets
+# $ make refresh-matviews
+
 
 .SUFFIXES :
 .PRECIOUS :
@@ -36,84 +66,9 @@ help:
 	@extract-makefile-documentation "${SELF}"
 
 
-
-############################################################################
-#= Creating and Loading
-
-#=> build -- all build steps
-build: create grant load-${DATA} align-exons
-
-
-#=> drop -- 
-drop:
-	uta ${CONF_OPTS} drop-schema
-
-
-#=> create -- 
-create:
-	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql ../sql/functions.sql ../sql/utils.sql ../sql/views.sql
-	uta ${CONF_OPTS} grant-permissions
-	uta ${CONF_OPTS} initialize-schema
-
-
-#=> grant-permissions -- so that you can update grants on existing databases
-#=> refresh-matviews -- update materialized views
-refresh-matviews grant-permissions: %:
-	uta ${CONF_OPTS} $*
-
-
-#=> load-% -- 
-load-all-%:
-	make -k $(foreach t,seqinfo geneinfo txinfo exonset,${LOG_DIR}/load-$*.$t.log)
-
-
-#=> load-%-seqinfo -- 
-load-%-seqinfo: ${LOG_DIR}/load-%-seqinfo.log;
-${LOG_DIR}/load-%.seqinfo.log: data/%.seqinfo.gz
-	(time -p uta ${CONF_OPTS} load-seqinfo $<) >$@.tmp 2>&1
-	mv $@.tmp $@
-
-
-#=> load-geneinfo.log -- 
-load-%-geneinfo: ${LOG_DIR}/load-%.geneinfo.log;
-${LOG_DIR}/load-%.geneinfo.log: data/%.geneinfo.gz
-	(time -p uta ${CONF_OPTS} load-geneinfo $<) >$@.tmp 2>&1
-	mv $@.tmp $@
-
-
-#=> load-txinfo.log -- 
-load-%-txinfo: ${LOG_DIR}/load-%-txinfo.log;
-${LOG_DIR}/load-%.txinfo.log: data/%.txinfo.gz
-	(time -p uta ${CONF_OPTS} load-txinfo $<) >$@.tmp 2>&1
-	mv $@.tmp $@
-
-
-#=> load-exonset.log -- 
-load-%-exonset: ${LOG_DIR}/load-%-exonset.log;
-${LOG_DIR}/load-%.exonset.log: data/%.exonset.gz
-	(time -p uta ${CONF_OPTS} load-exonset $<) >$@.tmp 2>&1
-	mv $@.tmp $@
-
-
-#=> align-exons -- 
-align-exons: ${LOG_DIR}/align-exons.log
-${LOG_DIR}/align-exons.log: FORCE
-	(time -p uta ${CONF_OPTS} align-exons) >$@.tmp 2>&1
-	mv $@.tmp $@
-
-
-
-# .PHONY: push
-# push: push.log
-# push.log:
-# 	(time pg_dump -U uta_admin -d uta_dev -c -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
-# 	mv $@.tmp $@
-
-
-
 ############################################################################
 ## Source-Specific Extraction and Translation
+## TODO: Define how to get sources data
 
 ## --- NCBI ---
 
@@ -184,6 +139,72 @@ test/%-${SET}.txinfo.gz: main/%.txinfo.gz test/acs
 	gzip -cdq <$< | txinfo-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
+
+
+############################################################################
+#= Loading
+
+#=> load-% -- 
+load-%:
+	@lfs=$$(for f in seqinfo geneinfo txinfo exonset; do [ -f data/$*/$$f.gz ] && echo logs/${CONF}/$*/$$f.log; done); \
+	[ -n "$$lfs" ] && (set -x; make $$lfs)
+
+#=> load-%-seqinfo -- 
+${LOG_DIR}/%/seqinfo.log: data/%/seqinfo.gz
+	@mkdir -pv ${@D}
+	(time -p uta ${CONF_OPTS} load-seqinfo $<) >$@.tmp 2>&1
+	mv $@.tmp $@
+
+#=> load-geneinfo.log -- 
+${LOG_DIR}/%/geneinfo.log: data/%/geneinfo.gz
+	(time -p uta ${CONF_OPTS} load-geneinfo $<) >$@.tmp 2>&1
+	mv $@.tmp $@
+
+#=> load-txinfo.log -- 
+${LOG_DIR}/%/txinfo.log: data/%/txinfo.gz
+	(time -p uta ${CONF_OPTS} load-txinfo $<) >$@.tmp 2>&1
+	mv $@.tmp $@
+
+#=> load-exonset.log -- 
+${LOG_DIR}/%/exonset.log: data/%/exonset.gz
+	(time -p uta ${CONF_OPTS} load-exonset $<) >$@.tmp 2>&1
+	mv $@.tmp $@
+
+#=> align-exons -- 
+align-exons: ${LOG_DIR}/align-exons.log
+${LOG_DIR}/align-exons.log: FORCE
+	(time -p uta ${CONF_OPTS} align-exons) >$@.tmp 2>&1
+	mv $@.tmp $@
+
+
+############################################################################
+#= DB Admin
+
+#=> build -- all build steps
+# TODO: Rethink whether build should do this much!
+build: create grant load-${DATA} align-exons
+
+#=> drop -- 
+drop:
+	uta ${CONF_OPTS} drop-schema
+
+#=> create -- 
+create:
+	uta ${CONF_OPTS} create-schema
+	uta ${CONF_OPTS} load-sql ../sql/functions.sql ../sql/utils.sql ../sql/views.sql
+	uta ${CONF_OPTS} grant-permissions
+	uta ${CONF_OPTS} initialize-schema
+
+#=> grant-permissions -- so that you can update grants on existing databases
+#=> refresh-matviews -- update materialized views
+refresh-matviews grant-permissions: %:
+	uta ${CONF_OPTS} $*
+
+# .PHONY: push
+# push: push.log
+# push.log:
+# 	(time pg_dump -U uta_admin -d uta_dev -c -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
+# 	mv $@.tmp $@
 
 
 ############################################################################
