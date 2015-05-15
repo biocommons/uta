@@ -9,14 +9,18 @@ SHELL:=/bin/bash -o pipefail -e
 PATH:=../sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
 
+# By default, load test data (i.e., test-{seqinfo,geneinfo,txinfo,exonset})
+# into db specified via CONF (which specifies config files in ../etc)
 DATA=test
 CONF=test
 
 DATA_DIR:=${DATA}
+LOG_DIR:=logs/${CONF}
 CONF_FN=../etc/${CONF}.conf
 GLOBAL_CONF_FN:=../etc/global.conf
 CONF_OPTS:=--conf=${GLOBAL_CONF_FN} --conf=${CONF_FN}
 
+_:=$(shell mkdir -p ${LOG_DIR})
 
 include .${CONF}.conf.mk
 .${CONF}.conf.mk: ${GLOBAL_CONF_FN} ${CONF_FN}
@@ -60,41 +64,41 @@ refresh-matviews grant-permissions: %:
 
 
 #=> load-% -- 
-load-%:
-	make -k $(foreach t,seqinfo geneinfo txinfo exonset,logs/load-$*.$t.log) align-exons
+load-all-%:
+	make -k $(foreach t,seqinfo geneinfo txinfo exonset,${LOG_DIR}/load-$*.$t.log)
 
 
 #=> load-%-seqinfo -- 
-load-%-seqinfo: logs/load-%-seqinfo.log;
-logs/load-%.seqinfo.log: data/%.seqinfo.gz
+load-%-seqinfo: ${LOG_DIR}/load-%-seqinfo.log;
+${LOG_DIR}/load-%.seqinfo.log: data/%.seqinfo.gz
 	(time -p uta ${CONF_OPTS} load-seqinfo $<) >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
 #=> load-geneinfo.log -- 
-load-%-geneinfo: logs/load-%.geneinfo.log;
-logs/load-%.geneinfo.log: data/%.geneinfo.gz
+load-%-geneinfo: ${LOG_DIR}/load-%.geneinfo.log;
+${LOG_DIR}/load-%.geneinfo.log: data/%.geneinfo.gz
 	(time -p uta ${CONF_OPTS} load-geneinfo $<) >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
 #=> load-txinfo.log -- 
-load-%-txinfo: logs/load-%-txinfo.log;
-logs/load-%.txinfo.log: data/%.txinfo.gz
+load-%-txinfo: ${LOG_DIR}/load-%-txinfo.log;
+${LOG_DIR}/load-%.txinfo.log: data/%.txinfo.gz
 	(time -p uta ${CONF_OPTS} load-txinfo $<) >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
 #=> load-exonset.log -- 
-load-%-exonset: logs/load-%-exonset.log;
-logs/load-%.exonset.log: data/%.exonset.gz
+load-%-exonset: ${LOG_DIR}/load-%-exonset.log;
+${LOG_DIR}/load-%.exonset.log: data/%.exonset.gz
 	(time -p uta ${CONF_OPTS} load-exonset $<) >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
 #=> align-exons -- 
-align-exons: logs/align-exons.log
-logs/align-exons.log: FORCE
+align-exons: ${LOG_DIR}/align-exons.log
+${LOG_DIR}/align-exons.log: FORCE
 	(time -p uta ${CONF_OPTS} align-exons) >$@.tmp 2>&1
 	mv $@.tmp $@
 
@@ -158,23 +162,25 @@ data/ucsc.exonset.gz: main/ucsc.log
 ## genes.  The genes were selected for diversity of transcript pathologies
 ## represented.  (see test/tx-selection.sql)
 
-data/setA-%.acs: data/%.txinfo.gz data/setA.hgnc
+SET:=SetA
+
+data/%-${SET}.acs: data/%.txinfo.gz data/${SET}.hgnc
 	gzip -cdq <$< | ../sbin/txinfo-filter -G $(word 2,$^) - | sort -u >$@.tmp
 	mv -bfv $@.tmp $@
 
-data/setA-%.seqinfo.gz: data/%.seqinfo.gz data/setA-%.acs
+data/%-${SET}.seqinfo.gz: data/%.seqinfo.gz data/${SET}-%.acs
 	gzip -cdq <$< | seqinfo-filter -T $(word 2,$^) -R '^[NA]C_' - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
-test/%.geneinfo.gz: main/%.geneinfo.gz test/genes
+test/%-${SET}.geneinfo.gz: main/%.geneinfo.gz test/genes
 	gzip -cdq <$< | geneinfo-filter -G $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
-test/%.exonset.gz: main/%.exonset.gz test/acs
+test/%-${SET}.exonset.gz: main/%.exonset.gz test/acs
 	gzip -cdq <$< | exonset-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
-test/%.txinfo.gz: main/%.txinfo.gz test/acs
+test/%-${SET}.txinfo.gz: main/%.txinfo.gz test/acs
 	gzip -cdq <$< | txinfo-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
@@ -200,7 +206,7 @@ cleaner: clean
 	/bin/rm -f .*.mk
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
-	/bin/rm -f *.log logs/*
+	/bin/rm -fr logs
 
 
 
