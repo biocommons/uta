@@ -21,6 +21,7 @@ Usage:
   uta (-C CONF ...) [options] align-exons [--sql SQL]
   uta (-C CONF ...) [options] load-ncbi-seqgene FILE
   uta (-C CONF ...) [options] grant-permissions
+  uta (-C CONF ...) [options] refresh-matviews
   
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
@@ -70,6 +71,7 @@ def run(argv=None):
         ('create-schema',               ul.create_schema),
         ('initialize-schema',           ul.initialize_schema),
         ('grant-permissions',           ul.grant_permissions),
+        ('refresh-matviews',            ul.refresh_matviews),
         ('rebuild',                     rebuild),
 
         ('load-sql', 	                ul.load_sql),

@@ -535,12 +535,13 @@ def load_ncbi_seqgene(session, opts, cf):
 
 
 def grant_permissions(session, opts, cf):
+    schema = usam.schema_name
+
     session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
 
-    schema = 'uta1'                       # see models.py also
     cmds = [
-        'alter database {db} set search_path = {schema}'.format(db=cf.get('uta', 'database'),
-                                                                schema=schema),
+        # alter db doesn't belong here, and probably better to avoid the implicit behevior this encourages
+        # 'alter database {db} set search_path = {schema}'.format(db=cf.get('uta', 'database'),schema=schema),
         'grant usage on schema ' + schema + ' to PUBLIC',
         ]
 
@@ -566,6 +567,37 @@ def grant_permissions(session, opts, cf):
         logger.info(cmd)
         session.execute(cmd)
     session.commit()
+
+
+def refresh_matviews(session, opts, cf):
+    schema = usam.schema_name
+
+    session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
+
+    # matviews must be updated in dependency order. Unfortunately,
+    # it's difficult to determine this programmatically. The "right"
+    # solution is a recursive CTE, but I was unable to find or write
+    # one readily. 
+    # TODO: Determine mv refresh order programmatically.
+    # sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
+    #     schema=schema)
+    # rows = list(session.execute(sql))
+    # cmds = [ "refresh materialized view {fqrn}".format(fqrn=row['fqrn']) for row in rows ]
+
+    cmds = [
+        # N.B. Order matters!
+        "refresh materialized view uta1.exon_set_exons_fp_mv",
+        "refresh materialized view uta1.tx_exon_set_summary_mv",
+        "refresh materialized view uta1.tx_aln_cigar_mv",
+        "refresh materialized view uta1.tx_aln_summary_mv",
+    ]
+
+    for cmd in cmds:
+        logger.info(cmd)
+        session.execute(cmd)
+    session.commit()
+
+
 
 
 ## <LICENSE>

@@ -45,7 +45,7 @@ drop:
 	uta ${CONF_OPTS} drop-schema
 
 
-#=> uta-create -- 
+#=> create -- 
 create:
 	uta ${CONF_OPTS} create-schema
 	uta ${CONF_OPTS} load-sql ../sql/functions.sql ../sql/utils.sql ../sql/views.sql
@@ -53,9 +53,10 @@ create:
 	uta ${CONF_OPTS} initialize-schema
 
 
-#=> uta-grant -- so that you can update grants on existing databases
-grant:
-	uta ${CONF_OPTS} grant-permissions
+#=> grant-permissions -- so that you can update grants on existing databases
+#=> refresh-matviews -- update materialized views
+refresh-matviews grant-permissions: %:
+	uta ${CONF_OPTS} $*
 
 
 #=> load-% -- 
