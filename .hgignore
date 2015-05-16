@@ -38,10 +38,8 @@ examples/.ipynb_checkpoints
 hgtools-*
 lib/python/cover
 lib/python/uta/_release.py
-loading/data/*.gz
-loading/*/acs
-loading/.*.conf
-loading/*/*.gz
+loading/data
+loading/load
 loading/mirrors-ncbi
 misc/data
 misc/exon-str-cmp

@@ -77,24 +77,24 @@ data/ncbi.exonset.gz data/ncbi.txinfo.gz: data/ncbi.log;
 
 #=> data/ncbi.log -- 
 data/ncbi.log: %.log: mirrors-ncbi/latest/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3
-	(time -p ncbi-gff-import -o NCBI -p $* $< >$@.tmp) 2>&1
+	(stdbuf -o0 -e0 time -p ncbi-gff-import -o NCBI -p $* $< >$@.tmp) 2>&1
 	mv -bfv $@.tmp $@
 
 #=> data/ncbi.seqinfo.gz -- 
 data/ncbi.seqinfo.gz: data/ncbi.exonset.gz
-	(time -p exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
+	(stdbuf -o0 -e0 time -p exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
 #=> data/ncbi.geneacs.gz -- 
 data/ncbi.geneacs.gz:
-	(time -p ncbi-fetch-gene-acs | gzip -c >$@.tmp) 2>$@.log
+	(stdbuf -o0 -e0 time -p ncbi-fetch-gene-acs | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
 
 ## --- UCSC ---
 
 #=> data/ucsc.log -- 
-data/ucsc.log:
+data/ucsc/log:
 	time -p ucsc-fetch -d ${@D} >$@.tmp 2>&1
 	mv -bfv $@.tmp $@
 
@@ -147,7 +147,7 @@ test/%-${SET}.txinfo.gz: main/%.txinfo.gz test/acs
 #=> load-% -- 
 load-%:
 	@lfs=$$(for f in seqinfo geneinfo txinfo exonset; do [ -f data/$*/$$f.gz ] && echo logs/${CONF}/$*/$$f.log; done); \
-	[ -n "$$lfs" ] && (set -x; make $$lfs)
+	[ -n "$$lfs" ] && (PS4=; set -x; make $$lfs)
 
 #=> load-%-seqinfo -- 
 ${LOG_DIR}/%/seqinfo.log: data/%/seqinfo.gz
@@ -191,7 +191,7 @@ drop:
 #=> create -- 
 create:
 	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql ../sql/functions.sql ../sql/utils.sql ../sql/views.sql
+	uta ${CONF_OPTS} load-sql ../sql/views.sql
 	uta ${CONF_OPTS} grant-permissions
 	uta ${CONF_OPTS} initialize-schema
 

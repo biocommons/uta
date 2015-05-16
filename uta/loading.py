@@ -35,8 +35,8 @@ def create_schema(session, opts, cf):
 
     if session.bind.name == 'postgresql' and usam.use_schema:
         session.execute('create schema ' + usam.schema_name)
-        session.execute('alter database {db} set search_path = {search_path}'.format(
-            db=session.bind.url.database, search_path=usam.schema_name))
+        #session.execute('alter database {db} set search_path = {search_path}'.format(
+        #    db=session.bind.url.database, search_path=usam.schema_name))
         session.execute('set search_path = ' + usam.schema_name)
         session.commit()
 
@@ -50,10 +50,11 @@ def create_schema(session, opts, cf):
 def load_sql(session, opts, cf):
     """Create views"""
     session.execute("set role {admin_role};".format(admin_role=cf.get('uta', 'admin_role')))
+    session.execute('set search_path = ' + usam.schema_name)
 
     for fn in opts['FILES']:
         logger.info('loading ' + fn)
-        session.execute( open(fn).read() )
+        session.execute(open(fn).read())
     session.commit()
 
 
@@ -577,7 +578,9 @@ def refresh_matviews(session, opts, cf):
     # matviews must be updated in dependency order. Unfortunately,
     # it's difficult to determine this programmatically. The "right"
     # solution is a recursive CTE, but I was unable to find or write
-    # one readily. 
+    # one readily. This function should be consdered a placeholder for
+    # the right way to update, which doesn't exist yet.
+
     # TODO: Determine mv refresh order programmatically.
     # sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
     #     schema=schema)
@@ -586,10 +589,10 @@ def refresh_matviews(session, opts, cf):
 
     cmds = [
         # N.B. Order matters!
-        "refresh materialized view uta1.exon_set_exons_fp_mv",
-        "refresh materialized view uta1.tx_exon_set_summary_mv",
-        "refresh materialized view uta1.tx_aln_cigar_mv",
-        "refresh materialized view uta1.tx_aln_summary_mv",
+        # "refresh materialized view uta1.exon_set_exons_fp_mv",
+        # "refresh materialized view uta1.tx_exon_set_summary_mv",
+        # "refresh materialized view uta1.tx_aln_cigar_mv",
+        # "refresh materialized view uta1.tx_aln_summary_mv",
     ]
 
     for cmd in cmds:
