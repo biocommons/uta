@@ -7,7 +7,7 @@ class ExonSet( recordtype.recordtype('ExonSet',
 
 class ExonSetWriter(csv.DictWriter):
     def __init__(self,tsvfile):
-        csv.DictWriter.__init__(self,tsvfile, fieldnames=ExonSet._fields, delimiter=b'\t')
+        csv.DictWriter.__init__(self,tsvfile, fieldnames=ExonSet._fields, delimiter=b'\t', lineterminator="\n")
         csv.DictWriter.writeheader(self)
         
     def write(self,si):

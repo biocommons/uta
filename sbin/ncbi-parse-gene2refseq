@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+"""parse NCBI gene_info into UTA geneinfo files (see uta.formats.geneinfo)
+
+Input file should be
+ftp://ftp.ncbi.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+
+"""
+
+import io
+import sys
+import cStringIO
+
+from csv import DictReader
+
+from uta.formats.geneaccessions import GeneAccessions,GeneAccessionsWriter
+from uta.formats.ncbitsv import NCBITSVReader
+
+def opener(fs,mode='r'):
+    import gzip, sys
+    if fs.endswith('.gz'):
+        return gzip.open(fs,mode)
+    if fs == '-':
+        return sys.stdout if 'w' in mode else sys.stdin
+    return io.open(fs,mode)
+
+if __name__ == "__main__":
+    ga_in = NCBITSVReader(opener(sys.argv[1],'r'))
+    gaw = GeneAccessionsWriter(sys.stdout)
+
+    for rec in ga_in:
+        if rec["tax_id"] != "9606":
+            continue
+
+        if rec["rna_nucleotide_accession.version"] == "-" and rec["protein_accession.version"] == "-":
+            continue
+
+        ga = GeneAccessions(hgnc=rec['symbol'],
+                            tx_ac=rec['rna_nucleotide_accession.version'],
+                            pro_ac=rec['protein_accession.version'],
+                            origin='NCBI',
+                            )
+        gaw.write(ga)

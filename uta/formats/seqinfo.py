@@ -6,7 +6,7 @@ class SeqInfo( recordtype.recordtype('SeqInfo', ['md5','origin','ac','descr','le
 
 class SeqInfoWriter(csv.DictWriter):
     def __init__(self,tsvfile):
-        csv.DictWriter.__init__(self,tsvfile, fieldnames=SeqInfo._fields, delimiter=b'\t')
+        csv.DictWriter.__init__(self,tsvfile, fieldnames=SeqInfo._fields, delimiter=b'\t', lineterminator="\n")
         csv.DictWriter.writeheader(self)
         
     def write(self,si):

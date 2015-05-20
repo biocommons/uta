@@ -22,6 +22,7 @@ Usage:
   uta (-C CONF ...) [options] load-ncbi-seqgene FILE
   uta (-C CONF ...) [options] grant-permissions
   uta (-C CONF ...) [options] refresh-matviews
+  uta (-C CONF ...) [options] analyze
   
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
@@ -67,25 +68,21 @@ def rebuild(*args):
 
 def run(argv=None):
     dispatch_table = [
-        ('drop-schema',                 ul.drop_schema),
+        ('align-exons',			ul.align_exons),
+        ('analyze',     	        ul.analyze),
         ('create-schema',               ul.create_schema),
-        ('initialize-schema',           ul.initialize_schema),
+        ('drop-schema',                 ul.drop_schema),
         ('grant-permissions',           ul.grant_permissions),
-        ('refresh-matviews',            ul.refresh_matviews),
-        ('rebuild',                     rebuild),
-
-        ('load-sql', 	                ul.load_sql),
-
+        ('initialize-schema',           ul.initialize_schema),
         ('load-exonset',                ul.load_exonset),
         ('load-geneinfo',               ul.load_geneinfo),
-        ('load-seqinfo',                ul.load_seqinfo),
-        ('load-txinfo',                 ul.load_txinfo),
-        ('load-sequences',              ul.load_sequences),
-
-        ('align-exons',					ul.align_exons),
-
         ('load-ncbi-seqgene',           ul.load_ncbi_seqgene),
-
+        ('load-seqinfo',                ul.load_seqinfo),
+        ('load-sequences',              ul.load_sequences),
+        ('load-sql', 	                ul.load_sql),
+        ('load-txinfo',                 ul.load_txinfo),
+        ('rebuild',                     rebuild),
+        ('refresh-matviews',            ul.refresh_matviews),
         ('shell',                       shell),
         ]
 
