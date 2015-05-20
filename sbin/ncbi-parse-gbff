@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+
+"""Write exonsets and txinfo files from NCBI GFF alignments, as obtained from
+ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/alignments/
+This service appeared in April 2015 and is due to update weekly.
+
+See uta.formats for a description of those file formats.
+
+In a nutshell, this means that you'll get data like this:
+
+ncbi.txinfo.gz:
+origin  ac  hgnc    cds_se_i    exons_se_i
+NCBI RefSeq NM_053283.2 DCD 62,395  0,120;120,159;159,261;261,351;351,517
+
+ncbi.exonsets.gz:
+tx_ac   alt_ac  method  strand  exons_se_i
+NM_130786.3 NC_000019.9 splign  -1  58864769,58864865;588646...
+NM_130786.3 NC_018930.2 splign  -1  58858699,58858795;588585...
+NM_130786.3 AC_000151.1 splign  -1  55173924,55174020;551738...
+NM_138933.2 NC_000010.10    splign  -1  52645340,52645435;52...
+
+"""
+
+
+from __future__ import division
+
+import argparse
+import gzip
+import io
+import itertools
+import logging, logging.config
+import os
+import pprint
+import pkg_resources
+import re
+import sys
+
+import Bio.SeqIO
+import Bio.SeqRecord
+from bioutils.digests import seq_md5
+import eutils.clientx
+
+from uta.formats.exonset import ExonSet,ExonSetWriter
+from uta.formats.txinfo import TxInfo,TxInfoWriter
+from uta.formats.geneaccessions import GeneAccessionsReader
+
+transcript_origin='NCBI RefSeq'
+
+def parse_args(argv):
+    ap = argparse.ArgumentParser(
+        description = __doc__,
+        )
+    ap.add_argument('GBFF_FILES',
+                    nargs="+")
+    ap.add_argument('--origin','-o',
+                    default="NCBI gbff")
+    ap.add_argument('--prefix','-p',
+                    default='ncbi-gbff')
+    opts = ap.parse_args(argv)
+    return opts
+
+
+class SeqRecordFacade(Bio.SeqRecord.SeqRecord):
+    def __init__(self,seqrecord):
+        self._sr = seqrecord
+
+    @property
+    def hgnc(self):
+        genes = [f for f in r.features if f.type == 'gene'][0].qualifiers['gene']
+        assert len(genes) == 1
+        return genes[0]
+
+    @property
+    def cds_se_i(self):
+        try:
+            cds = [f for f in r.features if f.type == 'CDS'][0]
+        except IndexError:
+            return None
+        return (cds.location.start.real,cds.location.end.real)
+
+    @property
+    def exons_se_i(self):
+        exons = [f for f in r.features if f.type in ['exon']] # ,'misc_feature']]
+        se = [(f.location.start.real,f.location.end.real) for f in exons]
+        return se
+
+
+if __name__ == '__main__':
+    logging_conf_fn = pkg_resources.resource_filename('uta', 'etc/logging.conf')
+    logging.config.fileConfig(logging_conf_fn)
+    logging.getLogger().setLevel(logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    opts = parse_args(sys.argv[1:])
+
+    tiw = TxInfoWriter(sys.stdout)
+
+    total_genes = set()
+    for fn in opts.GBFF_FILES:
+        fh = gzip.open(fn)
+        logger.info("opened "+fn)
+        genes = set()
+        for r in Bio.SeqIO.parse(fh,'gb'):
+            if r.id.partition("_")[0] not in ['NM','NR']:
+                continue
+            srf = SeqRecordFacade(r)
+            cds_se_i = srf.cds_se_i
+            ti = TxInfo(ac=r.id,
+                        origin=opts.origin,
+                        hgnc=srf.hgnc,
+                        cds_se_i=None if cds_se_i is None else "{},{}".format(*cds_se_i),
+                        exons_se_i= ";".join(["{},{}".format(*ese) for ese in srf.exons_se_i])
+                )
+            tiw.write(ti)
+            genes.add(srf.hgnc)
+        logger.info("{} genes in {}".format(len(genes),fn))
+        total_genes ^= genes
+    logger.info("{} genes in {} files".format(len(total_genes),len(opts.GBFF_FILES)))

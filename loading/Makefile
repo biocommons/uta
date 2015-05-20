@@ -25,7 +25,7 @@
 # file (in ../etc/) to use. By default, CONF=test. 
 # 
 # Typical flow:
-# $ make cleanest drop create grant-permissions
+# $ make cleanest drop create
 # $ make load-<dataset> # repeat for all desired sets
 # $ make refresh-matviews
 
@@ -38,6 +38,7 @@
 SHELL:=/bin/bash -o pipefail -e
 PATH:=../sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
+unexport GZIP
 
 # By default, load test data (i.e., test-{seqinfo,geneinfo,txinfo,exonset})
 # into db specified via CONF (which specifies config files in ../etc)
@@ -68,26 +69,62 @@ help:
 
 ############################################################################
 ## Source-Specific Extraction and Translation
-## TODO: Define how to get sources data
 
 ## --- NCBI ---
+## Using NCBI data structures is a bit like playing Thimblerig with
+## Romulans at an archaeological dig.  The current flow is:
+## gene/DATA/gene_info.gz     --> geneinfo.gz
+## gene/DATA/gene2refseq.gz   --> geneacs.gz ---------+
+## refseq/mRNA_protein/(gbff) --> gbff.txinfo.gz  --v v
+## refseq/assembly/(gff)      ---------------------------> txinfo, exonset
+##
+## NOTES:
+## 1) In this process, the gbff files provide only the cds start and
+## end. To my knowledge, gbff and eutils are the only sources of cds
+## s,e.
+## 2) In principle, geneinfo and geneacs could be built from gbff
+## instead, and probably should be for more likely consistency.
+## 3) I've learned the hard way that none of the above files are
+## guaranteed to be synchronized. For example, on 2015-05-18, 4190
+## accessions in refseq/alignments are not in in gbff files, and
+## another 583 that are common have different exon structures. (A
+## small minority of these are likely transcripts with misc_feature
+## features.)
 
-#=> data/ncbi.exonset.gz data/ncbi.txinfo.gz -- 
-data/ncbi.exonset.gz data/ncbi.txinfo.gz: data/ncbi.log;
-
-#=> data/ncbi.log -- 
-data/ncbi.log: %.log: mirrors-ncbi/latest/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3
-	(stdbuf -o0 -e0 time -p ncbi-gff-import -o NCBI -p $* $< >$@.tmp) 2>&1
+#=> data/ncbi/geneinfo.gz -- 
+data/ncbi/geneinfo.gz: mirrors-ncbi/latest/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+	@mkdir -pv ${@D}
+	(ncbi-parse-geneinfo $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
-#=> data/ncbi.seqinfo.gz -- 
-data/ncbi.seqinfo.gz: data/ncbi.exonset.gz
-	(stdbuf -o0 -e0 time -p exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
+#=> data/ncbi/geneacs.gz -- 
+# filtering records in python is slow; prefilter humans (tax_id=9606)
+data/ncbi/geneacs.gz: /tmp/gene2refseq_9606.gz
+	ncbi-parse-gene2refseq $< | gzip -c >$@.tmp 2>$@.log
+	mv -bfv $@.tmp $@
+.PRECIOUS: /tmp/gene2refseq_9606.gz
+/tmp/gene2refseq_9606.gz: mirrors-ncbi/latest/gene/DATA/gene2refseq.gz
+	gzip -cdq <mirrors-ncbi/latest/gene/DATA/gene2refseq.gz | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
-#=> data/ncbi.geneacs.gz -- 
-data/ncbi.geneacs.gz:
-	(stdbuf -o0 -e0 time -p ncbi-fetch-gene-acs | gzip -c >$@.tmp) 2>$@.log
+#=> data/ncbi/gbff.txinfo.gz -- 
+data/ncbi/gbff.txinfo.gz: $(sort $(wildcard mirrors-ncbi/latest/refseq/H_sapiens/mRNA_Prot/human.?.rna.gbff.gz))
+	@mkdir -pv ${@D}
+	ncbi-parse-gbff $^ | gzip -c >$@.tmp
+	mv -bfv $@.tmp $@
+
+#=> data/ncbi/log -- 
+#=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
+data/ncbi/exonset.gz data/ncbi/txinfo.gz: data/ncbi/log;
+data/ncbi/log: %/log: mirrors-ncbi/latest/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
+	@mkdir -pv ${@D}
+	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >$@.tmp 2>&1
+	mv -bfv $@.tmp $@
+
+#=> data/ncbi/seqinfo.gz -- 
+data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
+	@mkdir -pv ${@D}
+	(exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
 
@@ -95,7 +132,7 @@ data/ncbi.geneacs.gz:
 
 #=> data/ucsc.log -- 
 data/ucsc/log:
-	time -p ucsc-fetch -d ${@D} >$@.tmp 2>&1
+	ucsc-fetch -d ${@D} >$@.tmp 2>&1
 	mv -bfv $@.tmp $@
 
 #=> data/ucsc.exonset.gz -- 
@@ -144,45 +181,40 @@ test/%-${SET}.txinfo.gz: main/%.txinfo.gz test/acs
 ############################################################################
 #= Loading
 
-#=> load-% -- 
-load-%:
-	@lfs=$$(for f in seqinfo geneinfo txinfo exonset; do [ -f data/$*/$$f.gz ] && echo logs/${CONF}/$*/$$f.log; done); \
-	[ -n "$$lfs" ] && (PS4=; set -x; make $$lfs)
+.PHONY: load-ncbi
+load-ncbi: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
+
 
 #=> load-%-seqinfo -- 
-${LOG_DIR}/%/seqinfo.log: data/%/seqinfo.gz
+${LOG_DIR}/%seqinfo.log: data/%seqinfo.gz
 	@mkdir -pv ${@D}
-	(time -p uta ${CONF_OPTS} load-seqinfo $<) >$@.tmp 2>&1
+	uta ${CONF_OPTS} load-seqinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
 #=> load-geneinfo.log -- 
-${LOG_DIR}/%/geneinfo.log: data/%/geneinfo.gz
-	(time -p uta ${CONF_OPTS} load-geneinfo $<) >$@.tmp 2>&1
+${LOG_DIR}/%geneinfo.log: data/%geneinfo.gz
+	uta ${CONF_OPTS} load-geneinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
 #=> load-txinfo.log -- 
-${LOG_DIR}/%/txinfo.log: data/%/txinfo.gz
-	(time -p uta ${CONF_OPTS} load-txinfo $<) >$@.tmp 2>&1
+${LOG_DIR}/%txinfo.log: data/%txinfo.gz
+	uta ${CONF_OPTS} load-txinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
 #=> load-exonset.log -- 
-${LOG_DIR}/%/exonset.log: data/%/exonset.gz
-	(time -p uta ${CONF_OPTS} load-exonset $<) >$@.tmp 2>&1
+${LOG_DIR}/%exonset.log: data/%exonset.gz
+	uta ${CONF_OPTS} load-exonset $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
 #=> align-exons -- 
 align-exons: ${LOG_DIR}/align-exons.log
 ${LOG_DIR}/align-exons.log: FORCE
-	(time -p uta ${CONF_OPTS} align-exons) >$@.tmp 2>&1
+	uta ${CONF_OPTS} align-exons >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
 ############################################################################
 #= DB Admin
-
-#=> build -- all build steps
-# TODO: Rethink whether build should do this much!
-build: create grant load-${DATA} align-exons
 
 #=> drop -- 
 drop:
@@ -195,25 +227,18 @@ create:
 	uta ${CONF_OPTS} grant-permissions
 	uta ${CONF_OPTS} initialize-schema
 
+post-load: analyze refresh-matviews 
+
+#=> analyze -- analyze tables to update statistics
 #=> grant-permissions -- so that you can update grants on existing databases
 #=> refresh-matviews -- update materialized views
-refresh-matviews grant-permissions: %:
+analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
 
-# .PHONY: push
-# push: push.log
-# push.log:
-# 	(time pg_dump -U uta_admin -d uta_dev -c -n uta1 | psql -h uta.invitae.com -U uta_admin -d uta_stage -e) >$@.tmp 2>&1
-# 	mv $@.tmp $@
 
-
-############################################################################
-## SETUP
-
-#=> setup-perl: install perl packages
-# TODO: consider perl brew instead
-setup-perl:
-	./sbin/perl-module-install --install-base ve   Log::Log4perl
+# push uta_dev/uta1 to 
+push-dev:
+	psql -h uta.invitae.com -U uta_admin -d 
 
 
 ############################################################################
@@ -229,6 +254,19 @@ cleaner: clean
 cleanest: cleaner
 	/bin/rm -fr logs
 
+
+
+
+
+
+
+#### ############################################################################
+#### ## SETUP
+#### 
+#### #=> setup-perl: install perl packages
+#### # TODO: consider perl brew instead
+#### setup-perl:
+#### 	./sbin/perl-module-install --install-base ve   Log::Log4perl
 
 
 #### ############################################################################
