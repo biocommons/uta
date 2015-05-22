@@ -103,7 +103,7 @@ help:
 ## small minority of these are likely transcripts with misc_feature
 ## features.)
 
-MIRRORS_NCBI_ROOT:=mirrors-ncbi/2015/05/16
+MIRRORS_NCBI_ROOT:=aux/mirrors-ncbi/2015/05/16
 
 #=> data/ncbi/geneinfo.gz -- 
 data/ncbi/geneinfo.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
@@ -142,13 +142,15 @@ data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
 
 ## --- UCSC ---
 
-#=> data/ucsc.log -- 
-data/ucsc/log:
-	ucsc-fetch -d ${@D} >$@.tmp 2>&1
-	mv -bfv $@.tmp $@
+## You gotta love how easy ucsc makes it to get data. Thanks guys and gals.
 
 #=> data/ucsc.exonset.gz -- 
-data/ucsc.exonset.gz: main/ucsc.log
+#=> data/ucsc-{hg19,hg38}/ucsc.log -- 
+data/ucsc-%/exonset.gz: data/ucsc-%/log;
+data/ucsc-%/log:
+	@mkdir -pv ${@D}
+	ucsc-fetch -D $* -p ${@D}/ >$@.tmp 2>&1
+	mv -bfv $@.tmp $@
 
 
 ## ## --- Ensembl ---
@@ -158,37 +160,59 @@ data/ucsc.exonset.gz: main/ucsc.log
 ## 	fasta-to-seqinfo -o Ensembl $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
 
 
-
 ############################################################################
 ## Data Subsets
 
-## These rules build a subset of the database loading files for a set of
-## genes.  The genes were selected for diversity of transcript pathologies
-## represented.  (see test/tx-selection.sql)
+## These rules build a subset of the database loading files for a set
+## of genes (in aux/gene-sets/).
 
-subset-ncbi-%:
-	make SET=$* data/ncbi-$*/{txinfo,seqinfo,geneinfo,exonset}.gz
+## This set of rules involves some esoteric Makefile magic.  First,
+## the define section defines a template block of rules. That block is
+## instantiated once per gene set discovered in aux/gene-sets/ by the
+## $(eval $(call ... )) section that follows.
 
-data/%-${SET}/txinfo.gz: data/%/txinfo.gz data/%-${SET}/genes
-	gzip -cdq <$< | ../sbin/txinfo-filter -G $(word 2,$^) - | gzip -c >$@.tmp
-	mv -bfv $@.tmp $@
+define subset_block
+$(notice subset-%/$(1))
 
-.PRECIOUS: data/%-${SET}/acs
-data/%-${SET}/acs: data/%-${SET}/txinfo.gz
-	gzip -cdq <$< | tail -n+2 | cut -f2 | sort -u >$@.tmp
-	mv -bfv $@.tmp $@
+.PHONY: subset-%/$(1)
+subset-%/$(1): $$(foreach f,txinfo seqinfo geneinfo exonset,data/ncbi/$(1)/$$f.gz);
 
-data/%-${SET}/seqinfo.gz: data/%/seqinfo.gz data/%-${SET}/acs
-	gzip -cdq <$< | seqinfo-filter -T $(word 2,$^) -R '^[NA]C_' - | gzip -cq >$@
-	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
+.PRECIOUS: data/%/$(1)/txinfo.gz
+data/%/$(1)/txinfo.gz: data/%/txinfo.gz aux/gene-sets/$(1).hgnc
+	@mkdir -pv $${@D}
+	gzip -cdq <$$< | ../sbin/txinfo-filter -G $$(word 2,$$^) - | gzip -c >$$@.tmp
+	mv -bfv $$@.tmp $$@
 
-data/%-${SET}/geneinfo.gz: data/%/geneinfo.gz data/%-${SET}/genes
-	gzip -cdq <$< | geneinfo-filter -G $(word 2,$^) - | gzip -cq >$@
-	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
+.PRECIOUS: data/%/$(1)/acs
+data/%/$(1)/acs: data/%/$(1)/txinfo.gz
+	@mkdir -pv $${@D}
+	gzip -cdq <$$< | tail -n+2 | cut -f2 | sort -u >$$@.tmp
+	mv -bfv $$@.tmp $$@
 
-data/%-${SET}/exonset.gz: data/%/exonset.gz data/%-${SET}/acs
-	gzip -cdq <$< | exonset-filter -T $(word 2,$^) - | gzip -cq >$@
-	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
+.PRECIOUS: data/%/$(1)/seqinfo.gz
+data/%/$(1)/seqinfo.gz: data/%/seqinfo.gz data/%/$(1)/acs
+	@mkdir -pv $${@D}
+	gzip -cdq <$$< | seqinfo-filter -T $$(word 2,$$^) -R '^[NA]C_' - | gzip -cq >$$@
+	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
+
+.PRECIOUS: data/%/$(1)/geneinfo.gz
+data/%/$(1)/geneinfo.gz: data/%/geneinfo.gz aux/gene-sets/$(1).hgnc
+	@mkdir -pv $${@D}
+	gzip -cdq <$$< | geneinfo-filter -G $$(word 2,$$^) - | gzip -cq >$$@
+	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
+
+.PRECIOUS: data/%/$(1)/exonset.gz
+data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs
+	@mkdir -pv $${@D}
+	gzip -cdq <$$< | exonset-filter -T $$(word 2,$$^) - | gzip -cq >$$@
+	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
+endef
+
+
+GENESETS=$(subst .hgnc,,$(notdir $(wildcard aux/gene-sets/*.hgnc)))
+$(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
+
+
 
 
 ############################################################################
