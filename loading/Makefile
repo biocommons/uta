@@ -4,21 +4,33 @@
 #
 # 1. Extracts and translates data from sources into intermediate files
 # 2. Creates self-consistent subsets of those data for testing purposes
-# 3. Loads intermediate files
-# 4. Automates some DB admin tasks (mostly for consistency)
+# 3. Loads intermediate files from steps 1 or 2
+# 4. Automates dba tasks like create and drop (mostly for configuration
+#    consistency)
 #
 #       {sources} --E+T--> {intermediates} ---L---> {db}
-#                           ▾          ▴
+#                   (1)     ▾          ▴     (3)
 #                           +--subset--+
+#                               (2)
 #
+# Sources are populated in multiple ways. For NCBI, see the
+# ncbi-mirrors (a sibling project), which maintains an rsync mirror of
+# essential data. UCSC data are fetched directly via mysql.  And
+# Ensembl data are pulled via a perl script.
+# 
 # Intermediates (and subsets) are stored in data/<setname>/<file>.gz,
 # where <file> is one of the TSV formats (see uta/formats/) such as
 # exonset, seqinfo, txinfo, or geneinfo. Intermediates are always
-# gzip-compressed and this is required for loading.
+# gzip-compressed and this is required for loading.  Each set to be a
+# self-consistent/complete set of data for loading. (For example, if
+# the set is restricted by genes, all transcripts required for that
+# gene are present.)
 #
 # Loading any intermediate file generates a log file in
 # logs/<conf>/<setname>/<file>.log -- that is, it closely parallels
-# the structure of intermediate file paths.
+# the structure of intermediate file paths with the exception of the
+# conf path component so that it's possible to load multiple instances
+# without (much) confusion.
 # 
 # CONFIGURATION
 # The environment/Makefile variable CONF is used to specify which conf
@@ -91,35 +103,35 @@ help:
 ## small minority of these are likely transcripts with misc_feature
 ## features.)
 
+MIRRORS_NCBI_ROOT:=mirrors-ncbi/2015/05/16
+
 #=> data/ncbi/geneinfo.gz -- 
-data/ncbi/geneinfo.gz: mirrors-ncbi/latest/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+data/ncbi/geneinfo.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
 	@mkdir -pv ${@D}
 	(ncbi-parse-geneinfo $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
 #=> data/ncbi/geneacs.gz -- 
 # filtering records in python is slow; prefilter humans (tax_id=9606)
-data/ncbi/geneacs.gz: /tmp/gene2refseq_9606.gz
+data/ncbi/geneacs.gz: data/ncbi/gene2refseq_9606.gz
 	ncbi-parse-gene2refseq $< | gzip -c >$@.tmp 2>$@.log
 	mv -bfv $@.tmp $@
 .PRECIOUS: /tmp/gene2refseq_9606.gz
-/tmp/gene2refseq_9606.gz: mirrors-ncbi/latest/gene/DATA/gene2refseq.gz
-	gzip -cdq <mirrors-ncbi/latest/gene/DATA/gene2refseq.gz | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
+data/ncbi/gene2refseq_9606.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/gene2refseq.gz
+	gzip -cdq <$< | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
 #=> data/ncbi/gbff.txinfo.gz -- 
-data/ncbi/gbff.txinfo.gz: $(sort $(wildcard mirrors-ncbi/latest/refseq/H_sapiens/mRNA_Prot/human.?.rna.gbff.gz))
+data/ncbi/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/mRNA_Prot/human.?.rna.gbff.gz))
 	@mkdir -pv ${@D}
 	ncbi-parse-gbff $^ | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
 #=> data/ncbi/log -- 
 #=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
-data/ncbi/exonset.gz data/ncbi/txinfo.gz: data/ncbi/log;
-data/ncbi/log: %/log: mirrors-ncbi/latest/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
+data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
-	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >$@.tmp 2>&1
-	mv -bfv $@.tmp $@
+	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/log 2>&1
 
 #=> data/ncbi/seqinfo.gz -- 
 data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
@@ -154,28 +166,29 @@ data/ucsc.exonset.gz: main/ucsc.log
 ## genes.  The genes were selected for diversity of transcript pathologies
 ## represented.  (see test/tx-selection.sql)
 
-SET:=SetA
+subset-ncbi-%:
+	make SET=$* data/ncbi-$*/{txinfo,seqinfo,geneinfo,exonset}.gz
 
-data/%-${SET}.acs: data/%.txinfo.gz data/${SET}.hgnc
-	gzip -cdq <$< | ../sbin/txinfo-filter -G $(word 2,$^) - | sort -u >$@.tmp
+data/%-${SET}/txinfo.gz: data/%/txinfo.gz data/%-${SET}/genes
+	gzip -cdq <$< | ../sbin/txinfo-filter -G $(word 2,$^) - | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
-data/%-${SET}.seqinfo.gz: data/%.seqinfo.gz data/${SET}-%.acs
+.PRECIOUS: data/%-${SET}/acs
+data/%-${SET}/acs: data/%-${SET}/txinfo.gz
+	gzip -cdq <$< | tail -n+2 | cut -f2 | sort -u >$@.tmp
+	mv -bfv $@.tmp $@
+
+data/%-${SET}/seqinfo.gz: data/%/seqinfo.gz data/%-${SET}/acs
 	gzip -cdq <$< | seqinfo-filter -T $(word 2,$^) -R '^[NA]C_' - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
-test/%-${SET}.geneinfo.gz: main/%.geneinfo.gz test/genes
+data/%-${SET}/geneinfo.gz: data/%/geneinfo.gz data/%-${SET}/genes
 	gzip -cdq <$< | geneinfo-filter -G $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
 
-test/%-${SET}.exonset.gz: main/%.exonset.gz test/acs
+data/%-${SET}/exonset.gz: data/%/exonset.gz data/%-${SET}/acs
 	gzip -cdq <$< | exonset-filter -T $(word 2,$^) - | gzip -cq >$@
 	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-
-test/%-${SET}.txinfo.gz: main/%.txinfo.gz test/acs
-	gzip -cdq <$< | txinfo-filter -T $(word 2,$^) - | gzip -cq >$@
-	@printf "%d $@\n" $$(gzip -cdq <$@ | wc -l)
-
 
 
 ############################################################################
@@ -183,6 +196,7 @@ test/%-${SET}.txinfo.gz: main/%.txinfo.gz test/acs
 
 .PHONY: load-ncbi
 load-ncbi: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
+load-ncbi-refmismatch: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi-refmismatch/$f.log)
 
 
 #=> load-%-seqinfo -- 
