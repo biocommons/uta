@@ -19,7 +19,10 @@ def parse_args(argv):
         description = __doc__
         )
     ap.add_argument(
-        '--out-dir', '-d',
+        '--prefix', '-p',
+        required = True)
+    ap.add_argument(
+        '--database', '-D',
         required = True)
     opts = ap.parse_args(argv)
     return opts
@@ -28,12 +31,12 @@ def parse_args(argv):
 if __name__ == '__main__':
     opts = parse_args(sys.argv[1:])
 
-    es_fn = os.path.join(opts.out_dir,'ucsc' + '.exonset.gz')
+    es_fn = opts.prefix + 'exonset.gz'
     esw = ExonSetWriter(gzip.open(es_fn+'.tmp','w'))
 
     conn = MySQLdb.connect(host = 'genome-mysql.cse.ucsc.edu',
                            user = 'genome',
-                           db = 'hg19' )
+                           db = opts.database )
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("""
 SELECT geneName,concat(acc,'.',version) as ac,chrom,strand,txStart,txEnd,
