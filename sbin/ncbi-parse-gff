@@ -85,7 +85,7 @@ def convert_exon_data(opts,eri):
     exon_recs = list(eri)
     er0 = exon_recs[0]
     ti = TxInfo(ac=er0['tx_ac'],
-                origin='transcript',
+                origin='NCBI RefSeq',
                 hgnc=None,
                 cds_se_i=",".join([str(c) for c in [None,None]]),
                 exons_se_i= ";".join(["{},{}".format(int(ex['tx_start'])-1,ex['tx_end']) for ex in exon_recs])
