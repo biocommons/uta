@@ -1,7 +1,13 @@
 #!/usr/bin/env perl
 #
-# fetch-tx-ensembl -- fetch all NM transcripts with exon start,end pairs
-# NM_000017.2 10  (121163570,121163734);(121164828,121164992);(121174788,121174938) ...
+# ensembl-fetch -- fetch fasta, txinfo, and seqinfo from ensembl
+# You'll need to install the ensembl core api (at least) to use this
+# code. You'll also need Log::Log4perl installed. 
+#
+# Tips: 
+# 1) See http://uswest.ensembl.org/info/docs/api/api_git.html
+# for ensembl api installation instructions.
+# 2) sudo apt-get install liblog-log4perl-perl
 #
 
 use strict;
@@ -15,22 +21,23 @@ use IO::File;
 use IO::Zlib;
 use Log::Log4perl;
 
+use Bio::EnsEMBL::ApiVersion;
 use Bio::EnsEMBL::Registry;
 
 use FindBin;
 
+sub process1($);
 
 ############################################################################
 
 my $root = "$FindBin::RealBin/..";
 
 my $opts = {
-  'database' => 'homo_sapiens_otherfeatures_73_37',
-  'host' => '10.10.3.142',
-	  #'ensembl-70.locusdev.net',
-  'port' => 5306,
-  'user' => 'anonymous',
-  'pass' => undef,
+    'database' => 'homo_sapiens_core_79_37',
+    'host' => 'ensembldb.ensembl.org',
+    'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
+    'user' => 'anonymous',
+    'pass' => undef,
 };
 
 our %nc_to_chr = (
@@ -48,108 +55,152 @@ our %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
 my $method = 'genebuild';
 my $origin = 'Ensembl';
 
+my %accepted_biotypes = map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA);
+
 ############################################################################
 
 Log::Log4perl->init_once( "$root/etc/logging.conf" );
-my $logger = Log::Log4perl->get_logger();
+our $logger = Log::Log4perl->get_logger();
 
 GetOptions($opts,
-		   'host|h=s',
-		   'port|p=s',
-		   'user|u=s',
-		   'config|C=s',
-		  )
-  || die("$0: you got usage issues, homey\n");
+	   'host|h=s',
+	   'port|p=s',
+	   'user|u=s',
+	   'config|C=s',
+    )
+    || die("$0: you got usage issues, homey\n");
 
 my $registry = 'Bio::EnsEMBL::Registry';
 $registry->load_registry_from_db(
     -host => $opts->{host},
     -user => $opts->{user},
-	-port => $opts->{port},
-	-pass => $opts->{pass},
-);
+    -port => $opts->{port},
+    -pass => $opts->{pass},
+    );
 
-my $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
-my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
-my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
+#print("version check=", $registry->version_check(), "\n");
 
-my $tiw = IO::Zlib->new("ensembl.txinfo.gz.tmp", "wb");
-my $esw = IO::Zlib->new("ensembl.exonset.gz.tmp", "wb");
-my $faw = IO::Zlib->new("ensembl.fasta.gz.tmp", "wb");
+my $eversion = software_version();
+
+our $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
+our $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
+our $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
+
+our $tiw_fn = "ensembl-$eversion.txinfo.gz";
+our $esw_fn = "ensembl-$eversion.exonset.gz";
+our $faw_fn = "ensembl-$eversion.fasta.gz";
+
+our $tiw = IO::Zlib->new("$tiw_fn.tmp", "wb");
+our $esw = IO::Zlib->new("$esw_fn.tmp", "wb");
+our $faw = IO::Zlib->new("$faw_fn.tmp", "wb");
 
 $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
 $esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
 
-
-my %tx_seen;
-
-## process by chromosome -- I'd prefer to do this, but the coords were not
-## equivalent. I was probably in the wrong coord system, but I haven't work
-## this out yet.
-##foreach my $chr (@ARGV) {
-##	my $slice = $sa->fetch_by_region('chromosome',$chr,16000000,16200000);
-##	my (@tx) = @{ $slice->get_all_Transcripts() };
-##	$logger->info(sprintf("%d transcripts on chr%d\n",$#tx+1,$chr));
-
-#foreach my $hgnc (@ARGV) {
-while (my $hgnc = <>) {
+if (@ARGV) {
+    for(my $i=0; $i<=$#ARGV; $i++) {
+	my $hgnc = $ARGV[$i];
 	chomp($hgnc);
-	my $g = @{ $ga->fetch_all_by_external_name($hgnc) }[0];
-	if (not defined $g) {
-		$logger->error("gene $hgnc is not in Ensembl");
-		next;
+	my @GENEs = @{ $ga->fetch_all_by_external_name($hgnc) };
+	if ($#GENEs == -1) {
+	    $logger->error("gene $hgnc is not in Ensembl");
+	    next;
 	}
-	my @tx = @{ $g->get_all_Transcripts };
-	$logger->info(sprintf("%d transcripts for gene %s\n",$#tx+1,$hgnc));
+	if ($#GENEs >= 1) {
+	    $logger->warn(sprintf("gene $hgnc: got %d replies (processing all)",
+			  $#GENEs+1));
+	}
+	$logger->info(sprintf("%d/%d (%.1f%%): gene %s\n",
+			      ($i+1), ($#ARGV+1), ($i+1)/($#ARGV+1)*100, $hgnc));
+	foreach my $g (@GENEs) {
+	    if ($hgnc ne $g->external_name()) {
+		$logger->warn(sprintf("Requested gene %s; got reply for %s",
+				      $hgnc, $g->external_name()));
+	    }
+	    process1($g);
+	}
+    }
+} else {
+    my @GENEs = @{ $ga->fetch_all() };
+    for(my $i=0; $i<=$#GENEs; $i++) {
+	my $g = $GENEs[$i];
+	my $hgnc = $g->external_name();
+	$logger->info(sprintf("%d/%d (%.1f%%): gene %s\n",
+			      ($i+1), ($#GENEs+1), ($i+1)/($#GENEs+1)*100, $hgnc));
+	process1($g);
+    }
+}
 
-	foreach my $tx (@tx) {
-		# write txinfo if protein coding
-		if ( $tx->biotype ne 'protein_coding' ) {
-			$logger->info(sprintf("%s: is type %s (not protein_coding); skipping",$tx->display_id,$tx->biotype));
-			next;
-		}
+$tiw->close();
+$esw->close();
+$faw->close();
 
-		if (exists $tx_seen{$tx->display_id}) {
-			my @others = sort(@{$tx_seen{$tx->display_id}});
-			$logger->warn(sprintf("gene %s: %s already seen for %d genes (%s); skipping",
-								  $hgnc, $tx->display_id, $#others+1, join(",",@others)));
-			push(@{$tx_seen{$tx->display_id}},$hgnc);
-			next;
-		}
-		push(@{$tx_seen{$tx->display_id}},$hgnc);
+rename("$tiw_fn.tmp",$tiw_fn);
+rename("$esw_fn.tmp",$esw_fn);
+rename("$faw_fn.tmp",$faw_fn);
 
-		my $hgnc = $tx->get_Gene()->external_name();
-		my $tx_c = @{$tx->project('chromosome')}[0];
-		if (not defined $tx_c) {
-			$logger->error(sprintf("Can't project %s onto a chromosome; skipping",$tx->display_id));
-			next;
-		}
-		my $srn = $tx_c->to_Slice()->seq_region_name;
-		my $nc = $chr_to_nc{$srn};
-		my $seq = $tx->seq->seq;
+exit(0);
 
-		$logger->info(sprintf("%s (%s; %s); %d nt\n",$tx->display_id,$hgnc,$tx->strand,length($seq)));
+our %tx_seen;
+sub process1($) {
+    my ($g) = @_;
+    my $hgnc = $g->external_name();
 
-		# write sequence and seqinfo
-		$faw->print(">",$tx->display_id,"\n",$seq,"\n");
+    my @tx = @{ $g->get_all_Transcripts };
+    $logger->info(sprintf("%d transcripts for gene %s\n",$#tx+1,$hgnc));
 
-		# write exonset
-		my @g_exons = @{ $tx->get_all_Exons() };
-		my $g_exons_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @g_exons ));
-		$esw->print( join("\t", $tx->display_id(), $nc, $method, $tx->strand(), $g_exons_str), "\n");
+    foreach my $tx (@tx) {
+	if (exists $tx_seen{$tx->display_id}) {
+	    my @others = sort(@{$tx_seen{$tx->display_id}});
+	    $logger->warn(sprintf("gene %s: %s already seen for %d genes (%s); skipping",
+				  $hgnc, $tx->display_id, $#others+1, join(",",@others)));
+	    push(@{$tx_seen{$tx->display_id}},$hgnc);
+	    next;
+	}
+	push(@{$tx_seen{$tx->display_id}},$hgnc);
 
-		my $tm = $tx->get_TranscriptMapper();
-		my @c_exon_coords = map( $tm->genomic2cdna($_->start(),$_->end(),$tx->strand), @g_exons );
-		my $c_exon_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @c_exon_coords ));
-		$tiw->print( join("\t", $origin, $tx->display_id(), $hgnc, 
-						  sprintf("%d,%d",$tx->cdna_coding_start-1,$tx->cdna_coding_end),
-						  $c_exon_str), "\n");
-}}
+	if (not exists $accepted_biotypes{$tx->biotype}) {
+	    $logger->info(sprintf("%s: is type %s; skipping",$tx->display_id,$tx->biotype));
+	    next;
+	}
 
+	my $hgnc = $tx->get_Gene()->external_name();
+	my $tx_c = @{$tx->project('chromosome')}[0];
+	if (not defined $tx_c) {
+	    $logger->error(sprintf("Can't project %s onto a chromosome; skipping",$tx->display_id));
+	    next;
+	}
+	my $srn = $tx_c->to_Slice()->seq_region_name;
+	if (not exists $chr_to_nc{$srn}) {
+	    $logger->warn(sprintf("gene %s, tx %s (%s): on %s, no NC available; skipping",
+				  $hgnc, $tx->display_id(), $g->biotype(), $srn));
+	    next;
+	}
+	my $nc = $chr_to_nc{$srn};
+	my $seq = $tx->seq->seq;
 
-rename("ensembl.txinfo.gz.tmp","ensembl.txinfo.gz");
-rename("ensembl.exonset.gz.tmp","ensembl.exonset.gz");
-rename("ensembl.fasta.gz.tmp","ensembl.fasta.gz");
+	$logger->info(sprintf("%s (%s; %s); %d nt\n",$tx->display_id,$hgnc,$tx->strand,length($seq)));
+
+	# write sequence and seqinfo
+	$faw->print(">",$tx->display_id,"\n",$seq,"\n");
+
+	# write exonset
+	my @g_exons = @{ $tx->get_all_Exons() };
+	my $g_exons_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @g_exons ));
+	$esw->print( join("\t", $tx->display_id(), $nc, $method, $tx->strand(), $g_exons_str), "\n");
+
+	# write txinfo
+	my $tm = $tx->get_TranscriptMapper();
+	my @c_exon_coords = map( $tm->genomic2cdna($_->start(),$_->end(),$tx->strand), @g_exons );
+	my $c_exon_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @c_exon_coords ));
+	my ($cds_start,$cds_end) = ('','');
+	if ( $tx->biotype eq 'protein_coding' ) {
+	    ($cds_start,$cds_end) = ($tx->cdna_coding_start-1,$tx->cdna_coding_end);
+	}
+	$tiw->print( join("\t", $origin, $tx->display_id(), $hgnc, 
+			  $cds_start, $cds_end, $c_exon_str), "\n");
+    }
+}
 
 
 ## <LICENSE>
