@@ -275,9 +275,9 @@ def load_txinfo(session, opts, cf):
     from bioutils.digests import seq_md5
     from multifastadb import MultiFastaDB
 
-    fa_dir = cf.get("sequences", "fasta_directory")
-    mfdb = MultiFastaDB([fa_dir], use_meta_index=True)
-    logger.info("opened sequence directory " + fa_dir)
+    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
+    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
+    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
 
     known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
     n_lines = len(gzip.open(opts["FILE"]).readlines())
@@ -373,9 +373,9 @@ def align_exons(session, opts, cf):
     INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
     """
 
-    fa_dir = cf.get("sequences", "fasta_directory")
-    mfdb = MultiFastaDB([fa_dir], use_meta_index=True)
-    logger.info("Opened sequence directory "+fa_dir)
+    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
+    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
+    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
 
     con = session.bind.pool.connect()
     cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
@@ -463,7 +463,9 @@ def load_sequences(session, opts, cf):
     session.execute("set role {admin_role};".format(admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    mfdb = MultiFastaDB([cf.get("sequences", "fasta_directory")], use_meta_index=True)
+    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
+    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
+    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
 
     sql = """
     select S.seq_id,S.len,array_agg(SA.ac order by SA.ac) as acs
