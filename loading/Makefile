@@ -175,7 +175,7 @@ define subset_block
 $(notice subset-%/$(1))
 
 .PHONY: subset-%/$(1)
-subset-%/$(1): $$(foreach f,txinfo seqinfo geneinfo exonset,data/ncbi/$(1)/$$f.gz);
+subset-%/$(1): $$(foreach f,txinfo seqinfo geneinfo exonset,data/%/$(1)/$$f.gz);
 
 .PRECIOUS: data/%/$(1)/txinfo.gz
 data/%/$(1)/txinfo.gz: data/%/txinfo.gz aux/gene-sets/$(1).hgnc
@@ -202,12 +202,15 @@ data/%/$(1)/geneinfo.gz: data/%/geneinfo.gz aux/gene-sets/$(1).hgnc
 	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
 
 .PRECIOUS: data/%/$(1)/exonset.gz
+$(notice data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs)
 data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs
-	@mkdir -pv $${@D}
 	gzip -cdq <$$< | exonset-filter -T $$(word 2,$$^) - | gzip -cq >$$@
 	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
 endef
 
+data/ucsc-hg19/%/acs data/ucsc-hg38/%/acs: data/ncbi/%/acs
+	@mkdir -pv ${@D}
+	ln -rs $< $@
 
 GENESETS=$(subst .hgnc,,$(notdir $(wildcard aux/gene-sets/*.hgnc)))
 $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
@@ -220,7 +223,7 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 
 .PHONY: load-ncbi
 load-ncbi: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
-load-ncbi-refmismatch: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi-refmismatch/$f.log)
+load-ncbi/refmismatch: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)
 
 
 #=> load-%-seqinfo -- 
