@@ -53,7 +53,7 @@ our %nc_to_chr = (
 our %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
 
 my $method = 'genebuild';
-my $origin = 'Ensembl';
+my $origin = 'ensembl';
 
 my %accepted_biotypes = map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA);
 
@@ -81,6 +81,7 @@ $registry->load_registry_from_db(
 #print("version check=", $registry->version_check(), "\n");
 
 my $eversion = software_version();
+$origin .= "-$eversion";
 
 our $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
 our $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
@@ -193,12 +194,11 @@ sub process1($) {
 	my $tm = $tx->get_TranscriptMapper();
 	my @c_exon_coords = map( $tm->genomic2cdna($_->start(),$_->end(),$tx->strand), @g_exons );
 	my $c_exon_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @c_exon_coords ));
-	my ($cds_start,$cds_end) = ('','');
-	if ( $tx->biotype eq 'protein_coding' ) {
-	    ($cds_start,$cds_end) = ($tx->cdna_coding_start-1,$tx->cdna_coding_end);
+	my $cds_se_i = '';
+	if ($tx->biotype eq 'protein_coding') {
+	    $cds_se_i = sprintf("%d,%d",$tx->cdna_coding_start-1,$tx->cdna_coding_end);
 	}
-	$tiw->print( join("\t", $origin, $tx->display_id(), $hgnc, 
-			  $cds_start, $cds_end, $c_exon_str), "\n");
+	$tiw->print(join("\t", $origin, $tx->display_id(), $hgnc, $cds_se_i, $c_exon_str),"\n");
     }
 }
 
