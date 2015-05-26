@@ -32,17 +32,17 @@ Examples:
 
 """
 
-## Examples:
-## All require
-## export PYTHONPATH=lib/python
-## 
-## 1) Drop and create schema in PostgreSQL:
-##   ./bin/uta -C etc/uta.conf create-schema --drop-current
-## 
-## 2) load data from seq_gene.md.gz files
-##   ./bin/uta -C etc/uta.conf load-transcripts-seqgene misc/data/ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz
-## 
-## """
+# Examples:
+# All require
+# export PYTHONPATH=lib/python
+##
+# 1) Drop and create schema in PostgreSQL:
+# ./bin/uta -C etc/uta.conf create-schema --drop-current
+##
+# 2) load data from seq_gene.md.gz files
+# ./bin/uta -C etc/uta.conf load-transcripts-seqgene misc/data/ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/seq_gene.md.gz
+##
+# """
 
 ############################################################################
 
@@ -57,14 +57,17 @@ import uta.loading as ul
 usam = uta.models                         # backward compatibility
 
 
-def shell(session,opts,cf):
-    import IPython; IPython.embed()
+def shell(session, opts, cf):
+    import IPython
+    IPython.embed()
+
 
 def rebuild(*args):
     ul.drop_schema(*args)
     ul.create_schema(*args)
     ul.initialize_schema(*args)
     ul.grant_permissions(*args)
+
 
 def run(argv=None):
     dispatch_table = [
@@ -84,49 +87,51 @@ def run(argv=None):
         ('rebuild',                     rebuild),
         ('refresh-matviews',            ul.refresh_matviews),
         ('shell',                       shell),
-        ]
+    ]
 
     opts = docopt.docopt(__doc__, argv=argv, version=uta.__version__)
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    # cf_loaded: deal with docopt issue https://github.com/docopt/docopt/issues/134
+    # cf_loaded: deal with docopt issue
+    # https://github.com/docopt/docopt/issues/134
     cf = ConfigParser.SafeConfigParser()
     cf_loaded = dict()
     for conf_fn in opts['--conf']:
         if conf_fn not in cf_loaded:
-            cf.readfp( open(conf_fn) )
+            cf.readfp(open(conf_fn))
             cf_loaded[conf_fn] = True
-            logger.info('loaded '+conf_fn)
+            logger.info('loaded ' + conf_fn)
 
-    db_url = cf.get('uta','db_url')
+    db_url = cf.get('uta', 'db_url')
     session = uta.connect(db_url)
 
     sub = None
-    for cmd,func in dispatch_table:
+    for cmd, func in dispatch_table:
         if opts[cmd]:
             sub = func
             break
     if sub is None:
         raise UTAError('No valid actions specified')
     t0 = time.time()
-    sub(session,opts,cf)
-    logger.info("{cmd}: {elapsed:.1f}s elapsed".format(cmd=cmd,elapsed=time.time()-t0))
+    sub(session, opts, cf)
+    logger.info("{cmd}: {elapsed:.1f}s elapsed".format(
+        cmd=cmd, elapsed=time.time() - t0))
 
 
-## <LICENSE>
-## Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
-## 
-## Licensed under the Apache License, Version 2.0 (the "License");
-## you may not use this file except in compliance with the License.
-## You may obtain a copy of the License at
-## 
-##     http://www.apache.org/licenses/LICENSE-2.0
-## 
-## Unless required by applicable law or agreed to in writing, software
-## distributed under the License is distributed on an "AS IS" BASIS,
-## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-## See the License for the specific language governing permissions and
-## limitations under the License.
-## </LICENSE>
+# <LICENSE>
+# Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
+##
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+##
+# http://www.apache.org/licenses/LICENSE-2.0
+##
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# </LICENSE>

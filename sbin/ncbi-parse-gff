@@ -28,7 +28,8 @@ import argparse
 import gzip
 import io
 import itertools
-import logging, logging.config
+import logging
+import logging.config
 import os
 import pprint
 import pkg_resources
@@ -39,35 +40,38 @@ import Bio.SeqIO
 from bioutils.digests import seq_md5
 import eutils.clientx
 
-from uta.formats.exonset import ExonSet,ExonSetWriter
-from uta.formats.txinfo import TxInfo,TxInfoWriter,TxInfoReader
+from uta.formats.exonset import ExonSet, ExonSetWriter
+from uta.formats.txinfo import TxInfo, TxInfoWriter, TxInfoReader
 from uta.formats.geneaccessions import GeneAccessionsReader
 
-transcript_origin='NCBI RefSeq'
+transcript_origin = 'NCBI RefSeq'
+
 
 def parse_args(argv):
     ap = argparse.ArgumentParser(
-        description = __doc__,
-        )
+        description=__doc__,
+    )
     ap.add_argument('in_fn')
-    ap.add_argument('--origin','-o',
+    ap.add_argument('--origin', '-o',
                     default="NCBI")
-    ap.add_argument('--prefix','-p',
+    ap.add_argument('--prefix', '-p',
                     default='ncbi-gff')
-    ap.add_argument('--geneacs','-G',
+    ap.add_argument('--geneacs', '-G',
                     required=True)
-    ap.add_argument('--txinfo','-T',
+    ap.add_argument('--txinfo', '-T',
                     required=True)
     opts = ap.parse_args(argv)
     return opts
 
+
 def read_transcript_data(fn):
     """yield dictionaries of transcript alignment data; each yield
     corresponds to one full transcript record across lines"""
-    
+
     def _read_exons(fn):
-        line_re = re.compile('(?P<ref_ac>\S+)\t(?P<origin>\S+)\t(?P<match_type>\S+)\t(?P<g_start>\d+)\t(?P<g_end>\d+)\t(?P<score>\S+)\t(?P<strand>[-+])\t\.\tID=(?P<aln>aln\d+);Target=(?P<tx_ac>\S+)\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+)')
-        fh = io.open(fn,'rb')
+        line_re = re.compile(
+            '(?P<ref_ac>\S+)\t(?P<origin>\S+)\t(?P<match_type>\S+)\t(?P<g_start>\d+)\t(?P<g_end>\d+)\t(?P<score>\S+)\t(?P<strand>[-+])\t\.\tID=(?P<aln>aln\d+);Target=(?P<tx_ac>\S+)\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+)')
+        fh = io.open(fn, 'rb')
         while fh.peek(1)[0] == '#':
             fh.readline()
         while fh.peek(3)[0:3] != '###':
@@ -80,28 +84,32 @@ def read_transcript_data(fn):
 
     return itertools.groupby(_read_exons(fn), key=lambda e: e['aln'])
 
-def convert_exon_data(opts,eri):
+
+def convert_exon_data(opts, eri):
     """return (TxInfo,ExonSet) tuple for given exon record data"""
     exon_recs = list(eri)
     er0 = exon_recs[0]
     ti = TxInfo(ac=er0['tx_ac'],
                 origin='NCBI RefSeq',
                 hgnc=None,
-                cds_se_i=",".join([str(c) for c in [None,None]]),
-                exons_se_i= ";".join(["{},{}".format(int(ex['tx_start'])-1,ex['tx_end']) for ex in exon_recs])
+                cds_se_i=",".join([str(c) for c in [None, None]]),
+                exons_se_i=";".join(
+                    ["{},{}".format(int(ex['tx_start']) - 1, ex['tx_end']) for ex in exon_recs])
                 )
     es = ExonSet(
         tx_ac=er0['tx_ac'],
         alt_ac=er0['ref_ac'],
         method='splign',
         strand=-1 if er0['strand'] == '-' else 1,
-        exons_se_i= ";".join(["{},{}".format(int(ex['g_start'])-1,ex['g_end']) for ex in exon_recs])
-        )
-    return (ti,es)
+        exons_se_i=";".join(
+            ["{},{}".format(int(ex['g_start']) - 1, ex['g_end']) for ex in exon_recs])
+    )
+    return (ti, es)
 
 
 if __name__ == '__main__':
-    logging_conf_fn = pkg_resources.resource_filename('uta', 'etc/logging.conf')
+    logging_conf_fn = pkg_resources.resource_filename(
+        'uta', 'etc/logging.conf')
     logging.config.fileConfig(logging_conf_fn)
     logging.getLogger().setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
@@ -111,34 +119,37 @@ if __name__ == '__main__':
     es_fn = opts.prefix + 'exonset.gz'
     ti_fn = opts.prefix + 'txinfo.gz'
 
-    gar = GeneAccessionsReader(gzip.open(opts.geneacs,'r'))
-    tx2gene = {ga.tx_ac:ga.hgnc for ga in gar}
-    logger.info("read {} gene-accession mappings from {}".format(len(tx2gene),opts.geneacs))
+    gar = GeneAccessionsReader(gzip.open(opts.geneacs, 'r'))
+    tx2gene = {ga.tx_ac: ga.hgnc for ga in gar}
+    logger.info(
+        "read {} gene-accession mappings from {}".format(len(tx2gene), opts.geneacs))
 
-    tir = TxInfoReader(gzip.open(opts.txinfo,'r'))
-    tx2ti = {ti.ac:ti for ti in tir}
-    logger.info("read {} gene-accession mappings from {}".format(len(tx2ti),opts.txinfo))
+    tir = TxInfoReader(gzip.open(opts.txinfo, 'r'))
+    tx2ti = {ti.ac: ti for ti in tir}
+    logger.info(
+        "read {} gene-accession mappings from {}".format(len(tx2ti), opts.txinfo))
 
-    esw = ExonSetWriter(gzip.open(es_fn+'.tmp','w'))
-    tiw = TxInfoWriter(gzip.open(ti_fn+'.tmp','w'))
+    esw = ExonSetWriter(gzip.open(es_fn + '.tmp', 'w'))
+    tiw = TxInfoWriter(gzip.open(ti_fn + '.tmp', 'w'))
 
     tis = {}
     ac_not_in_gbff = set()
     ac_exons_differ = set()
     ac_in_source = set()
 
-    for aln,eri in read_transcript_data(opts.in_fn):
-        ti,es = convert_exon_data(opts,eri)
+    for aln, eri in read_transcript_data(opts.in_fn):
+        ti, es = convert_exon_data(opts, eri)
         ac_in_source.add(ti.ac)
 
-        if ti.ac.partition("_")[0] not in ["NM","XM"]:
+        if ti.ac.partition("_")[0] not in ["NM", "XM"]:
             # TODO: support non-coding and other transcripts
             continue
 
         try:
-            ti.hgnc = tx2gene.get(ti.ac,None)
+            ti.hgnc = tx2gene.get(ti.ac, None)
         except KeyError:
-            logger.warn("skipping transcript {ti.ac}; no gene info in {opts.geneinfo}".format(ti=ti,opts=opts))
+            logger.warn("skipping transcript {ti.ac}; no gene info in {opts.geneinfo}".format(
+                ti=ti, opts=opts))
             continue
 
         try:
@@ -152,12 +163,14 @@ if __name__ == '__main__':
             continue
 
         if gbff_ti.cds_se_i is None:
-            logger.warn("skipping transcript {ti.ac}; cds_se_i is undefined".format(ti=ti,opts=opts))
+            logger.warn(
+                "skipping transcript {ti.ac}; cds_se_i is undefined".format(ti=ti, opts=opts))
 
         ti.cds_se_i = gbff_ti.cds_se_i
 
         if ti.ac in tis:
-            # seen before, presumably by alignment to different genomic sequences (e.g., NC and NW)
+            # seen before, presumably by alignment to different genomic
+            # sequences (e.g., NC and NW)
             if ti.exons_se_i != tis[ti.ac].exons_se_i:
                 logger.error("{ti.ac}: occurred more than once and exon sets don't match!".format(
                     ti=ti))
@@ -168,11 +181,12 @@ if __name__ == '__main__':
         tiw.write(ti)
         esw.write(es)
 
-    for fn in [ti_fn,es_fn]:
-        os.rename(fn+'.tmp',fn)
+    for fn in [ti_fn, es_fn]:
+        os.rename(fn + '.tmp', fn)
 
     if ac_not_in_gbff:
-        s_not_g_b = set(k.partition(".")[0] for k in ac_in_source) - set(k.partition(".")[0] for k in tx2gene.keys())
+        s_not_g_b = set(k.partition(".")[
+                        0] for k in ac_in_source) - set(k.partition(".")[0] for k in tx2gene.keys())
         logger.warn("{n_acv} acvs ({n_ac} base acs))  in source not in geneacs file: {acs}".format(
             n_acv=len(ac_not_in_gbff), n_ac=len(s_not_g_b), opts=opts, acs=",".join(sorted(ac_not_in_gbff))))
 

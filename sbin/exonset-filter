@@ -14,14 +14,14 @@ import uta.formats.exonset as ufes
 def parse_args(argv):
     ap = argparse.ArgumentParser(
         description=__doc__,
-        )
+    )
     ap.add_argument(
         'FILE'
-        )
+    )
     ap.add_argument(
         '--transcripts-from', '-T',
-        )
-    
+    )
+
     opts = ap.parse_args(argv)
     return opts
 
@@ -31,9 +31,11 @@ if __name__ == '__main__':
 
     filter_acs = set()
     if opts.transcripts_from:
-        filter_acs = set([ l.strip() for l in open(opts.transcripts_from,'r').readlines() ])
+        filter_acs = set([l.strip()
+                          for l in open(opts.transcripts_from, 'r').readlines()])
 
-    esr = ufes.ExonSetReader(sys.stdin if opts.FILE == '-' else open(opts.FILE,'r'))
+    esr = ufes.ExonSetReader(
+        sys.stdin if opts.FILE == '-' else open(opts.FILE, 'r'))
     esw = ufes.ExonSetWriter(sys.stdout)
 
     for es in esr:

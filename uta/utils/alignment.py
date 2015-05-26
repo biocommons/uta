@@ -5,11 +5,11 @@ import Bio.Emboss.Applications as bea
 import cStringIO
 
 
-## I haven't figured out a nice way to test align2() conditionally based
-## on whether needle is available. Since the code exists mostly for
-## historical comparison, it's now commented out.
+# I haven't figured out a nice way to test align2() conditionally based
+# on whether needle is available. Since the code exists mostly for
+# historical comparison, it's now commented out.
 
-def align2(seqa,seqb,gapopen=10,gapextend=0.5):
+def align2(seqa, seqb, gapopen=10, gapextend=0.5):
     """Globally align two sequences.
     This function currently uses EMBOSS' needle command, which ideally
     would be replaced by a forkless version in Python.
@@ -27,15 +27,15 @@ def align2(seqa,seqb,gapopen=10,gapextend=0.5):
     """
     if seqa == seqb:
         return seqa, seqb
-    cline = bea.NeedleCommandline(asequence='asis:'+seqa, bsequence='asis:'+seqb,
-                                  gapopen=gapopen,gapextend=gapextend,
-                                  auto=True,filter=True,stdout=True)
+    cline = bea.NeedleCommandline(asequence='asis:' + seqa, bsequence='asis:' + seqb,
+                                  gapopen=gapopen, gapextend=gapextend,
+                                  auto=True, filter=True, stdout=True)
     o, e = cline()
     aln = Bio.AlignIO.read(cStringIO.StringIO(o), 'emboss')
     return aln[0].seq.tostring(), aln[1].seq.tostring()
 
 
-def alignment_match_string(aseq1,aseq2):
+def alignment_match_string(aseq1, aseq2):
     """for aligned sequences aseq1 and aseq2, both of length n, return an
     exploded CIGAR string of length n with characters denoting M)atch,
     I)nsertion, D)eletion, X)mismatch of aseq2 relative to aseq1.  In our
@@ -50,19 +50,25 @@ def alignment_match_string(aseq1,aseq2):
 
     """
     assert len(aseq1) == len(aseq2)
-    def _cigar_char(c1,c2): 
-        if c1 == c2:  return 'M'
-        if c1 == '-': return 'I' 
-        if c2 == '-': return 'D' 
-        if c1 != c2:  return 'X'
+
+    def _cigar_char(c1, c2):
+        if c1 == c2:
+            return 'M'
+        if c1 == '-':
+            return 'I'
+        if c2 == '-':
+            return 'D'
+        if c1 != c2:
+            return 'X'
         raise Exception('In the words of David Byrne, how did I get here?')
-    match_string = [ _cigar_char(c1,c2) for c1,c2 in zip(aseq1,aseq2) ]
+    match_string = [_cigar_char(c1, c2) for c1, c2 in zip(aseq1, aseq2)]
     return ''.join(match_string)
 
-def alignment_cigar_list(aseq1,aseq2):
+
+def alignment_cigar_list(aseq1, aseq2):
     """Return a list of cigar operations for the aligned sequences aseq1
     and aseq2.  Each tuple is (pos, operation, count).
-    
+
     >>> aseq1 = 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
     >>> aseq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
     >>> for a in alignment_cigar_list( aseq1,aseq2 ):
@@ -79,13 +85,13 @@ def alignment_cigar_list(aseq1,aseq2):
 
     """
     # compute "cigar vector" (cv), which is really just RLE of edits
-    cv = [ (c,len(list(group)))
-           for c, group in itertools.groupby(alignment_match_string(aseq1,aseq2)) ]
+    cv = [(c, len(list(group)))
+          for c, group in itertools.groupby(alignment_match_string(aseq1, aseq2))]
     # then figure out the start position of each element
     pcv = []
     s = 0
     for e in cv:
-        pcv += [ (s,e[0],e[1]) ]
+        pcv += [(s, e[0], e[1])]
         s += e[1]
     return pcv
 
@@ -100,8 +106,9 @@ def alignment_cigar_string(aseq1, aseq2):
     '3M1X1M1X21M4I23M7D6M'
 
     """
-    return ''.join([ str(l)+c 
-                     for _,c,l in alignment_cigar_list(aseq1,aseq2) ])
+    return ''.join([str(l) + c
+                    for _, c, l in alignment_cigar_list(aseq1, aseq2)])
+
 
 def explode_cigar(cigar):
     """return a vector of column matches for a given cigar string
@@ -112,8 +119,8 @@ def explode_cigar(cigar):
     """
     import re
     u = re.compile('(?P<n>\d+)(?P<op>[MXID])')
-    return ''.join([ md['op']*int(md['n']) 
-                     for md in [m.groupdict() for m in u.finditer(cigar)] ])
+    return ''.join([md['op'] * int(md['n'])
+                    for md in [m.groupdict() for m in u.finditer(cigar)]])
 
 
 if __name__ == "__main__":
@@ -121,18 +128,18 @@ if __name__ == "__main__":
     doctest.testmod()
 
 
-## <LICENSE>
-## Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
-## 
-## Licensed under the Apache License, Version 2.0 (the "License");
-## you may not use this file except in compliance with the License.
-## You may obtain a copy of the License at
-## 
-##     http://www.apache.org/licenses/LICENSE-2.0
-## 
-## Unless required by applicable law or agreed to in writing, software
-## distributed under the License is distributed on an "AS IS" BASIS,
-## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-## See the License for the specific language governing permissions and
-## limitations under the License.
-## </LICENSE>
+# <LICENSE>
+# Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
+##
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+##
+# http://www.apache.org/licenses/LICENSE-2.0
+##
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# </LICENSE>

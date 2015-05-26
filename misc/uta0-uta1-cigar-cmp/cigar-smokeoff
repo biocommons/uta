@@ -5,8 +5,8 @@ import sys
 
 
 def read1(fn):
-    dr = csv.DictReader( open(fn,'r'), delimiter='\t' )
-    return { r['ac']: r['cigars'] for r in dr }
+    dr = csv.DictReader(open(fn, 'r'), delimiter='\t')
+    return {r['ac']: r['cigars'] for r in dr}
 
 u0 = read1(sys.argv[1])
 u1 = read1(sys.argv[2])
@@ -14,10 +14,11 @@ u1 = read1(sys.argv[2])
 k0 = set(u0.keys())
 k1 = set(u1.keys())
 
-print( "u0:{k0}; u1:{k1}; u0-u1: {k0m1}; u0&u1: {k01}; u1-u0: {k1m0}".format(
-    k0=len(k0), k1=len(k1), k0m1=len(k0-k1), k01=len(k0&k1), k1m0=len(k1-k0) ))
+print("u0:{k0}; u1:{k1}; u0-u1: {k0m1}; u0&u1: {k01}; u1-u0: {k1m0}".format(
+    k0=len(k0), k1=len(k1), k0m1=len(k0 - k1), k01=len(k0 & k1), k1m0=len(k1 - k0)))
 
 for k in sorted(k0 & k1):
-    u0ext = u0[k].replace('M','=').replace('D','d').replace('I','i').replace('i','D').replace('d','I')
+    u0ext = u0[k].replace('M', '=').replace('D', 'd').replace(
+        'I', 'i').replace('i', 'D').replace('d', 'I')
     if u0ext != u1[k]:
-        print('\t'.join([k,u0ext,u1[k]]))
+        print('\t'.join([k, u0ext, u1[k]]))

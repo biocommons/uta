@@ -8,16 +8,19 @@ class TxInfo(recordtype.recordtype('TxInfo',
 
 
 class TxInfoWriter(csv.DictWriter):
-    def __init__(self,tsvfile):
-        csv.DictWriter.__init__(self, tsvfile, fieldnames=TxInfo._fields, delimiter=b'\t', lineterminator="\n")
+
+    def __init__(self, tsvfile):
+        csv.DictWriter.__init__(
+            self, tsvfile, fieldnames=TxInfo._fields, delimiter=b'\t', lineterminator="\n")
         csv.DictWriter.writeheader(self)
-        
-    def write(self,si):
+
+    def write(self, si):
         self.writerow(si._asdict())
 
 
 class TxInfoReader(csv.DictReader):
-    def __init__(self,tsvfile):
+
+    def __init__(self, tsvfile):
         csv.DictReader.__init__(self, tsvfile, delimiter=b'\t')
         if set(self.fieldnames) != set(TxInfo._fields):
             raise RuntimeError('Format error: expected header with these columns: '
@@ -28,19 +31,17 @@ class TxInfoReader(csv.DictReader):
         return TxInfo(**d)
 
 
-
 if __name__ == '__main__':
     tmpfn = '/tmp/txinfo'
 
     with open(tmpfn, 'w') as f:
         esw = TxInfoWriter(f)
         for i in range(3):
-            es = TxInfo(**dict([(k, k + ":" + str(i)) for k in TxInfo._fields]))
+            es = TxInfo(**dict([(k, k + ":" + str(i))
+                                for k in TxInfo._fields]))
             esw.write(es)
-
 
     with open(tmpfn, 'r') as f:
         esr = TxInfoReader(f)
         for es in esr:
             print(es)
-

@@ -11,20 +11,22 @@ import sys
 
 from csv import DictReader
 
-from uta.formats.geneinfo import GeneInfo,GeneInfoWriter
+from uta.formats.geneinfo import GeneInfo, GeneInfoWriter
 from uta.formats.ncbitsv import NCBITSVReader
 
-def opener(fs,mode='r'):
-    import gzip, sys
+
+def opener(fs, mode='r'):
+    import gzip
+    import sys
     if fs.endswith('.gz'):
-        return gzip.open(fs,mode)
+        return gzip.open(fs, mode)
     if fs == '-':
         return sys.stdout if 'w' in mode else sys.stdin
-    return open(fs,mode)
+    return open(fs, mode)
 
 if __name__ == "__main__":
-    
-    gi_in = NCBITSVReader(opener(sys.argv[1],'r'))
+
+    gi_in = NCBITSVReader(opener(sys.argv[1], 'r'))
     giw = GeneInfoWriter(sys.stdout)
 
     for rec in gi_in:

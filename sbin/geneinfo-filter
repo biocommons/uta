@@ -14,14 +14,14 @@ import uta.formats.geneinfo as ufgi
 def parse_args(argv):
     ap = argparse.ArgumentParser(
         description=__doc__,
-        )
+    )
     ap.add_argument(
         'FILE'
-        )
+    )
     ap.add_argument(
         '--genes-from', '-G',
-        )
-    
+    )
+
     opts = ap.parse_args(argv)
     return opts
 
@@ -31,9 +31,11 @@ if __name__ == '__main__':
 
     filter_genes = set()
     if opts.genes_from:
-        filter_genes = set([ l.strip() for l in open(opts.genes_from,'r').readlines() ])
+        filter_genes = set([l.strip()
+                            for l in open(opts.genes_from, 'r').readlines()])
 
-    gir = ufgi.GeneInfoReader(sys.stdin if opts.FILE == '-' else open(opts.FILE,'r'))
+    gir = ufgi.GeneInfoReader(
+        sys.stdin if opts.FILE == '-' else open(opts.FILE, 'r'))
     giw = ufgi.GeneInfoWriter(sys.stdout)
 
     for gi in gir:

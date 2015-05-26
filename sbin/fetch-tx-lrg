@@ -22,12 +22,17 @@ from bioutils.accessions import chr_to_NC
 import uta.formats.exonset
 import uta.formats.txinfo
 
+
 def main():
-    parser = argparse.ArgumentParser(description='convert LRG files to format to import to UTA')
-    parser.add_argument('-t', action="store", dest="tabfile", help="input tab-delimited text file from LRG")
-    parser.add_argument('-x', action="store", dest="xmldir", help="input XML dir from LRG")
-    parser.add_argument('-o', action="store", dest="outdir", help="directory to write output tx and exonset files")
-    
+    parser = argparse.ArgumentParser(
+        description='convert LRG files to format to import to UTA')
+    parser.add_argument('-t', action="store", dest="tabfile",
+                        help="input tab-delimited text file from LRG")
+    parser.add_argument(
+        '-x', action="store", dest="xmldir", help="input XML dir from LRG")
+    parser.add_argument('-o', action="store", dest="outdir",
+                        help="directory to write output tx and exonset files")
+
     args_in = parser.parse_args()
 
     if not os.path.exists(args_in.outdir):
@@ -44,8 +49,10 @@ def main():
         for row in reader:
             # setup exon pair string
             exon_pairs = [x.split('-') for x in row['EXONS_COORDS'].split(',')]
-            exon_coords = [(int(start), int(end)) for (start, end) in  exon_pairs]
-            g_list = ['{},{}'.format(start - 1, end) for (start, end) in exon_coords]
+            exon_coords = [(int(start), int(end))
+                           for (start, end) in exon_pairs]
+            g_list = ['{},{}'.format(start - 1, end)
+                      for (start, end) in exon_coords]
             if row['STRAND'] == '-1':
                 g_list.reverse()
             g_exon_coords_string = ';'.join(g_list)
@@ -53,9 +60,8 @@ def main():
             exonset_lines.add((row['# LRG_TRANSCRIPT'],
                                chr_to_NC[row['CHROMOSOME']],
                                'LRG',
-                               row['STRAND'],g_exon_coords_string))
+                               row['STRAND'], g_exon_coords_string))
             tx_acs_hgnc[row['# LRG_TRANSCRIPT']] = row['HGNC_SYMBOL']
-
 
     with open(os.path.join(args_in.outdir, 'lrg.exonset'), 'w') as f:
         esw = uta.formats.exonset.ExonSetWriter(f)
@@ -64,7 +70,6 @@ def main():
         for exonset_line in exonset_lines:
             exonset_row = uta.formats.exonset.ExonSet(*exonset_line)
             esw.write(exonset_row)
-
 
     # write tx info file
     with open(os.path.join(args_in.outdir, 'lrg.txinfo'), 'w') as f_out:
@@ -76,7 +81,8 @@ def main():
         for tx_ac in tx_acs:
 
             lrg_root = tx_ac[:tx_ac.find('t')]
-            xml_fn = "{}.xml".format(lrg_root)    # TX are LRG_7t1; XML file name is LRG_7.xml
+            # TX are LRG_7t1; XML file name is LRG_7.xml
+            xml_fn = "{}.xml".format(lrg_root)
             xml_filepath = os.path.join(args_in.xmldir, xml_fn)
 
             if os.path.exists(xml_filepath):
@@ -90,49 +96,62 @@ def main():
                     if tx_name == tx_element.attrib['name']:    # match
                         no_match = False
 
-                        # setup CDS coords - convert from LRG coords to interbase (subtract 1 from start)
+                        # setup CDS coords - convert from LRG coords to
+                        # interbase (subtract 1 from start)
                         exons = tx_element.findall('./exon')
-                        cds_start_end_tag = tx_element.find('./coding_region/coordinates')
+                        cds_start_end_tag = tx_element.find(
+                            './coding_region/coordinates')
                         cds_start_lrg = int(cds_start_end_tag.attrib['start'])
                         cds_end_lrg = int(cds_start_end_tag.attrib['end'])
 
                         match_start = match_end = False
                         for exon in exons:
-                            exon_coord_lrg = exon.find("./coordinates[@coord_system='{}']".format(lrg_root))
-                            exon_lrg_start = int(exon_coord_lrg.attrib['start'])
+                            exon_coord_lrg = exon.find(
+                                "./coordinates[@coord_system='{}']".format(lrg_root))
+                            exon_lrg_start = int(
+                                exon_coord_lrg.attrib['start'])
                             exon_lrg_end = int(exon_coord_lrg.attrib['end'])
-                            exon_coord_tx = exon.find("./coordinates[@coord_system='{}']".format(tx_ac))
+                            exon_coord_tx = exon.find(
+                                "./coordinates[@coord_system='{}']".format(tx_ac))
                             exon_tx_start = int(exon_coord_tx.attrib['start'])
 
                             if exon_lrg_start <= cds_start_lrg <= exon_lrg_end:
                                 match_start = True
-                                cds_start_i = cds_start_lrg - exon_lrg_start + exon_tx_start - 1
+                                cds_start_i = cds_start_lrg - \
+                                    exon_lrg_start + exon_tx_start - 1
 
                             if exon_lrg_start <= cds_end_lrg <= exon_lrg_end:
                                 match_end = True
-                                cds_end_i = cds_end_lrg - exon_lrg_start + exon_tx_start
+                                cds_end_i = cds_end_lrg - \
+                                    exon_lrg_start + exon_tx_start
 
                             if match_start and match_end:
                                 break
 
-                        if not (match_start and match_end): # should never happen
+                        # should never happen
+                        if not (match_start and match_end):
                             print "ERROR: failed to find cds start and/or end for accession {}".format(tx_ac)
                             break
 
                         tx_cds_se_i = '{},{}'.format(cds_start_i, cds_end_i)
 
-                        # setup exon coords - convert to interbase (subtract 1 from start)
+                        # setup exon coords - convert to interbase (subtract 1
+                        # from start)
                         exon_coords = []
                         for exon in exons:
-                            exon_coord = exon.find("./coordinates[@coord_system='{}']".format(tx_ac))
-                            exon_coords.append(((int(exon_coord.attrib['start'])) - 1, int(exon_coord.attrib['end'])))
+                            exon_coord = exon.find(
+                                "./coordinates[@coord_system='{}']".format(tx_ac))
+                            exon_coords.append(
+                                ((int(exon_coord.attrib['start'])) - 1, int(exon_coord.attrib['end'])))
 
-                        exon_coords = sorted(exon_coords, key=operator.itemgetter(0))
-                        tx_exon_se_i = ";".join(["{},{}".format(start, end) for (start, end) in exon_coords])
+                        exon_coords = sorted(
+                            exon_coords, key=operator.itemgetter(0))
+                        tx_exon_se_i = ";".join(
+                            ["{},{}".format(start, end) for (start, end) in exon_coords])
 
                         # finally - output result
                         tx_row = uta.formats.txinfo.TxInfo('LRG', tx_ac, tx_acs_hgnc[tx_ac],
-                                                             tx_cds_se_i, tx_exon_se_i)
+                                                           tx_cds_se_i, tx_exon_se_i)
                         tw.write(tx_row)
 
                         break
@@ -146,4 +165,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

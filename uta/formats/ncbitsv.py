@@ -19,12 +19,14 @@ import re
 
 
 class NCBITSVReader(object):
-    def __init__(self,fd,squash_case=True):
+
+    def __init__(self, fd, squash_case=True):
         line1 = fd.readline()
         if not line1.startswith("#Format: "):
             raise RuntimeError("File stream does not begin with '#Format: '")
-        
-        hdr = line1.replace("#Format: ", "").replace(" (tab is used as a separator, pound sign - start of a comment)", "")
+
+        hdr = line1.replace("#Format: ", "").replace(
+            " (tab is used as a separator, pound sign - start of a comment)", "")
         if squash_case:
             hdr = hdr.lower()
         fieldnames = hdr.split()
@@ -35,7 +37,6 @@ class NCBITSVReader(object):
 
     def next(self):
         return self._dr.next()
-
 
 
 if __name__ == "__main__":

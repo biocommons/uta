@@ -14,17 +14,17 @@ import uta.formats.txinfo as ufti
 def parse_args(argv):
     ap = argparse.ArgumentParser(
         description=__doc__,
-        )
+    )
     ap.add_argument(
         'FILE'
-        )
+    )
     ap.add_argument(
         '--genes-from', '-G',
-        )
+    )
     ap.add_argument(
         '--transcripts-from', '-T',
-        )
-    
+    )
+
     opts = ap.parse_args(argv)
     return opts
 
@@ -34,13 +34,16 @@ if __name__ == '__main__':
 
     filter_genes = set()
     if opts.genes_from:
-        filter_genes = set([ l.strip() for l in open(opts.genes_from,'r').readlines() ])
+        filter_genes = set([l.strip()
+                            for l in open(opts.genes_from, 'r').readlines()])
 
     filter_acs = set()
     if opts.transcripts_from:
-        filter_acs = set([ l.strip() for l in open(opts.transcripts_from,'r').readlines() ])
+        filter_acs = set([l.strip()
+                          for l in open(opts.transcripts_from, 'r').readlines()])
 
-    tir = ufti.TxInfoReader(sys.stdin if opts.FILE == '-' else open(opts.FILE,'r'))
+    tir = ufti.TxInfoReader(
+        sys.stdin if opts.FILE == '-' else open(opts.FILE, 'r'))
     tiw = ufti.TxInfoWriter(sys.stdout)
 
     for ti in tir:

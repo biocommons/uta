@@ -24,6 +24,7 @@ x	x	F	f	t	f	f	f	f
 x	x	F	f	f	f	f	f	f
 """.strip()
 
+
 def bool_str_to_float(s):
     if s == 't':
         return 1
@@ -32,12 +33,11 @@ def bool_str_to_float(s):
     raise RuntimeError()
 
 
-def write_pdf(clf,fn):
+def write_pdf(clf, fn):
     dot_data = StringIO()
     tree.export_graphviz(clf, out_file=dot_data)
     graph = pydot.graph_from_dot_data(dot_data.getvalue())
     graph.write_pdf(fn)
-
 
 
 fv = []
@@ -46,23 +46,24 @@ av = []
 wv = []
 for row in data.splitlines():
     d = row.split()
-    a,w,c,f = d[0],d[1],d[2],map(bool_str_to_float, d[3:])
-    fv += [ f ]
-    cv += [ c ]
-    wv += [ w ]
-    av += [ a ]
+    a, w, c, f = d[0], d[1], d[2], map(bool_str_to_float, d[3:])
+    fv += [f]
+    cv += [c]
+    wv += [w]
+    av += [a]
 
 
 a_clf = tree.DecisionTreeClassifier()
-a_clf.fit(fv,av)
-write_pdf(a_clf,'/tmp/a.pdf')
+a_clf.fit(fv, av)
+write_pdf(a_clf, '/tmp/a.pdf')
 
 c_clf = tree.DecisionTreeClassifier()
-c_clf.fit(fv,cv)
-write_pdf(c_clf,'/tmp/c.pdf')
+c_clf.fit(fv, cv)
+write_pdf(c_clf, '/tmp/c.pdf')
 
 w_clf = tree.DecisionTreeClassifier()
-w_clf.fit(fv,wv)
-write_pdf(w_clf,'/tmp/w.pdf')
+w_clf.fit(fv, wv)
+write_pdf(w_clf, '/tmp/w.pdf')
 
-import IPython; IPython.embed()
+import IPython
+IPython.embed()

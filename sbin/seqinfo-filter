@@ -15,19 +15,19 @@ import uta.formats.seqinfo as ufsi
 def parse_args(argv):
     ap = argparse.ArgumentParser(
         description=__doc__,
-        )
+    )
     ap.add_argument(
         'FILE'
-        )
+    )
     ap.add_argument(
         '--transcripts-from', '-T',
-        )
+    )
     ap.add_argument(
         '--transcript-regexps', '-R',
-        default = [],
-        action = 'append',
-        )
-    
+        default=[],
+        action='append',
+    )
+
     opts = ap.parse_args(argv)
     return opts
 
@@ -37,11 +37,13 @@ if __name__ == '__main__':
 
     filter_acs = set()
     if opts.transcripts_from:
-        filter_acs = set([ l.strip() for l in open(opts.transcripts_from,'r').readlines() ])
+        filter_acs = set([l.strip()
+                          for l in open(opts.transcripts_from, 'r').readlines()])
 
-    regexps = [ re.compile(tre) for tre in opts.transcript_regexps ]
+    regexps = [re.compile(tre) for tre in opts.transcript_regexps]
 
-    sir = ufsi.SeqInfoReader(sys.stdin if opts.FILE == '-' else open(opts.FILE,'r'))
+    sir = ufsi.SeqInfoReader(
+        sys.stdin if opts.FILE == '-' else open(opts.FILE, 'r'))
     siw = ufsi.SeqInfoWriter(sys.stdout)
 
     for si in sir:
