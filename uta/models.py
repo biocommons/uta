@@ -133,19 +133,21 @@ class ExonSet(Base,UTABase):
     __tablename__ = 'exon_set'
     __table_args__ = (
         # TODO: Drop ExonSet unique constraint to support degenerate mappings
-        sa.UniqueConstraint('tx_ac','alt_ac','alt_aln_method',
+        sa.UniqueConstraint('tx_ac', 'alt_ac', 'alt_aln_method',
                             name='<transcript,reference,method> must be unique'),
         )
 
     # columns:
     exon_set_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
-    tx_ac = sa.Column(sa.Text, nullable=False) # , sa.ForeignKey('transcript.ac')
+    tx_ac = sa.Column(sa.Text, sa.ForeignKey('transcript.ac'), nullable=False)
+    # TODO: alt_ac should be seq_id -- a reference to a sequence hash
     alt_ac = sa.Column(sa.Text, nullable=False)
     alt_strand = sa.Column(sa.SmallInteger, nullable=False)
     alt_aln_method = sa.Column(sa.Text, nullable=False)
     added = sa.Column(sa.DateTime, default=datetime.datetime.now(), nullable=False)
     
     # relationships:
+    transcript = sao.relationship('Transcript', backref='exon_sets')
 
     # methods
     def exons_se_i(self,transcript_order=False):
