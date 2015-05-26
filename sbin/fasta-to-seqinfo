@@ -11,7 +11,7 @@ import re
 import sys
 
 import Bio.SeqIO
-from bdi.utils.aminoacids import seq_md5
+from bioutils.digests import seq_md5
 
 from uta.formats.seqinfo import SeqInfo, SeqInfoWriter
 
