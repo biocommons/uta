@@ -2,10 +2,10 @@
 
 from biomart import BiomartServer
 
-atts = ['external_gene_name','external_gene_source','ensembl_gene_id',
-        'ensembl_transcript_id','ensembl_peptide_id']
+atts = ['external_gene_name', 'external_gene_source', 'ensembl_gene_id',
+        'ensembl_transcript_id', 'ensembl_peptide_id']
 
-server = BiomartServer( "http://www.biomart.org/biomart" )
+server = BiomartServer("http://www.biomart.org/biomart")
 hge = server.datasets['hsapiens_gene_ensembl']
 
 print(server.databases['ensembl'])

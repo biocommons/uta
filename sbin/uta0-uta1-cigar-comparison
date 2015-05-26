@@ -15,26 +15,28 @@ import collections
 import csv
 import string
 
-import psycopg2, psycopg2.extras
+import psycopg2
+import psycopg2.extras
 
 # just need the keys
 NC_to_chr_dict = {
     'NC_000001.10':  '1', 'NC_000002.11':  '2', 'NC_000003.11': '3',
-    'NC_000004.11':  '4', 'NC_000005.9' :  '5', 'NC_000006.11': '6',
+    'NC_000004.11':  '4', 'NC_000005.9':  '5', 'NC_000006.11': '6',
     'NC_000007.13':  '7', 'NC_000008.10':  '8', 'NC_000009.11': '9',
-    'NC_000010.10': '10', 'NC_000011.9' : '11', 'NC_000012.11': '12',
-    'NC_000013.10': '13', 'NC_000014.8' : '14', 'NC_000015.9' : '15',
-    'NC_000016.9' : '16', 'NC_000017.10': '17', 'NC_000018.9' : '18',
-    'NC_000019.9' : '19', 'NC_000020.10': '20', 'NC_000021.8' : '21',
-    'NC_000022.10': '22', 'NC_000023.10':  'X', 'NC_000024.9' : 'Y',
-    }
+    'NC_000010.10': '10', 'NC_000011.9': '11', 'NC_000012.11': '12',
+    'NC_000013.10': '13', 'NC_000014.8': '14', 'NC_000015.9': '15',
+    'NC_000016.9': '16', 'NC_000017.10': '17', 'NC_000018.9': '18',
+    'NC_000019.9': '19', 'NC_000020.10': '20', 'NC_000021.8': '21',
+    'NC_000022.10': '22', 'NC_000023.10':  'X', 'NC_000024.9': 'Y',
+}
 
 GRChr37NCs = NC_to_chr_dict.keys()
 
 translation = string.maketrans('DI=', 'IDM')
 
+
 def get_uta0_cigars():
-    dsn="host=uta.invitae.com dbname=uta user=uta_public password=uta_public"
+    dsn = "host=uta.invitae.com dbname=uta user=uta_public password=uta_public"
     conn = psycopg2.connect(dsn)
     sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
@@ -46,8 +48,8 @@ def get_uta0_cigars():
     return uta0_cigars
 
 
-def  get_uta1_cigars(txs):
-    dsn="host=uta.invitae.com dbname=uta_dev user=uta_public password=uta_public"
+def get_uta1_cigars(txs):
+    dsn = "host=uta.invitae.com dbname=uta_dev user=uta_public password=uta_public"
     conn = psycopg2.connect(dsn)
     sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     txs_string = str(txs)[1:-1]
@@ -56,8 +58,10 @@ def  get_uta1_cigars(txs):
     sel_cur.execute(sel_sql)
     uta1_cigars = collections.defaultdict(list)
     for row in sel_cur.fetchall():
-        uta1_cigars[row['tx_ac']].append({'alt_ac': row['alt_ac'], 'cigars': row['cigars']})
+        uta1_cigars[row['tx_ac']].append(
+            {'alt_ac': row['alt_ac'], 'cigars': row['cigars']})
     return uta1_cigars
+
 
 def uta1_cigar_as_uta0(uta1_cigar):
     return uta1_cigar.translate(translation)
@@ -83,7 +87,8 @@ def main():
                     uta1_cigar = candidate['cigars']
                     break
 
-            row = {'tx_ac': tx_ac, 'uta0_cigar': uta0_cigar, 'uta1_cigar': uta1_cigar}
+            row = {'tx_ac': tx_ac, 'uta0_cigar': uta0_cigar,
+                   'uta1_cigar': uta1_cigar}
             writer.writerow(row)
 
             # comparison
@@ -96,10 +101,5 @@ def main():
         writer.writerows(mismatches)
 
 
-
-
-
-
 if __name__ == "__main__":
     main()
-

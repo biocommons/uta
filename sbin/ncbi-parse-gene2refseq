@@ -13,19 +13,21 @@ import cStringIO
 
 from csv import DictReader
 
-from uta.formats.geneaccessions import GeneAccessions,GeneAccessionsWriter
+from uta.formats.geneaccessions import GeneAccessions, GeneAccessionsWriter
 from uta.formats.ncbitsv import NCBITSVReader
 
-def opener(fs,mode='r'):
-    import gzip, sys
+
+def opener(fs, mode='r'):
+    import gzip
+    import sys
     if fs.endswith('.gz'):
-        return gzip.open(fs,mode)
+        return gzip.open(fs, mode)
     if fs == '-':
         return sys.stdout if 'w' in mode else sys.stdin
-    return io.open(fs,mode)
+    return io.open(fs, mode)
 
 if __name__ == "__main__":
-    ga_in = NCBITSVReader(opener(sys.argv[1],'r'))
+    ga_in = NCBITSVReader(opener(sys.argv[1], 'r'))
     gaw = GeneAccessionsWriter(sys.stdout)
 
     for rec in ga_in:

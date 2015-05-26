@@ -2,7 +2,7 @@
 
 """fetch gene-nm-np as tsv table using entrez
 
-This script queries NCBI for human gene records in Entrez.  
+This script queries NCBI for human gene records in Entrez.
 
 """
 
@@ -15,7 +15,7 @@ import time
 
 from eutils.xmlfacades.entrezgeneset import EntrezgeneSet
 
-from uta.formats.geneinfo import GeneInfo,GeneInfoWriter
+from uta.formats.geneinfo import GeneInfo, GeneInfoWriter
 
 eutils_base_url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils'
 retmax_request = 250
@@ -25,66 +25,73 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    giw = GeneInfoWriter(sys.stdout,'w'))
+    giw = GeneInfoWriter(sys.stdout, 'w'))
 
-    tsv_out = csv.writer(sys.stdout, delimiter='\t')
-    tsv_out.writerow(['hgnc','maploc','ref_acv','tx_acv','pro_acv'])
+    tsv_out=csv.writer(sys.stdout, delimiter = '\t')
+    tsv_out.writerow(['hgnc', 'maploc', 'ref_acv', 'tx_acv', 'pro_acv'])
 
     # search for all human genes, saving history at NCBI
-    esearch_url = eutils_base_url+"/esearch.fcgi?db=gene&usehistory=y&retmax=0&term=human[orgn] AND alive[property]"
-    r1 = requests.get(esearch_url)
-    r1_x = le.XML(r1.content)
-    webenv_key = r1_x.find('WebEnv').text
-    query_key = r1_x.find('QueryKey').text
-    count = int(r1_x.find('Count').text)
-    logger.info("esearch results: Count={}, WebEnv={}, query_key={}".format(count,webenv_key,query_key))
+    esearch_url=eutils_base_url +
+        "/esearch.fcgi?db=gene&usehistory=y&retmax=0&term=human[orgn] AND alive[property]"
+    r1=requests.get(esearch_url)
+    r1_x=le.XML(r1.content)
+    webenv_key=r1_x.find('WebEnv').text
+    query_key=r1_x.find('QueryKey').text
+    count=int(r1_x.find('Count').text)
+    logger.info("esearch results: Count={}, WebEnv={}, query_key={}".format(
+        count, webenv_key, query_key))
 
     # iteratively fetch results in batches of size retmax_request
-    efetch_url = eutils_base_url+"/efetch.fcgi?db=gene&usehistory=&retmode=XML&WebEnv={}&query_key={}&retmax={}".format(webenv_key,query_key,retmax_request)
-    starts = range(0,count,retmax_request)
-    n_iterations = len(starts)
-    t_rs = time.time()
-    run_start = 0 if len(sys.argv) == 1 else int(sys.argv[1])-1
-    failed_hgncs = set()
-    lines_written = 1                 # header
-    for i,start in enumerate(starts[run_start:]):
-        t_0 = time.time()
+    efetch_url=eutils_base_url +
+        "/efetch.fcgi?db=gene&usehistory=&retmode=XML&WebEnv={}&query_key={}&retmax={}".format(
+            webenv_key, query_key, retmax_request)
+    starts=range(0, count, retmax_request)
+    n_iterations=len(starts)
+    t_rs=time.time()
+    run_start=0 if len(sys.argv) == 1 else int(sys.argv[1]) - 1
+    failed_hgncs=set()
+    lines_written=1                 # header
+    for i, start in enumerate(starts[run_start:]):
+        t_0=time.time()
 
-        r2 = requests.get(efetch_url + "&retstart=" + str(start))
+        r2=requests.get(efetch_url + "&retstart=" + str(start))
         time.sleep(3)
 
-        t_1 = time.time()
+        t_1=time.time()
 
-        egs = EntrezgeneSet(le.XML(r2.content))
-        lines_i = 0
+        egs=EntrezgeneSet(le.XML(r2.content))
+        lines_i=0
         for eg in egs.entrezgenes:
-            egl = eg.locus
+            egl=eg.locus
             if egl is None:
                 continue
             for ref in [r for r in egl.references if r.type == 'genomic']:
                 for tx in ref.products:
                     for pro in tx.products:
                         try:
-                            tsv_out.writerow([eg.hgnc,eg.maploc,ref.acv,tx.acv,pro.acv])
+                            tsv_out.writerow(
+                                [eg.hgnc, eg.maploc, ref.acv, tx.acv, pro.acv])
                             lines_i += 1
-                        except (TypeError,AttributeError,KeyError) as e:
-                            logger.error("{e} encountered for gene {eg.hgnc}".format(e=e,eg=eg))
+                        except (TypeError, AttributeError, KeyError) as e:
+                            logger.error(
+                                "{e} encountered for gene {eg.hgnc}".format(e=e, eg=eg))
                             failed_hgncs.update([eg.hgnc])
                             continue
 
-        t_2 = time.time()
+        t_2=time.time()
 
-        elapsed_n = t_1 - t_0
-        elapsed_io = t_2 - t_1
-        elapsed_r = t_2 - t_rs
-        elapsed_i_avg = elapsed_r / (i+1)
-        est_rem = (n_iterations - (i+1)) * elapsed_i_avg
-        gene_range = "{}..{}".format(egs.entrezgenes[0].hgnc,egs.entrezgenes[-1].hgnc)
+        elapsed_n=t_1 - t_0
+        elapsed_io=t_2 - t_1
+        elapsed_r=t_2 - t_rs
+        elapsed_i_avg=elapsed_r / (i + 1)
+        est_rem=(n_iterations - (i + 1)) * elapsed_i_avg
+        gene_range="{}..{}".format(
+            egs.entrezgenes[0].hgnc, egs.entrezgenes[-1].hgnc)
         logger.info("efetch'd and wrote {i}/{n}: {n_genes} genes ({gene_range}); lines [{ls},{le}] ({n_lines}); {elapsed_n:.1f}s net; {elapsed_io:.1f}s io; {elapsed_i_avg:.1f}s avg; {est_rem:.0f}s remaining"
-                    .format(i=run_start+i+1, n=n_iterations, n_genes=len(egs.entrezgenes),
+                    .format(i=run_start + i + 1, n=n_iterations, n_genes=len(egs.entrezgenes),
                             gene_range=gene_range, elapsed_n=elapsed_n, elapsed_io=elapsed_io,
                             elapsed_i_avg=elapsed_i_avg, est_rem=est_rem,
-                            ls=lines_written+1, le=lines_written+lines_i, n_lines=lines_i))
+                            ls=lines_written + 1, le=lines_written + lines_i, n_lines=lines_i))
         lines_written += lines_i
 
     if failed_hgncs:
