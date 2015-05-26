@@ -160,6 +160,13 @@ data/ucsc-%/log:
 ## 	fasta-to-seqinfo -o Ensembl $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
 
 
+## --- Generic rules ---
+#=> %seqinfo.gz -- 
+data/%/seqinfo.gz: data/%/fasta.gz
+	fasta-to-seqinfo -o $*  $< | gzip -cq >$@.tmp
+	mv -bfv $@.tmp $@
+
+
 ############################################################################
 ## Data Subsets
 
@@ -171,8 +178,13 @@ data/ucsc-%/log:
 ## instantiated once per gene set discovered in aux/gene-sets/ by the
 ## $(eval $(call ... )) section that follows.
 
+
+
 define subset_block
 $(notice subset-%/$(1))
+
+.PHONY: subset-ensembl-79/$(1)
+subset-ensembl-79/$(1): $$(foreach f,txinfo seqinfo exonset,data/ensembl-79/$(1)/$$f.gz);
 
 .PHONY: subset-%/$(1)
 subset-%/$(1): $$(foreach f,txinfo seqinfo geneinfo exonset,data/%/$(1)/$$f.gz);
@@ -224,7 +236,8 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 .PHONY: load-ncbi
 load-ncbi: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
 load-ncbi/refmismatch: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)
-
+load-ensembl-79: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
+load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
 
 #=> load-%-seqinfo -- 
 ${LOG_DIR}/%seqinfo.log: data/%seqinfo.gz

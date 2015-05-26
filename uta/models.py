@@ -47,7 +47,7 @@ class Origin(Base,UTABase):
     origin_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
     name = sa.Column(sa.Text, nullable=False, unique=True)
     descr = sa.Column(sa.Text)
-    updated = sa.Column(sa.DateTime, nullable=False, default=datetime.datetime.now(), onupdate=datetime.datetime.now() )
+    updated = sa.Column(sa.DateTime, default=datetime.datetime.now(), onupdate=datetime.datetime.now())
     url = sa.Column(sa.Text, nullable=True)
     url_ac_fmt = sa.Column(sa.Text, nullable=True)
 
@@ -62,6 +62,7 @@ class Seq(Base,UTABase):
     def _seq_hash(context):
         seq = context.current_parameters['seq']
         return None if seq is None else hashlib.md5(seq.upper()).hexdigest()
+
     def _seq_len(context):
         seq = context.current_parameters['seq']
         return None if seq is None else len(seq)

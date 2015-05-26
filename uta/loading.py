@@ -123,6 +123,12 @@ def initialize_schema(session, opts, cf):
             descr="UTA version 0",
             url = "http://bitbucket.org/biocommons/uta",
             ))
+    session.add(
+        usam.Origin(
+            name="ensembl-79",
+            descr="Ensembl 79",
+            url = "http://ensembl.org/",
+            ))
     
     session.commit()
     logger.info("initialized schema")
