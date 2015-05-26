@@ -329,13 +329,13 @@ def load_txinfo(session, opts, cf):
         session.add(u_tx)
 
         u_es = usam.ExonSet(
-            tx_ac=ti.ac,
+            transcript=u_tx,
             alt_ac=ti.ac,
             alt_strand=1,
             alt_aln_method=self_aln_method,
         )
         session.add(u_es)
-
+        
         exons = [map(int, ex.split(",")) for ex in ti.exons_se_i.split(";")]
         for i_ex, ex in enumerate(exons):
             s, e = ex
