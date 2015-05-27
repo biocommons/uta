@@ -1,4 +1,4 @@
-import os
+import sys
 
 from setuptools import setup, find_packages
 
@@ -58,7 +58,6 @@ setup(
         'colorlog',
         'docopt',
         'eutils',
-        'hgvs',                 # TODO: eliminate dependency on hgvs
         'multifastadb',
         'nose',
         'psycopg2',
