@@ -130,8 +130,8 @@ class Transcript(Base, UTABase):
     origin_id = sa.Column(
         sa.Integer, sa.ForeignKey('origin.origin_id'), nullable=False, index=True)
     hgnc = sa.Column(sa.Text)  # , sa.ForeignKey('gene.hgnc'))
-    cds_start_i = sa.Column(sa.Integer, nullable=False)
-    cds_end_i = sa.Column(sa.Integer, nullable=False)
+    cds_start_i = sa.Column(sa.Integer) #, nullable=False)
+    cds_end_i = sa.Column(sa.Integer) #, nullable=False)
     cds_md5 = sa.Column(sa.Text, nullable=False, index=True)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)

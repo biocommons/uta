@@ -323,9 +323,6 @@ def load_txinfo(session, opts, cf):
             usam.Origin.name == ti.origin).one()
         if ti.cds_se_i == "":
             cds_start_i = cds_end_i = None
-            logger.info(
-                "{ac} has NULL cds start and end; skipping".format(ac=ti.ac))
-            continue
         else:
             cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(","))
 
