@@ -71,22 +71,22 @@ def rebuild(*args):
 
 def run(argv=None):
     dispatch_table = [
-        ('align-exons',			ul.align_exons),
-        ('analyze',     	        ul.analyze),
-        ('create-schema',               ul.create_schema),
-        ('drop-schema',                 ul.drop_schema),
-        ('grant-permissions',           ul.grant_permissions),
-        ('initialize-schema',           ul.initialize_schema),
-        ('load-exonset',                ul.load_exonset),
-        ('load-geneinfo',               ul.load_geneinfo),
-        ('load-ncbi-seqgene',           ul.load_ncbi_seqgene),
-        ('load-seqinfo',                ul.load_seqinfo),
-        ('load-sequences',              ul.load_sequences),
-        ('load-sql', 	                ul.load_sql),
-        ('load-txinfo',                 ul.load_txinfo),
-        ('rebuild',                     rebuild),
-        ('refresh-matviews',            ul.refresh_matviews),
-        ('shell',                       shell),
+        ("align-exons",			ul.align_exons),
+        ("analyze",     	        ul.analyze),
+        ("create-schema",               ul.create_schema),
+        ("drop-schema",                 ul.drop_schema),
+        ("grant-permissions",           ul.grant_permissions),
+        ("initialize-schema",           ul.initialize_schema),
+        ("load-exonset",                ul.load_exonset),
+        ("load-geneinfo",               ul.load_geneinfo),
+        ("load-ncbi-seqgene",           ul.load_ncbi_seqgene),
+        ("load-seqinfo",                ul.load_seqinfo),
+        ("load-sequences",              ul.load_sequences),
+        ("load-sql", 	                ul.load_sql),
+        ("load-txinfo",                 ul.load_txinfo),
+        ("rebuild",                     rebuild),
+        ("refresh-matviews",            ul.refresh_matviews),
+        ("shell",                       shell),
     ]
 
     opts = docopt.docopt(__doc__, argv=argv, version=uta.__version__)
@@ -98,13 +98,13 @@ def run(argv=None):
     # https://github.com/docopt/docopt/issues/134
     cf = ConfigParser.SafeConfigParser()
     cf_loaded = dict()
-    for conf_fn in opts['--conf']:
+    for conf_fn in opts["--conf"]:
         if conf_fn not in cf_loaded:
             cf.readfp(open(conf_fn))
             cf_loaded[conf_fn] = True
-            logger.info('loaded ' + conf_fn)
+            logger.info("loaded " + conf_fn)
 
-    db_url = cf.get('uta', 'db_url')
+    db_url = cf.get("uta", "db_url")
     session = uta.connect(db_url)
 
     sub = None
@@ -113,7 +113,7 @@ def run(argv=None):
             sub = func
             break
     if sub is None:
-        raise UTAError('No valid actions specified')
+        raise UTAError("No valid actions specified")
     t0 = time.time()
     sub(session, opts, cf)
     logger.info("{cmd}: {elapsed:.1f}s elapsed".format(

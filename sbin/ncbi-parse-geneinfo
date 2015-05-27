@@ -15,28 +15,28 @@ from uta.formats.geneinfo import GeneInfo, GeneInfoWriter
 from uta.formats.ncbitsv import NCBITSVReader
 
 
-def opener(fs, mode='r'):
+def opener(fs, mode="r"):
     import gzip
     import sys
-    if fs.endswith('.gz'):
+    if fs.endswith(".gz"):
         return gzip.open(fs, mode)
-    if fs == '-':
-        return sys.stdout if 'w' in mode else sys.stdin
+    if fs == "-":
+        return sys.stdout if "w" in mode else sys.stdin
     return open(fs, mode)
 
 if __name__ == "__main__":
 
-    gi_in = NCBITSVReader(opener(sys.argv[1], 'r'))
+    gi_in = NCBITSVReader(opener(sys.argv[1], "r"))
     giw = GeneInfoWriter(sys.stdout)
 
     for rec in gi_in:
-        if rec['symbol_from_nomenclature_authority'] == '-':
+        if rec["symbol_from_nomenclature_authority"] == "-":
             continue
-        gi = GeneInfo(hgnc=rec['symbol_from_nomenclature_authority'],
-                      maploc=rec['map_location'],
-                      aliases=rec['synonyms'].split('|'),
-                      type=rec['type_of_gene'],
-                      summary=rec['full_name_from_nomenclature_authority'],
-                      descr=rec['description'],
+        gi = GeneInfo(hgnc=rec["symbol_from_nomenclature_authority"],
+                      maploc=rec["map_location"],
+                      aliases=rec["synonyms"].split("|"),
+                      type=rec["type_of_gene"],
+                      summary=rec["full_name_from_nomenclature_authority"],
+                      descr=rec["description"],
                       )
         giw.write(gi)

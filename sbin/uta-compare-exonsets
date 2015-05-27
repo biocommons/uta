@@ -12,7 +12,7 @@ from uta.formats.txinfo import TxInfo, TxInfoReader
 def read_exonsets(fn):
     """return multimap of ac: [exonset records] read from given file"""
     exonsets = [es for es in ExonSetReader(gzip.open(fn))
-                if es.tx_ac.startswith('NM') and es.alt_ac.startswith('NC_0000')]
+                if es.tx_ac.startswith("NM") and es.alt_ac.startswith("NC_0000")]
     exonsets.sort(key=lambda es: es.tx_ac)
     return {tx_ac: list(esi)
             for tx_ac, esi in itertools.groupby(exonsets, key=lambda es: es.tx_ac)}
@@ -21,22 +21,22 @@ def read_exonsets(fn):
 def es_eq(es1, es2):
     failures = []
     if es1.tx_ac != es2.tx_ac:
-        failures += ['tx_ac']
+        failures += ["tx_ac"]
     if es1.alt_ac != es2.alt_ac:
-        failures += ['alt_ac']
+        failures += ["alt_ac"]
     if es1.strand != es2.strand:
-        failures += ['str']
+        failures += ["str"]
     if len(es1.exons_se_i) != len(es2.exons_se_i):
-        failures += ['nex']
+        failures += ["nex"]
     if es1.exons_se_i != es2.exons_se_i:
-        failures += ['exse']
-    return ';'.join(failures)
+        failures += ["exse"]
+    return ";".join(failures)
 
 
 def is_xy(es):
-    return es.alt_ac.split('.')[0] in ('NC_000023', 'NC_000024')
+    return es.alt_ac.split(".")[0] in ("NC_000023", "NC_000024")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     es1 = read_exonsets(sys.argv[1])
     es2 = read_exonsets(sys.argv[2])
 

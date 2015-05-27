@@ -23,48 +23,48 @@ def parse_args(argv):
     ap = argparse.ArgumentParser(
         description=__doc__,
     )
-    ap.add_argument('FILES',
-                    nargs='+')
-    ap.add_argument('--max-seq-len', '-s',
+    ap.add_argument("FILES",
+                    nargs="+")
+    ap.add_argument("--max-seq-len", "-s",
                     type=int)
-    ap.add_argument('--origin', '-o',
+    ap.add_argument("--origin", "-o",
                     required=True)
-    ap.add_argument('--conf',
+    ap.add_argument("--conf",
                     default=[
-                        pkg_resources.resource_filename('uta', '../etc/global.conf')]
+                        pkg_resources.resource_filename("uta", "../etc/global.conf")]
                     )
 
     opts = ap.parse_args(argv)
     return opts
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging_conf_fn = pkg_resources.resource_filename(
-        'uta', 'etc/logging.conf')
+        "uta", "etc/logging.conf")
     logging.config.fileConfig(logging_conf_fn)
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    ac_re = re.compile('[NX][CGMPR]_')
+    ac_re = re.compile("[NX][CGMPR]_")
 
     opts = parse_args(sys.argv[1:])
 
     cf = ConfigParser.SafeConfigParser()
     for conf_fn in opts.conf:
         cf.readfp(open(conf_fn))
-        logger.info('loaded ' + conf_fn)
+        logger.info("loaded " + conf_fn)
 
     in_fn = opts.FILES[0]
-    in_fh = gzip.open(in_fn) if in_fn.endswith('.gz') else open(in_fn)
+    in_fh = gzip.open(in_fn) if in_fn.endswith(".gz") else open(in_fn)
     esr = ExonSetReader(in_fh)
-    logger.info('opened ' + in_fn)
+    logger.info("opened " + in_fn)
 
-    dirs = [cf.get('sequences', 'fasta_directory')]
+    dirs = [cf.get("sequences", "fasta_directory")]
     mfdb = MultiFastaDB(dirs, use_meta_index=True)
     logging.info("Opened {n} fasta sequence dirs".format(n=len(dirs)))
 
     siw = SeqInfoWriter(sys.stdout)
-    logger.info('Writing seqinfo to stdout')
+    logger.info("Writing seqinfo to stdout")
 
     # this is just a fancy way to make a set of all tx_ac and alt_ac accessions
     acs = sorted(

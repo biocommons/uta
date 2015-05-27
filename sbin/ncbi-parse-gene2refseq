@@ -17,17 +17,17 @@ from uta.formats.geneaccessions import GeneAccessions, GeneAccessionsWriter
 from uta.formats.ncbitsv import NCBITSVReader
 
 
-def opener(fs, mode='r'):
+def opener(fs, mode="r"):
     import gzip
     import sys
-    if fs.endswith('.gz'):
+    if fs.endswith(".gz"):
         return gzip.open(fs, mode)
-    if fs == '-':
-        return sys.stdout if 'w' in mode else sys.stdin
+    if fs == "-":
+        return sys.stdout if "w" in mode else sys.stdin
     return io.open(fs, mode)
 
 if __name__ == "__main__":
-    ga_in = NCBITSVReader(opener(sys.argv[1], 'r'))
+    ga_in = NCBITSVReader(opener(sys.argv[1], "r"))
     gaw = GeneAccessionsWriter(sys.stdout)
 
     for rec in ga_in:
@@ -37,9 +37,9 @@ if __name__ == "__main__":
         if rec["rna_nucleotide_accession.version"] == "-" and rec["protein_accession.version"] == "-":
             continue
 
-        ga = GeneAccessions(hgnc=rec['symbol'],
-                            tx_ac=rec['rna_nucleotide_accession.version'],
-                            pro_ac=rec['protein_accession.version'],
-                            origin='NCBI',
+        ga = GeneAccessions(hgnc=rec["symbol"],
+                            tx_ac=rec["rna_nucleotide_accession.version"],
+                            pro_ac=rec["protein_accession.version"],
+                            origin="NCBI",
                             )
         gaw.write(ga)

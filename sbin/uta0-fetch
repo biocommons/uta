@@ -23,18 +23,18 @@ def parse_args(argv):
         description=__doc__
     )
     ap.add_argument(
-        '--out-dir', '-d',
+        "--out-dir", "-d",
         required=True)
     opts = ap.parse_args(argv)
     return opts
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     opts = parse_args(sys.argv[1:])
 
-    es_fn = os.path.join(opts.out_dir, 'uta0.exonset.gz')
-    ti_fn = os.path.join(opts.out_dir, 'uta0.txinfo.gz')
-    fa_fn = os.path.join(opts.out_dir, 'uta0.fasta.gz')
+    es_fn = os.path.join(opts.out_dir, "uta0.exonset.gz")
+    ti_fn = os.path.join(opts.out_dir, "uta0.txinfo.gz")
+    fa_fn = os.path.join(opts.out_dir, "uta0.fasta.gz")
 
     conn = psycopg2.connect(dsn)
     sel_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -44,40 +44,40 @@ if __name__ == '__main__':
     SELECT T.ac,chr,G.strand,GEv.exons_se_i
     FROM uta0.transcript T
     JOIN uta0.gene G on T.gene=G.gene
-    JOIN (SELECT ac,ARRAY_TO_STRING(ARRAY_AGG(FORMAT('%s,%s',GE.start_i,GE.end_i) ORDER BY GE.ord), ';') AS exons_se_i
+    JOIN (SELECT ac,ARRAY_TO_STRING(ARRAY_AGG(FORMAT("%s,%s",GE.start_i,GE.end_i) ORDER BY GE.ord), ";") AS exons_se_i
           FROM uta0.genomic_exon GE GROUP BY GE.ac) GEv ON T.ac=GEv.ac;
     """
-    esw = ExonSetWriter(gzip.open(es_fn + '.tmp', 'w'))
+    esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "w"))
     sel_cur.execute(sel_sql)
     for row in sel_cur.fetchall():
-        es = ExonSet(tx_ac=row['ac'],
-                     alt_ac=chr_to_NC[row['chr']],
-                     method='splign',
-                     strand=row['strand'],
-                     exons_se_i=row['exons_se_i'])
+        es = ExonSet(tx_ac=row["ac"],
+                     alt_ac=chr_to_NC[row["chr"]],
+                     method="splign",
+                     strand=row["strand"],
+                     exons_se_i=row["exons_se_i"])
         esw.write(es)
 
     # Transcripts
     sel_sql = """
-    SELECT 'NCBI RefSeq' as origin,T.ac,T.gene,format('%s,%s',T.cds_start_i,T.cds_end_i) as cds_se_i,TEv.exons_se_i,T.seq
+    SELECT "NCBI RefSeq" as origin,T.ac,T.gene,format("%s,%s",T.cds_start_i,T.cds_end_i) as cds_se_i,TEv.exons_se_i,T.seq
          FROM uta0.transcript T
-         join (select ac,array_to_string(array_agg(format('%s,%s',TE.start_i,TE.end_i) ORDER BY TE.ord), ';') AS exons_se_i from uta0.transcript_exon TE group by TE.ac) TEv on T.ac=TEv.ac;
+         join (select ac,array_to_string(array_agg(format("%s,%s",TE.start_i,TE.end_i) ORDER BY TE.ord), ";") AS exons_se_i from uta0.transcript_exon TE group by TE.ac) TEv on T.ac=TEv.ac;
         """
-    tiw = TxInfoWriter(gzip.open(ti_fn + '.tmp', 'w'))
-    faw = gzip.open(fa_fn + '.tmp', 'w')
+    tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "w"))
+    faw = gzip.open(fa_fn + ".tmp", "w")
     sel_cur.execute(sel_sql)
     for row in sel_cur.fetchall():
-        ti = TxInfo(origin=row['origin'],
-                    ac=row['ac'],
-                    hgnc=row['gene'],
-                    cds_se_i=row['cds_se_i'],
-                    exons_se_i=row['exons_se_i'],)
+        ti = TxInfo(origin=row["origin"],
+                    ac=row["ac"],
+                    hgnc=row["gene"],
+                    cds_se_i=row["cds_se_i"],
+                    exons_se_i=row["exons_se_i"],)
         tiw.write(ti)
-        faw.write(">" + row['ac'] + "\n" + row['seq'] + "\n")
+        faw.write(">" + row["ac"] + "\n" + row["seq"] + "\n")
 
-    os.rename(es_fn + '.tmp', es_fn)
-    os.rename(ti_fn + '.tmp', ti_fn)
-    os.rename(fa_fn + '.tmp', fa_fn)
+    os.rename(es_fn + ".tmp", es_fn)
+    os.rename(ti_fn + ".tmp", ti_fn)
+    os.rename(fa_fn + ".tmp", fa_fn)
 
 
 # <LICENSE>

@@ -601,11 +601,11 @@ def grant_permissions(session, opts, cf):
 
     cmds = [
         # alter db doesn't belong here, and probably better to avoid the implicit behevior this encourages
-        # 'alter database {db} set search_path = {schema}'.format(db=cf.get('uta', 'database'),schema=schema),
+        # "alter database {db} set search_path = {schema}".format(db=cf.get("uta", "database"),schema=schema),
         "grant usage on schema " + schema + " to PUBLIC",
     ]
 
-    sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(
+    sql = 'select concat(schemaname,".",tablename) as fqrn from pg_tables where schemaname="{schema}"'.format(
         schema=schema)
     rows = list(session.execute(sql))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
@@ -613,7 +613,7 @@ def grant_permissions(session, opts, cf):
     cmds += ["alter table {fqrn} owner to uta_admin".format(
         fqrn=row["fqrn"]) for row in rows]
 
-    sql = "select concat(schemaname,'.',viewname) as fqrn from pg_views where schemaname='{schema}'".format(
+    sql = 'select concat(schemaname,".",viewname) as fqrn from pg_views where schemaname="{schema}"'.format(
         schema=schema)
     rows = list(session.execute(sql))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
@@ -621,7 +621,7 @@ def grant_permissions(session, opts, cf):
     cmds += ["alter view {fqrn} owner to uta_admin".format(
         fqrn=row["fqrn"]) for row in rows]
 
-    sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
+    sql = 'select concat(schemaname,".",matviewname) as fqrn from pg_matviews where schemaname="{schema}"'.format(
         schema=schema)
     rows = list(session.execute(sql))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
@@ -647,10 +647,10 @@ def refresh_matviews(session, opts, cf):
     # the right way to update, which doesn't exist yet.
 
     # TODO: Determine mv refresh order programmatically.
-    # sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
+    # sql = "select concat(schemaname,".",matviewname) as fqrn from pg_matviews where schemaname="{schema}"".format(
     #     schema=schema)
     # rows = list(session.execute(sql))
-    # cmds = [ "refresh materialized view {fqrn}".format(fqrn=row['fqrn']) for row in rows ]
+    # cmds = [ "refresh materialized view {fqrn}".format(fqrn=row["fqrn"]) for row in rows ]
 
     cmds = [
         # N.B. Order matters!

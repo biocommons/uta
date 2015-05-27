@@ -4,7 +4,7 @@ import logging
 import logging.config
 import pkg_resources
 
-logging_conf_fn = pkg_resources.resource_filename('uta', 'etc/logging.conf')
+logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
 logging.config.fileConfig(logging_conf_fn)
 
 import uta.cli

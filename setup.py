@@ -2,30 +2,30 @@ import sys
 
 from setuptools import setup, find_packages
 
-with open('doc/description.txt') as f:
+with open("doc/description.txt") as f:
     long_description = f.read()
 
 
 def version_handler(mgr, options):
     version = mgr.get_current_version()
-    if version.endswith('dev'):
-        version += '-' + \
+    if version.endswith("dev"):
+        version += "-" + \
             mgr._invoke(
-                'log', '-l1', '-r.', '--template', '{node|short}').strip()
+                "log", "-l1", "-r.", "--template", "{node|short}").strip()
     return version
 
 setup(
-    license='Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
+    license="Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
     long_description=long_description,
-    use_vcs_version={'version_handler': version_handler},
+    use_vcs_version={"version_handler": version_handler},
     zip_safe=True,
 
-    author='UTA Contributors',
-    author_email='reecehart+uta@gmail.com',
-    description='Universal Transcript Archive',
+    author="UTA Contributors",
+    author_email="reecehart+uta@gmail.com",
+    description="Universal Transcript Archive",
     name="uta",
     packages=find_packages(),
-    url='https://bitbucket.org/biocommons/uta',
+    url="https://bitbucket.org/biocommons/uta",
 
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -42,42 +42,42 @@ setup(
     ],
 
     keywords=[
-        'bioinformatics',
-        'computational biology',
-        'genome variants',
-        'genome variation',
-        'genomic variants',
-        'genomic variation',
-        'genomics',
-        'hgvs',
+        "bioinformatics",
+        "computational biology",
+        "genome variants",
+        "genome variation",
+        "genomic variants",
+        "genomic variation",
+        "genomics",
+        "hgvs",
     ],
 
     install_requires=[
-        'biopython',
-        'bioutils',
-        'colorlog',
-        'docopt',
-        'eutils',
-        'multifastadb',
-        'nose',
-        'psycopg2',
-        'MySQL-python',
-        'pytz',
-        'recordtype',
-        'sqlalchemy',
-        'uta-align',
+        "biopython",
+        "bioutils",
+        "colorlog",
+        "docopt",
+        "eutils",
+        "multifastadb",
+        "nose",
+        "psycopg2",
+        "MySQL-python",
+        "pytz",
+        "recordtype",
+        "sqlalchemy",
+        "uta-align",
     ],
 
     setup_requires=[
-        'hgtools',
-        'nose',
-        #'sphinx',
-        #'sphinxcontrib-fulltoc',
+        "hgtools",
+        "nose",
+        #"sphinx",
+        #"sphinxcontrib-fulltoc",
     ],
 
     tests_require=[
-        'coverage',
-        'testing.postgresql',
+        "coverage",
+        "testing.postgresql",
     ],
 )
 

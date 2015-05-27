@@ -18,8 +18,8 @@ except pkg_resources.DistributionNotFound as e:
     __version__ = None
 
 
-public_db_url = 'postgresql://uta_public:uta_public@uta.invitae.com/uta'
-default_db_url = os.environ.get('UTA_DB_URL', public_db_url)
+public_db_url = "postgresql://uta_public:uta_public@uta.invitae.com/uta"
+default_db_url = os.environ.get("UTA_DB_URL", public_db_url)
 
 
 def connect(db_url=default_db_url):
@@ -55,7 +55,7 @@ def connect(db_url=default_db_url):
     session = Session()
 
     logger = logging.getLogger(__name__)
-    logger.info('connected to ' + db_url)
+    logger.info("connected to " + db_url)
 
     return session
 

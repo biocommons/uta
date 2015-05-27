@@ -11,7 +11,7 @@ import MySQLdb
 from uta.formats.exonset import ExonSet, ExonSetWriter
 from bioutils.accessions import chr_to_NC, strip_chr
 
-ucsc_align_method = 'blat'
+ucsc_align_method = "blat"
 
 
 def parse_args(argv):
@@ -19,51 +19,51 @@ def parse_args(argv):
         description=__doc__
     )
     ap.add_argument(
-        '--prefix', '-p',
+        "--prefix", "-p",
         required=True)
     ap.add_argument(
-        '--database', '-D',
+        "--database", "-D",
         required=True)
     opts = ap.parse_args(argv)
     return opts
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     opts = parse_args(sys.argv[1:])
 
-    es_fn = opts.prefix + 'exonset.gz'
-    esw = ExonSetWriter(gzip.open(es_fn + '.tmp', 'w'))
+    es_fn = opts.prefix + "exonset.gz"
+    esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "w"))
 
-    conn = MySQLdb.connect(host='genome-mysql.cse.ucsc.edu',
-                           user='genome',
+    conn = MySQLdb.connect(host="genome-mysql.cse.ucsc.edu",
+                           user="genome",
                            db=opts.database)
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("""
-SELECT geneName,concat(acc,'.',version) as ac,chrom,strand,txStart,txEnd,
+SELECT geneName,concat(acc,".",version) as ac,chrom,strand,txStart,txEnd,
 	cdsStart,cdsEnd,exonCount,exonStarts,exonEnds
 FROM refFlat RF
 JOIN gbSeq GB on RF.name=GB.acc
-WHERE name like 'NM_%' and chrom not like '%\_%'
+WHERE name like "NM_%" and chrom not like "%\_%"
 """
                    )
-    # and name in ('NM_144670','NM_017436')
+    # and name in ("NM_144670","NM_017436")
 
     for row in cursor.fetchall():
         exons_se_i = sorted(zip(
-            map(int, row['exonStarts'].rstrip(',').split(',')),
-            map(int, row['exonEnds'].rstrip(',').split(','))),
-            reverse=row['strand'] == '-')
+            map(int, row["exonStarts"].rstrip(",").split(",")),
+            map(int, row["exonEnds"].rstrip(",").split(","))),
+            reverse=row["strand"] == "-")
         es = ExonSet(
-            tx_ac=row['ac'],
-            alt_ac=chr_to_NC[strip_chr(row['chrom'])],
+            tx_ac=row["ac"],
+            alt_ac=chr_to_NC[strip_chr(row["chrom"])],
             method=ucsc_align_method,
-            strand=-1 if row['strand'] == '-' else 1,
+            strand=-1 if row["strand"] == "-" else 1,
             exons_se_i=";".join(
                 str(se[0]) + "," + str(se[1]) for se in exons_se_i)
         )
         esw.write(es)
 
-    os.rename(es_fn + '.tmp', es_fn)
+    os.rename(es_fn + ".tmp", es_fn)
 
 
 # <LICENSE>

@@ -30,7 +30,7 @@ class NCBITSVReader(object):
         if squash_case:
             hdr = hdr.lower()
         fieldnames = hdr.split()
-        self._dr = csv.DictReader(f=fd, fieldnames=fieldnames, delimiter=b'\t')
+        self._dr = csv.DictReader(f=fd, fieldnames=fieldnames, delimiter=b"\t")
 
     def __iter__(self):
         return self

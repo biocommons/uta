@@ -54,17 +54,17 @@ from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.geneinfo import GeneInfo, GeneInfoWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter
 
-transcript_origin = 'NCBI RefSeq'
+transcript_origin = "NCBI RefSeq"
 
 
 def parse_args(argv):
     ap = argparse.ArgumentParser(
         description=__doc__,
     )
-    ap.add_argument('GENES',
-                    nargs='*')
-    ap.add_argument('--prefix', '-p',
-                    default='ncbi')
+    ap.add_argument("GENES",
+                    nargs="*")
+    ap.add_argument("--prefix", "-p",
+                    default="ncbi")
     opts = ap.parse_args(argv)
     return opts
 
@@ -74,7 +74,7 @@ def write_exonsets_for_gene(e_gene, esw, hgnc):
     tx_processed = set()
     for e_ref in e_gene.references:
         for e_prd in e_ref.products:
-            if not e_prd.acv.startswith('NM_'):
+            if not e_prd.acv.startswith("NM_"):
                 logger.info("skipping non-NM transcript {e_prd.acv} for {e_gene.hgnc} on {e_ref.acv}".format(
                     e_gene=e_gene, e_ref=e_ref, e_prd=e_prd))
                 continue
@@ -90,7 +90,7 @@ def write_exonsets_for_gene(e_gene, esw, hgnc):
 
             es = ExonSet(tx_ac=e_prd.acv,
                          alt_ac=e_ref.acv,
-                         method='splign',
+                         method="splign",
                          strand=e_prd.genomic_coords.strand,
                          exons_se_i=";".join(
                              [",".join([str(c) for c in ex]) for ex in e_prd.genomic_coords.intervals])
@@ -102,9 +102,9 @@ def write_exonsets_for_gene(e_gene, esw, hgnc):
     return tx_processed
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging_conf_fn = pkg_resources.resource_filename(
-        'uta', 'etc/logging.conf')
+        "uta", "etc/logging.conf")
     logging.config.fileConfig(logging_conf_fn)
     logging.getLogger().setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
@@ -112,22 +112,22 @@ if __name__ == '__main__':
     ec = eutils.clientx.ClientX()
     opts = parse_args(sys.argv[1:])
 
-    es_fn = opts.prefix + '.exonset.gz'
-    fa_fn = opts.prefix + '.fasta.gz'
-    gi_fn = opts.prefix + '.geneinfo.gz'
-    ti_fn = opts.prefix + '.txinfo.gz'
+    es_fn = opts.prefix + ".exonset.gz"
+    fa_fn = opts.prefix + ".fasta.gz"
+    gi_fn = opts.prefix + ".geneinfo.gz"
+    ti_fn = opts.prefix + ".txinfo.gz"
 
     if len(opts.GENES) == 0:
-        logging.info('reading genes from stdin')
+        logging.info("reading genes from stdin")
         hgncs = [e.strip() for e in sys.stdin.readlines()]
     else:
-        logging.info('reading genes from stdin')
+        logging.info("reading genes from stdin")
         hgncs = opts.GENES
 
     tx_set = set()
     n = len(hgncs)
-    giw = GeneInfoWriter(gzip.open(gi_fn + '.tmp', 'w'))
-    esw = ExonSetWriter(gzip.open(es_fn + '.tmp', 'w'))
+    giw = GeneInfoWriter(gzip.open(gi_fn + ".tmp", "w"))
+    esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "w"))
     for i, hgnc in enumerate(hgncs):
         if i % 25 == 0 or i + 1 == len(hgncs):
             logger.info("\n{i}/{n} ({p:.1f}%): {hgnc}...".format(
@@ -141,13 +141,13 @@ if __name__ == '__main__':
 
         gi = GeneInfo(hgnc=hgnc,
                       maploc=e_gene.maploc,
-                      aliases=','.join(e_gene.synonyms),
+                      aliases=",".join(e_gene.synonyms),
                       type=e_gene.type,
                       summary=e_gene.summary,
                       descr=e_gene.description)
         giw.write(gi)
 
-        if e_gene.type != 'protein-coding':
+        if e_gene.type != "protein-coding":
             logger.info(
                 "Skipping {e_gene.hgnc} (not protein coding)".format(e_gene=e_gene))
             continue
@@ -159,8 +159,8 @@ if __name__ == '__main__':
             logger.exception(e)
             pass
 
-    faw = gzip.open(fa_fn + '.tmp', 'w')
-    tiw = TxInfoWriter(gzip.open(ti_fn + '.tmp', 'w'))
+    faw = gzip.open(fa_fn + ".tmp", "w")
+    tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "w"))
     n = len(tx_set)
     for i, ac in enumerate(tx_set):
         logger.info("=" * 70 + "\n{i}/{n} ({p:.1f}%): {ac}...".format(
@@ -181,4 +181,4 @@ if __name__ == '__main__':
             pass
 
     for fn in [gi_fn, ti_fn, es_fn, fa_fn]:
-        os.rename(fn + '.tmp', fn)
+        os.rename(fn + ".tmp", fn)
