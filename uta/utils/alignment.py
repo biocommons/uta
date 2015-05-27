@@ -14,8 +14,8 @@ def align2(seqa, seqb, gapopen=10, gapextend=0.5):
     This function currently uses EMBOSS' needle command, which ideally
     would be replaced by a forkless version in Python.
 
-    >>> seq1 = 'acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat'
-    >>> seq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat'
+    >>> seq1 = "acacagccattaatcttgtagcttcatattaactggtttgctttcatgacgctgctgaggaat"
+    >>> seq2 = "acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgacaggaat"
 
     # TODO: Work out conditional test based on whether emboss is available
     # >>> a1,a2 = align2(seq1,seq2)
@@ -27,11 +27,11 @@ def align2(seqa, seqb, gapopen=10, gapextend=0.5):
     """
     if seqa == seqb:
         return seqa, seqb
-    cline = bea.NeedleCommandline(asequence='asis:' + seqa, bsequence='asis:' + seqb,
+    cline = bea.NeedleCommandline(asequence="asis:" + seqa, bsequence="asis:" + seqb,
                                   gapopen=gapopen, gapextend=gapextend,
                                   auto=True, filter=True, stdout=True)
     o, e = cline()
-    aln = Bio.AlignIO.read(cStringIO.StringIO(o), 'emboss')
+    aln = Bio.AlignIO.read(cStringIO.StringIO(o), "emboss")
     return aln[0].seq.tostring(), aln[1].seq.tostring()
 
 
@@ -43,8 +43,8 @@ def alignment_match_string(aseq1, aseq2):
     match/mismatch under some substitution matrix.  See
     http://goo.gl/fek4t for a short summary.
 
-    >>> aseq1 = 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
-    >>> aseq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+    >>> aseq1 = "acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat"
+    >>> aseq2 = "acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat"
     >>> alignment_match_string( aseq1,aseq2 )
     'MMMXMXMMMMMMMMMMMMMMMMMMMMMIIIIMMMMMMMMMMMMMMMMMMMMMMMDDDDDDDMMMMMM'
 
@@ -53,24 +53,24 @@ def alignment_match_string(aseq1, aseq2):
 
     def _cigar_char(c1, c2):
         if c1 == c2:
-            return 'M'
-        if c1 == '-':
-            return 'I'
-        if c2 == '-':
-            return 'D'
+            return "M"
+        if c1 == "-":
+            return "I"
+        if c2 == "-":
+            return "D"
         if c1 != c2:
-            return 'X'
-        raise Exception('In the words of David Byrne, how did I get here?')
+            return "X"
+        raise Exception("In the words of David Byrne, how did I get here?")
     match_string = [_cigar_char(c1, c2) for c1, c2 in zip(aseq1, aseq2)]
-    return ''.join(match_string)
+    return "".join(match_string)
 
 
 def alignment_cigar_list(aseq1, aseq2):
     """Return a list of cigar operations for the aligned sequences aseq1
     and aseq2.  Each tuple is (pos, operation, count).
 
-    >>> aseq1 = 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
-    >>> aseq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+    >>> aseq1 = "acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat"
+    >>> aseq2 = "acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat"
     >>> for a in alignment_cigar_list( aseq1,aseq2 ):
     ...   print a
     (0, 'M', 3)
@@ -100,26 +100,26 @@ def alignment_cigar_string(aseq1, aseq2):
     """return a CIGAR string for aligned sequences aseq1 and aseq2,
     which must be of equal length.
 
-    >>> aseq1 = 'acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat'
-    >>> aseq2 = 'acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat'
+    >>> aseq1 = "acacagccattaatcttgtagcttcat----attaactggtttgctttcatgacgctgctgaggaat"
+    >>> aseq2 = "acagacccattaatcttgtagcttcatcaacattaactggtttgctttcatgac-------aggaat"
     >>> alignment_cigar_string( aseq1,aseq2 )
     '3M1X1M1X21M4I23M7D6M'
 
     """
-    return ''.join([str(l) + c
+    return "".join([str(l) + c
                     for _, c, l in alignment_cigar_list(aseq1, aseq2)])
 
 
 def explode_cigar(cigar):
     """return a vector of column matches for a given cigar string
 
-    >>> explode_cigar('5M2I4X1D')
+    >>> explode_cigar("5M2I4X1D")
     'MMMMMIIXXXXD'
 
     """
     import re
-    u = re.compile('(?P<n>\d+)(?P<op>[MXID])')
-    return ''.join([md['op'] * int(md['n'])
+    u = re.compile("(?P<n>\d+)(?P<op>[MXID])")
+    return "".join([md["op"] * int(md["n"])
                     for md in [m.groupdict() for m in u.finditer(cigar)]])
 
 

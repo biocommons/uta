@@ -24,13 +24,13 @@ import os
 import sys
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.WARN)
     logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        'conf_files', nargs='+', help="Configuration files to read in")
+        "conf_files", nargs="+", help="Configuration files to read in")
     args = parser.parse_args()
 
     cp = ConfigParser.SafeConfigParser()
@@ -44,9 +44,9 @@ if __name__ == '__main__':
                 logger.warn(
                     "option {s}:{o} contains newline; skipping".format(s=s, o=o))
                 continue
-            print('{s}_{k}={v}'.format(
-                s=s.replace('-', '_'),
-                k=o.replace('-', '_'),
+            print("{s}_{k}={v}".format(
+                s=s.replace("-", "_"),
+                k=o.replace("-", "_"),
                 v=v))
 
 # <LICENSE>

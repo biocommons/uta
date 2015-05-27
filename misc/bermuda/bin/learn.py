@@ -26,9 +26,9 @@ x	x	F	f	f	f	f	f	f
 
 
 def bool_str_to_float(s):
-    if s == 't':
+    if s == "t":
         return 1
-    if s == 'f':
+    if s == "f":
         return -1
     raise RuntimeError()
 
@@ -55,15 +55,15 @@ for row in data.splitlines():
 
 a_clf = tree.DecisionTreeClassifier()
 a_clf.fit(fv, av)
-write_pdf(a_clf, '/tmp/a.pdf')
+write_pdf(a_clf, "/tmp/a.pdf")
 
 c_clf = tree.DecisionTreeClassifier()
 c_clf.fit(fv, cv)
-write_pdf(c_clf, '/tmp/c.pdf')
+write_pdf(c_clf, "/tmp/c.pdf")
 
 w_clf = tree.DecisionTreeClassifier()
 w_clf.fit(fv, wv)
-write_pdf(w_clf, '/tmp/w.pdf')
+write_pdf(w_clf, "/tmp/w.pdf")
 
 import IPython
 IPython.embed()

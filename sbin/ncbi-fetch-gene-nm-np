@@ -17,7 +17,7 @@ from eutils.xmlfacades.entrezgeneset import EntrezgeneSet
 
 from uta.formats.geneinfo import GeneInfo, GeneInfoWriter
 
-eutils_base_url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils'
+eutils_base_url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 retmax_request = 250
 
 
@@ -25,19 +25,19 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    giw = GeneInfoWriter(sys.stdout, 'w'))
+    giw = GeneInfoWriter(sys.stdout, "w"))
 
-    tsv_out=csv.writer(sys.stdout, delimiter = '\t')
-    tsv_out.writerow(['hgnc', 'maploc', 'ref_acv', 'tx_acv', 'pro_acv'])
+    tsv_out=csv.writer(sys.stdout, delimiter = "\t")
+    tsv_out.writerow(["hgnc", "maploc", "ref_acv", "tx_acv", "pro_acv"])
 
     # search for all human genes, saving history at NCBI
     esearch_url=eutils_base_url +
         "/esearch.fcgi?db=gene&usehistory=y&retmax=0&term=human[orgn] AND alive[property]"
     r1=requests.get(esearch_url)
     r1_x=le.XML(r1.content)
-    webenv_key=r1_x.find('WebEnv').text
-    query_key=r1_x.find('QueryKey').text
-    count=int(r1_x.find('Count').text)
+    webenv_key=r1_x.find("WebEnv").text
+    query_key=r1_x.find("QueryKey").text
+    count=int(r1_x.find("Count").text)
     logger.info("esearch results: Count={}, WebEnv={}, query_key={}".format(
         count, webenv_key, query_key))
 
@@ -65,7 +65,7 @@ if __name__ == "__main__":
             egl=eg.locus
             if egl is None:
                 continue
-            for ref in [r for r in egl.references if r.type == 'genomic']:
+            for ref in [r for r in egl.references if r.type == "genomic"]:
                 for tx in ref.products:
                     for pro in tx.products:
                         try:

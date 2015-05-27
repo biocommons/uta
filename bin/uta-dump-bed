@@ -42,17 +42,17 @@ def find_exon(starts, c):
     return
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     opts = parse_args(sys.argv[1:])
 
-    conn = psycopg2.connect(dbname='uta', host='localhost')
+    conn = psycopg2.connect(dbname="uta", host="localhost")
     cur = conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
 
     query = """
 	SELECT ESS.*,T.cds_start_i,T.cds_end_i
 	FROM {opts.schema}.tx_exon_set_summary_mv ESS
 	JOIN {opts.schema}.transcript T ON ESS.tx_ac=T.ac
-	WHERE tx_ac ~ '^NM_' AND alt_ac ~ '^NC_0000' AND alt_aln_method = %s
+	WHERE tx_ac ~ "^NM_" AND alt_ac ~ "^NC_0000" AND alt_aln_method = %s
 	"""
 
     cur.execute(query.format(opts=opts), [opts.method])
@@ -75,19 +75,19 @@ if __name__ == '__main__':
         thick_start = chrom_start
         thick_end = chrom_end
 
-        print('\t'.join([
-            prepend_chr(NC_to_chr[row.alt_ac]),	 # chrom 'chr..'
+        print("\t".join([
+            prepend_chr(NC_to_chr[row.alt_ac]),	 # chrom "chr.."
             str(chrom_start),
             str(chrom_end),
             row.tx_ac,									 # name
-            '0',										 # score
-            '+' if row.alt_strand == 1 else '-',		 # strand
+            "0",										 # score
+            "+" if row.alt_strand == 1 else "-",		 # strand
             str(thick_start),							 # thickStart
             str(thick_end),								 # thickEnd
-            '0',										 # itemRgb
+            "0",										 # itemRgb
             str(len(block_starts)),						 # blockCount
-            ','.join(map(str, block_sizes)) + ',',			 #
-            ','.join(map(str, block_starts)) + ',',		 #
+            ",".join(map(str, block_sizes)) + ",",			 #
+            ",".join(map(str, block_starts)) + ",",		 #
         ]))
 
 # chr10	52559168	52645435	NM_001198820.1	1	-	0	0	0	14	7472,149,137,182,274,98,165,239,131,135,143,144,48,95	52559168,52569653,52570799,52573616,52575765,52580311,52587890,52595833,52601621,52603747,52610424,52619601,52623792,52645340

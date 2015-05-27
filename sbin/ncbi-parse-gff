@@ -44,21 +44,21 @@ from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter, TxInfoReader
 from uta.formats.geneaccessions import GeneAccessionsReader
 
-transcript_origin = 'NCBI RefSeq'
+transcript_origin = "NCBI RefSeq"
 
 
 def parse_args(argv):
     ap = argparse.ArgumentParser(
         description=__doc__,
     )
-    ap.add_argument('in_fn')
-    ap.add_argument('--origin', '-o',
+    ap.add_argument("in_fn")
+    ap.add_argument("--origin", "-o",
                     default="NCBI")
-    ap.add_argument('--prefix', '-p',
-                    default='ncbi-gff')
-    ap.add_argument('--geneacs', '-G',
+    ap.add_argument("--prefix", "-p",
+                    default="ncbi-gff")
+    ap.add_argument("--geneacs", "-G",
                     required=True)
-    ap.add_argument('--txinfo', '-T',
+    ap.add_argument("--txinfo", "-T",
                     required=True)
     opts = ap.parse_args(argv)
     return opts
@@ -70,11 +70,11 @@ def read_transcript_data(fn):
 
     def _read_exons(fn):
         line_re = re.compile(
-            '(?P<ref_ac>\S+)\t(?P<origin>\S+)\t(?P<match_type>\S+)\t(?P<g_start>\d+)\t(?P<g_end>\d+)\t(?P<score>\S+)\t(?P<strand>[-+])\t\.\tID=(?P<aln>aln\d+);Target=(?P<tx_ac>\S+)\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+)')
-        fh = io.open(fn, 'rb')
-        while fh.peek(1)[0] == '#':
+            "(?P<ref_ac>\S+)\t(?P<origin>\S+)\t(?P<match_type>\S+)\t(?P<g_start>\d+)\t(?P<g_end>\d+)\t(?P<score>\S+)\t(?P<strand>[-+])\t\.\tID=(?P<aln>aln\d+);Target=(?P<tx_ac>\S+)\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+)")
+        fh = io.open(fn, "rb")
+        while fh.peek(1)[0] == "#":
             fh.readline()
-        while fh.peek(3)[0:3] != '###':
+        while fh.peek(3)[0:3] != "###":
             line = fh.readline()
             try:
                 yield line_re.match(line).groupdict()
@@ -82,55 +82,55 @@ def read_transcript_data(fn):
                 raise Exception("Failed at", line)
         raise StopIteration
 
-    return itertools.groupby(_read_exons(fn), key=lambda e: e['aln'])
+    return itertools.groupby(_read_exons(fn), key=lambda e: e["aln"])
 
 
 def convert_exon_data(opts, eri):
     """return (TxInfo,ExonSet) tuple for given exon record data"""
     exon_recs = list(eri)
     er0 = exon_recs[0]
-    ti = TxInfo(ac=er0['tx_ac'],
-                origin='NCBI RefSeq',
+    ti = TxInfo(ac=er0["tx_ac"],
+                origin="NCBI RefSeq",
                 hgnc=None,
                 cds_se_i=",".join([str(c) for c in [None, None]]),
                 exons_se_i=";".join(
-                    ["{},{}".format(int(ex['tx_start']) - 1, ex['tx_end']) for ex in exon_recs])
+                    ["{},{}".format(int(ex["tx_start"]) - 1, ex["tx_end"]) for ex in exon_recs])
                 )
     es = ExonSet(
-        tx_ac=er0['tx_ac'],
-        alt_ac=er0['ref_ac'],
-        method='splign',
-        strand=-1 if er0['strand'] == '-' else 1,
+        tx_ac=er0["tx_ac"],
+        alt_ac=er0["ref_ac"],
+        method="splign",
+        strand=-1 if er0["strand"] == "-" else 1,
         exons_se_i=";".join(
-            ["{},{}".format(int(ex['g_start']) - 1, ex['g_end']) for ex in exon_recs])
+            ["{},{}".format(int(ex["g_start"]) - 1, ex["g_end"]) for ex in exon_recs])
     )
     return (ti, es)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging_conf_fn = pkg_resources.resource_filename(
-        'uta', 'etc/logging.conf')
+        "uta", "etc/logging.conf")
     logging.config.fileConfig(logging_conf_fn)
     logging.getLogger().setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
 
     opts = parse_args(sys.argv[1:])
 
-    es_fn = opts.prefix + 'exonset.gz'
-    ti_fn = opts.prefix + 'txinfo.gz'
+    es_fn = opts.prefix + "exonset.gz"
+    ti_fn = opts.prefix + "txinfo.gz"
 
-    gar = GeneAccessionsReader(gzip.open(opts.geneacs, 'r'))
+    gar = GeneAccessionsReader(gzip.open(opts.geneacs, "r"))
     tx2gene = {ga.tx_ac: ga.hgnc for ga in gar}
     logger.info(
         "read {} gene-accession mappings from {}".format(len(tx2gene), opts.geneacs))
 
-    tir = TxInfoReader(gzip.open(opts.txinfo, 'r'))
+    tir = TxInfoReader(gzip.open(opts.txinfo, "r"))
     tx2ti = {ti.ac: ti for ti in tir}
     logger.info(
         "read {} gene-accession mappings from {}".format(len(tx2ti), opts.txinfo))
 
-    esw = ExonSetWriter(gzip.open(es_fn + '.tmp', 'w'))
-    tiw = TxInfoWriter(gzip.open(ti_fn + '.tmp', 'w'))
+    esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "w"))
+    tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "w"))
 
     tis = {}
     ac_not_in_gbff = set()
@@ -182,7 +182,7 @@ if __name__ == '__main__':
         esw.write(es)
 
     for fn in [ti_fn, es_fn]:
-        os.rename(fn + '.tmp', fn)
+        os.rename(fn + ".tmp", fn)
 
     if ac_not_in_gbff:
         s_not_g_b = set(k.partition(".")[
