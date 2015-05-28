@@ -165,7 +165,15 @@ Create and load a database
 Push to RDS
 -----------
 
+The current practice is to dump UTA, then restore to Amazon RDS for
+the public instance (uta.invitae.com).
+
 ::
 
-    make push
+    sname=uta_20150527
+    pg_dump -d uta_dev -n $sname | gzip -c > dumps/$sname.pgd.gz
+    gzip -cd <$sname.pgd.gz | psql -h uta.invitae.com -U uta_admin
+
+The dump and restore each take ~5 minutes.  If you don't care about
+the intermediate, you can pipe directly of course.
 
