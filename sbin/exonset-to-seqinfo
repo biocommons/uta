@@ -59,9 +59,9 @@ if __name__ == "__main__":
     esr = ExonSetReader(in_fh)
     logger.info("opened " + in_fn)
 
-    dirs = [cf.get("sequences", "fasta_directory")]
-    mfdb = MultiFastaDB(dirs, use_meta_index=True)
-    logging.info("Opened {n} fasta sequence dirs".format(n=len(dirs)))
+    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
+    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
+    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
 
     siw = SeqInfoWriter(sys.stdout)
     logger.info("Writing seqinfo to stdout")
