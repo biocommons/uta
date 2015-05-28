@@ -408,8 +408,11 @@ def align_exons(session, opts, cf):
     rows = cur.fetchall()
     n_rows = len(rows)
     ac_warning = set()
-    t0 = time.time()
     tx_acs = set()
+    aln_rate_s = None
+    decay_rate = 0.25
+
+    n0, t0 = 0, time.time()
     for i_r, r in enumerate(rows):
         if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
             continue
@@ -440,14 +443,23 @@ def align_exons(session, opts, cf):
             aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added, tx_aseq, alt_aseq])
         tx_acs.add(r.tx_ac)
 
-        if i_r == n_rows - 1 or i_r % update_period == 0:
+        if (i_r + 1) == n_rows or (i_r + 1) % update_period == 0:
             con.commit()
-            speed = (i_r + 1) / (time.time() - t0)  # aln/sec
-            etr = (n_rows - i_r - 1) / speed        # etr in secs
+            n1, t1 = i_r, time.time()
+            nd, td = n1 - n0, t1 - t0
+            aln_rate = nd / td      # aln rate on this update period
+            if aln_rate_s is None:  # aln_rate_s is EWMA smoothed average
+                aln_rate_s = aln_rate
+            else:
+                aln_rate_s_old = aln_rate_s
+                aln_rate_s = decay_rate * aln_rate + (1.0 - decay_rate) * aln_rate_s
+            etr = (n_rows - i_r - 1) / aln_rate_s        # etr in secs
             etr_s = str(datetime.timedelta(seconds=round(etr)))  # etr as H:M:S
             logger.info("{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s}); {n_tx} tx".format(
-                i_r=i_r, n_rows=n_rows, p_r=i_r / n_rows * 100, speed=speed, etr=etr, etr_s=etr_s, n_tx=len(tx_acs)))
+                i_r=i_r, n_rows=n_rows, p_r=i_r / n_rows * 100, speed=aln_rate_s, etr=etr,
+                etr_s=etr_s, n_tx=len(tx_acs)))
             tx_acs = set()
+            n0, t0 = n1, t1
 
     cur.close()
     con.close()
@@ -605,7 +617,7 @@ def grant_permissions(session, opts, cf):
         "grant usage on schema " + schema + " to PUBLIC",
     ]
 
-    sql = 'select concat(schemaname,".",tablename) as fqrn from pg_tables where schemaname="{schema}"'.format(
+    sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(
         schema=schema)
     rows = list(session.execute(sql))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
@@ -613,7 +625,7 @@ def grant_permissions(session, opts, cf):
     cmds += ["alter table {fqrn} owner to uta_admin".format(
         fqrn=row["fqrn"]) for row in rows]
 
-    sql = 'select concat(schemaname,".",viewname) as fqrn from pg_views where schemaname="{schema}"'.format(
+    sql = "select concat(schemaname,'.',viewname) as fqrn from pg_views where schemaname='{schema}'".format(
         schema=schema)
     rows = list(session.execute(sql))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
@@ -621,7 +633,7 @@ def grant_permissions(session, opts, cf):
     cmds += ["alter view {fqrn} owner to uta_admin".format(
         fqrn=row["fqrn"]) for row in rows]
 
-    sql = 'select concat(schemaname,".",matviewname) as fqrn from pg_matviews where schemaname="{schema}"'.format(
+    sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
         schema=schema)
     rows = list(session.execute(sql))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
