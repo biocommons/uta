@@ -55,7 +55,7 @@ unexport GZIP
 # By default, load test data (i.e., test-{seqinfo,geneinfo,txinfo,exonset})
 # into db specified via CONF (which specifies config files in ../etc)
 DATA=test
-CONF=test
+CONF=uta_dev@localhost
 
 DATA_DIR:=${DATA}
 LOG_DIR:=logs/${CONF}
@@ -131,7 +131,7 @@ data/ncbi/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapien
 #=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
 data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
-	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/log 2>&1
+	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
 
 #=> data/ncbi/seqinfo.gz -- 
 data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
