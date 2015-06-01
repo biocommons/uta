@@ -29,6 +29,7 @@ def opener(fs, mode="r"):
 if __name__ == "__main__":
     ga_in = NCBITSVReader(opener(sys.argv[1], "r"))
     gaw = GeneAccessionsWriter(sys.stdout)
+    seen = set()
 
     for rec in ga_in:
         if rec["tax_id"] != "9606":
@@ -42,4 +43,10 @@ if __name__ == "__main__":
                             pro_ac=rec["protein_accession.version"],
                             origin="NCBI",
                             )
+
+        key = (ga.hgnc,ga.tx_ac,ga.pro_ac)
+        if key in seen:
+           continue 
+
+        seen.add(key)
         gaw.write(ga)
