@@ -321,10 +321,11 @@ def load_txinfo(session, opts, cf):
 
         ori = session.query(usam.Origin).filter(
             usam.Origin.name == ti.origin).one()
-        if ti.cds_se_i == "":
-            cds_start_i = cds_end_i = None
-        else:
+
+        if ti.cds_se_i:
             cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(","))
+        else:
+            cds_start_i = cds_end_i = None
 
         cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
         if not cds_seq:
