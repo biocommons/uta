@@ -105,7 +105,7 @@ def convert_exon_data(opts, exon_recs):
     ti = TxInfo(ac=er0["tx_ac"],
                 origin="NCBI RefSeq",
                 hgnc=None,
-                cds_se_i=",".join([str(c) for c in [None, None]]),
+                cds_se_i=None,
                 exons_se_i=";".join(
                     ["{},{}".format(int(ex["tx_start"]) - 1, ex["tx_end"]) for ex in exon_recs])
                 )
@@ -163,9 +163,12 @@ if __name__ == "__main__":
         exon_recs = list(eri)
         er0 = exon_recs[0]
 
-        if (   (float(er0["pct_coverage"      ]) < 90)
-            or (float(er0["pct_identity_gap"  ]) < 95)
-            or (float(er0["pct_identity_ungap"]) < 95)):
+        # From Terence Murphy, NCBI:
+        # "For remapping variation, we typically only use transcript
+        # and RefSeqGene alignments that meet the filter:
+        # 'pct_identity_gap >= 99.5 and pct_coverage >= 95'"
+        if (   (float(er0["pct_coverage"      ]) < 95)
+            or (float(er0["pct_identity_gap"  ]) < 99.5)):
             ac_failed.add(er0["tx_ac"])
             continue
             
@@ -194,13 +197,16 @@ if __name__ == "__main__":
             logger.warn("skipping transcript {ti.ac}; no gene info in {opts.geneinfo}".format(
                 ti=ti, opts=opts))
 
-        # CDS start and end aren't in gff; pull cds_se_i from gbff
-        # txinfo file (if -T provided)
+        # Compare exon structure from gbff with input gff
+        # If gff tx is in gbff, compare exon structure and liftover CDS start and end
+        # If not, add to ac_not_in_gbff warning list
         try:
             if tx2ti:
                 gbff_ti = tx2ti[ti.ac]
-                ti.cds_se_i = gbff_ti.cds_se_i
+                ti.cds_se_i = gbff_ti.cds_se_i  # possibly None
                 if ti.exons_se_i != gbff_ti.exons_se_i:
+                    logging.warn("{ac}  (gff): {exons}".format(ac=ti.ac, exons=ti.exons_se_i))
+                    logging.warn("{ac} (gbff): {exons}".format(ac=gbff_ti.ac, exons=gbff_ti.exons_se_i))
                     ac_exons_differ.add(ti.ac)
         except KeyError:
             ac_not_in_gbff.add(ti.ac)
