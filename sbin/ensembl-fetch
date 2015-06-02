@@ -40,7 +40,7 @@ my $opts = {
     'pass' => undef,
 };
 
-our %nc_to_chr = (
+my %nc_to_chr = (
     'NC_000001.10' =>  '1', 'NC_000002.11' =>  '2', 'NC_000003.11' => '3',
     'NC_000004.11' =>  '4', 'NC_000005.9'  =>  '5', 'NC_000006.11' => '6',
     'NC_000007.13' =>  '7', 'NC_000008.10' =>  '8', 'NC_000009.11' => '9',
@@ -50,23 +50,23 @@ our %nc_to_chr = (
     'NC_000019.9'  => '19', 'NC_000020.10' => '20', 'NC_000021.8'  => '21',
     'NC_000022.10' => '22', 'NC_000023.10' =>  'X', 'NC_000024.9'  => 'Y',
     );
-our %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
+my %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
 
 my $method = 'genebuild';
-my $origin = 'ensembl';
 
 my %accepted_biotypes = map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA);
 
 ############################################################################
 
 Log::Log4perl->init_once( "$root/etc/logging.conf" );
-our $logger = Log::Log4perl->get_logger();
+my $logger = Log::Log4perl->get_logger();
 
 GetOptions($opts,
 	   'host|h=s',
 	   'port|p=s',
 	   'user|u=s',
 	   'config|C=s',
+	   'prefix=s',
     )
     || die("$0: you got usage issues, homey\n");
 
@@ -81,22 +81,25 @@ $registry->load_registry_from_db(
 #print("version check=", $registry->version_check(), "\n");
 
 my $eversion = software_version();
-$origin .= "-$eversion";
+my $origin = "ensembl-$eversion";
 
-our $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
-our $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
-our $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
+my $prefix = $opts->{prefix} || $origin;
+my $tiw_fn = "$prefix/txinfo.gz";
+my $esw_fn = "$prefix/exonset.gz";
+my $faw_fn = "$prefix/fasta.gz";
 
-our $tiw_fn = "ensembl-$eversion.txinfo.gz";
-our $esw_fn = "ensembl-$eversion.exonset.gz";
-our $faw_fn = "ensembl-$eversion.fasta.gz";
-
-our $tiw = IO::Zlib->new("$tiw_fn.tmp", "wb");
-our $esw = IO::Zlib->new("$esw_fn.tmp", "wb");
-our $faw = IO::Zlib->new("$faw_fn.tmp", "wb");
+my $tiw = IO::Zlib->new("$tiw_fn.tmp", "wb");
+(defined $tiw)
+    || die("$tiw_fn.tmp: $!");
+my $esw = IO::Zlib->new("$esw_fn.tmp", "wb");
+my $faw = IO::Zlib->new("$faw_fn.tmp", "wb");
 
 $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
 $esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
+
+my $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
+my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
+my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
 
 if (@ARGV) {
     for(my $i=0; $i<=$#ARGV; $i++) {
@@ -142,7 +145,9 @@ rename("$faw_fn.tmp",$faw_fn);
 
 exit(0);
 
-our %tx_seen;
+############################################################################
+
+my %tx_seen;
 sub process1($) {
     my ($g) = @_;
     my $hgnc = $g->external_name();
