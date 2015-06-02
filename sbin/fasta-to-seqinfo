@@ -48,7 +48,7 @@ def process1(opts, siw, fn):
     logger.info("opened " + fn)
 
     for record in Bio.SeqIO.parse(fh, "fasta"):
-        seq = record.seq.tostring()
+        seq = str(record.seq)
 
         acs = parse_acs(record.id)
         if len(acs) == 0:
