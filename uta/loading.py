@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import csv
 import datetime
 import gzip
 import itertools
@@ -18,6 +19,7 @@ usam = uta.models                         # backward compatibility
 
 logger = logging.getLogger(__name__)
 
+#TODO: Schema qualify all queries/remove set search_path
 
 def drop_schema(session, opts, cf):
     if session.bind.name == "postgresql" and usam.use_schema:
@@ -64,80 +66,35 @@ def load_sql(session, opts, cf):
     session.commit()
 
 
-def initialize_schema(session, opts, cf):
-    """Create and populate initial schema
+def load_origin(session, opts, cf):
+    """Add/merge data origins
 
-    TODO: Put initial origin content in a file (e.g., TSV)
     """
+
+    def _none_if_empty(s):
+        return None if s == "" else s
 
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    session.add(
-        usam.Origin(
-            name="NCBI",
-            url="http://www.ncbi.nlm.nih.gov/",
-        ))
-    session.add(
-        usam.Origin(
-            name="NCBI Gene",
-            descr="NCBI gene repository",
-            url="http://www.ncbi.nlm.nih.gov/gene/",
-            url_ac_fmt="http://www.ncbi.nlm.nih.gov/gene/{ac}"
-        ))
-    session.add(
-        usam.Origin(
-            name="NCBI RefSeq",
-            descr="NCBI RefSeq (nuccore) repository",
-            url="http://www.ncbi.nlm.nih.gov/refseq/",
-            url_ac_fmt="http://www.ncbi.nlm.nih.gov/nuccore/{ac}"
-        ))
-    session.add(
-        usam.Origin(
-            name="NCBI seq_gene",
-            descr="NCBI seq_gene files from FTP site",
-            url="ftp://ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/",
-        ))
-    session.add(
-        usam.Origin(
-            name="NCBI gbff",
-            descr="NCBI gbff files from FTP site",
-            url="ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/",
-        ))
-    session.add(
-        usam.Origin(
-            name="Ensembl",
-            descr="Ensembl",
-            url="http://ensembl.org/",
-        ))
-    session.add(
-        usam.Origin(
-            name="BIC",
-            descr="Breast Cancer Information Core",
-            url="http://research.nhgri.nih.gov/bic/",
-        ))
-    session.add(
-        usam.Origin(
-            name="LRG",
-            descr="Locus Reference Genomic sequence",
-            url="http://www.lrg-sequence.org/",
-        ))
-    session.add(
-        usam.Origin(
-            name="uta0",
-            descr="UTA version 0",
-            url="http://bitbucket.org/biocommons/uta",
-        ))
-    session.add(
-        usam.Origin(
-            name="ensembl-79",
-            descr="Ensembl 79",
-            url="http://ensembl.org/",
-        ))
-
+    orir = csv.DictReader(open(opts["FILE"]), delimiter=b'\t')
+    for rec in orir:
+        ori = usam.Origin(name=rec["name"],
+                          descr=_none_if_empty(rec["descr"]),
+                          url=_none_if_empty(rec["url"]),
+                          url_ac_fmt=_none_if_empty(rec["url_ac_fmt"]),
+                          )
+        u_ori = session.query(usam.Origin).filter(
+            usam.Origin.name == rec["name"]).first()
+        if u_ori:
+            ori.origin_id = u_ori.origin_id
+            session.merge(ori)
+        else:
+            session.add(ori)
+        logger.info("Merged {ori.name} ({ori.descr})".format(ori=ori))
     session.commit()
-    logger.info("initialized schema")
+
 
 
 def load_seqinfo(session, opts, cf):
@@ -274,7 +231,7 @@ def load_geneinfo(session, opts, cf):
     logger.info("opened " + opts["FILE"])
 
     for i_gi, gi in enumerate(gir):
-        session.add(
+        session.merge(
             usam.Gene(
                 hgnc=gi.hgnc,
                 maploc=gi.maploc,
@@ -282,6 +239,7 @@ def load_geneinfo(session, opts, cf):
                 summary=gi.summary,
                 aliases=gi.aliases,
             ))
+        logger.info("Added {gi.hgnc} ({gi.summary})".format(gi=gi))
     session.commit()
 
 
@@ -327,10 +285,13 @@ def load_txinfo(session, opts, cf):
         else:
             cds_start_i = cds_end_i = None
 
-        cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
-        if not cds_seq:
-            raise RuntimeError("{ac}: not in FASTA database".format(
+        try:
+            cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
+        except KeyError:
+            logger.error("{ac}: not in sequence database; skipping".format(
                 ac=ti.ac))
+            continue
+
         cds_md5 = seq_md5(cds_seq)
 
         u_tx = usam.Transcript(

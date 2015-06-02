@@ -74,7 +74,7 @@ include .${CONF}.conf.mk
 #= BASIC USAGE
 default: help
 
-#=> help -- display this help message
+#=> help -- 
 help:
 	@extract-makefile-documentation "${SELF}"
 
@@ -127,7 +127,6 @@ data/ncbi/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapien
 	ncbi-parse-gbff $^ | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
-#=> data/ncbi/log -- 
 #=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
 data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
@@ -142,10 +141,9 @@ data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
 
 ## --- UCSC ---
 
-## You gotta love how easy ucsc makes it to get data. Thanks guys and gals.
+## You gotta love how easy ucsc makes it to get data. Thanks guys and gals!
 
-#=> data/ucsc.exonset.gz -- 
-#=> data/ucsc-{hg19,hg38}/ucsc.log -- 
+#=> data/ucsc-{hg19,hg38}/exonset.gz -- 
 data/ucsc-%/exonset.gz: data/ucsc-%/log;
 data/ucsc-%/log:
 	@mkdir -pv ${@D}
@@ -153,15 +151,21 @@ data/ucsc-%/log:
 	mv -bfv $@.tmp $@
 
 
-## ## --- Ensembl ---
-## 
-## #=> data/ensembl.seqinfo.gz -- 
-## data/ensembl.seqinfo.gz: main/ensembl.fasta.gz
-## 	fasta-to-seqinfo -o Ensembl $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
+## --- Ensembl ---
+
+#=> data/ensembl-%seqinfo.gz data/ensembl-%txinfo.gz data/ensembl-%exonset.gz
+data/ensembl-%seqinfo.gz data/ensembl-%txinfo.gz data/ensembl-%exonset.gz: data/ensembl-%log;
+
+#=> data/ensembl-%log --
+data/ensembl-%log:
+	@mkdir -pv ${@D}
+	ensembl-fetch --prefix ${@D}/ VHL >$@.tmp 2>&1
+	mv -bfv $@.tmp $@
 
 
 ## --- Generic rules ---
-#=> %seqinfo.gz -- 
+##X:%seqinfo.gz 
+#=> data/%/seqinfo.gz -- 
 data/%/seqinfo.gz: data/%/fasta.gz
 	fasta-to-seqinfo -o $*  $< | gzip -cq >$@.tmp
 	mv -bfv $@.tmp $@
@@ -228,41 +232,56 @@ GENESETS=$(subst .hgnc,,$(notdir $(wildcard aux/gene-sets/*.hgnc)))
 $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 
 
+############################################################################
+#= Loading sets
+
+load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
+load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
+load-ucsc-hg19:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
+load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
+
+load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)
+load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
 
 
 ############################################################################
-#= Loading
+#= Loading rules
 
-.PHONY: load-ncbi
-load-ncbi: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
-load-ncbi/refmismatch: $(foreach f,seqinfo geneinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)
-load-ensembl-79: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
-load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
+#=> ${LOG_DIR}/origin.log -- 
+${LOG_DIR}/origin.log: data/origin.tsv
+	@mkdir -pv ${@D}
+	uta ${CONF_OPTS} load-origin $< >$@.tmp 2>&1
+	mv $@.tmp $@
 
-#=> load-%-seqinfo -- 
+#=> ${LOG_DIR}/%seqinfo.log -- 
 ${LOG_DIR}/%seqinfo.log: data/%seqinfo.gz
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-seqinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
-#=> load-geneinfo.log -- 
+#=> ${LOG_DIR}/%geneinfo.log -- 
 ${LOG_DIR}/%geneinfo.log: data/%geneinfo.gz
+	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-geneinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
-#=> load-txinfo.log -- 
+#=> ${LOG_DIR}/%txinfo.log -- 
 ${LOG_DIR}/%txinfo.log: data/%txinfo.gz
+	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-txinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
-#=> load-exonset.log -- 
+#=> ${LOG_DIR}/%exonset.log -- 
 ${LOG_DIR}/%exonset.log: data/%exonset.gz
+	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-exonset $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
 #=> align-exons -- 
+#=> ${LOG_DIR}/align-exons.log -- 
 align-exons: ${LOG_DIR}/align-exons.log
 ${LOG_DIR}/align-exons.log: FORCE
+	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} align-exons >$@.tmp 2>&1
 	mv $@.tmp $@
 
@@ -285,7 +304,7 @@ post-load: analyze refresh-matviews
 
 #=> analyze -- analyze tables to update statistics
 #=> grant-permissions -- so that you can update grants on existing databases
-#=> refresh-matviews -- update materialized views
+#=> refresh-matviews --
 analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
 

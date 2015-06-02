@@ -1,0 +1,11 @@
+name	descr	url	url_ac_fmt
+NCBI		http://www.ncbi.nlm.nih.gov/	
+NCBI Gene	NCBI gene repository	http://www.ncbi.nlm.nih.gov/gene/	http://www.ncbi.nlm.nih.gov/gene/{ac}
+NCBI RefSeq	NCBI RefSeq (nuccore) repository	http://www.ncbi.nlm.nih.gov/refseq/	http://www.ncbi.nlm.nih.gov/nuccore/{ac}
+NCBI seq_gene	NCBI seq_gene files from FTP site	ftp://ftp.ncbi.nih.gov/genomes/MapView/Homo_sapiens/sequence/current/initial_release/	
+NCBI gbff	NCBI gbff files from FTP site	ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/	
+Ensembl	Ensembl	http://ensembl.org/	
+BIC	Breast Cancer Information Core	http://research.nhgri.nih.gov/bic/	
+LRG	Locus Reference Genomic sequence	http://www.lrg-sequence.org/	
+uta0	UTA version 0	http://bitbucket.org/biocommons/uta	
+ensembl-79	Ensembl 79	http://ensembl.org/	

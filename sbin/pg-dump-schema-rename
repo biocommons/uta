@@ -14,9 +14,11 @@ not covered in my reverse engineering (e.g., CREATE TYPE).
 For simplicity, all resulting schema names are quoted (not
 conditionally quoted as in the pg_dump output).
 
-Real world use::
+Real world uses::
 
 $ gzip -cdq dumps/uta_20140210.pgd.gz | ../sbin/pg-dump-schema-rename uta_20140210 uta1 | psql -U uta_admin -d uta_dev 2>&1 | tee log
+
+$ pg_dump -U uta_admin -d uta_dev -n uta1 | ../sbin/pg-dump-schema-rename uta1 uta_20150602 | gzip -c >|uta_20150602.pgd.gz
 
 """
 
