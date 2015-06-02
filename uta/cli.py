@@ -13,6 +13,7 @@ Usage:
   uta (-C CONF ...) [options] load-sql FILES ...
   uta (-C CONF ...) [options] initialize-schema
   uta (-C CONF ...) [options] rebuild
+  uta (-C CONF ...) [options] load-origin FILE
   uta (-C CONF ...) [options] load-seqinfo FILE
   uta (-C CONF ...) [options] load-geneinfo FILE
   uta (-C CONF ...) [options] load-txinfo FILE
@@ -62,13 +63,6 @@ def shell(session, opts, cf):
     IPython.embed()
 
 
-def rebuild(*args):
-    ul.drop_schema(*args)
-    ul.create_schema(*args)
-    ul.initialize_schema(*args)
-    ul.grant_permissions(*args)
-
-
 def run(argv=None):
     dispatch_table = [
         ("align-exons",			ul.align_exons),
@@ -76,15 +70,14 @@ def run(argv=None):
         ("create-schema",               ul.create_schema),
         ("drop-schema",                 ul.drop_schema),
         ("grant-permissions",           ul.grant_permissions),
-        ("initialize-schema",           ul.initialize_schema),
         ("load-exonset",                ul.load_exonset),
         ("load-geneinfo",               ul.load_geneinfo),
+        ("load-origin",                 ul.load_origin),
         ("load-ncbi-seqgene",           ul.load_ncbi_seqgene),
         ("load-seqinfo",                ul.load_seqinfo),
         ("load-sequences",              ul.load_sequences),
         ("load-sql", 	                ul.load_sql),
         ("load-txinfo",                 ul.load_txinfo),
-        ("rebuild",                     rebuild),
         ("refresh-matviews",            ul.refresh_matviews),
         ("shell",                       shell),
     ]
