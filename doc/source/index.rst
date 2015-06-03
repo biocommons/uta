@@ -20,7 +20,8 @@ Contents
    
    database
    modules
-
+   changelog
+   license
 
 
 Additional Resources

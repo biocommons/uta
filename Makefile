@@ -19,7 +19,12 @@ default: help
 
 #=> help -- display this help message
 help: config
-	@sbin/extract-makefile-documentation "${SELF}"
+	@if type makefile-extract-documentation >/dev/null 2>/dev/null; then \
+		makefile-extract-documentation "${SELF}"; \
+	else \
+		echo "Could not find makefile-extract-documentation; please 'pip install biocommons.dev'" 1>&2; \
+		exit 1; \
+	fi
 
 config:
 	@echo CONFIGURATION
@@ -84,6 +89,10 @@ ci-test-ve: ve
 
 ############################################################################
 #= UTILITY TARGETS
+
+#=> changelog
+doc/source/changelog.rst: ChangeLog
+	clog-txt-to-rst <$< >$@
 
 #=> lint -- run lint, flake, etc
 # TBD
