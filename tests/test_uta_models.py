@@ -52,8 +52,8 @@ class Test_uta_models(unittest.TestCase):
         cls._postgresql = testing.postgresql.Postgresql()
 
         engine = sqlalchemy.create_engine(cls._postgresql.url())
-        engine.execute('drop schema if exists uta1 cascade')
-        engine.execute('create schema uta1')
+        engine.execute('drop schema if exists {schema} cascade'.format(schema=usam.schema_name))
+        engine.execute('create schema {schema}'.format(schema=usam.schema_name))
         engine.dispose()
 
         cls.session = uta.connect(cls._postgresql.url())
