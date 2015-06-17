@@ -139,6 +139,7 @@ data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
 	mv -bfv $@.tmp $@
 
 
+
 ## --- UCSC ---
 
 ## You gotta love how easy ucsc makes it to get data. Thanks guys and gals!
@@ -237,11 +238,11 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 
 load-bic:        $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
 load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
-load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
+load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)  ${LOG_DIR}/ncbi/preferred_accessions.log
 load-ucsc-hg19:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
 load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
 
-load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)
+load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)  ${LOG_DIR}/ncbi/preferred_accessions.log
 load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
 
 
@@ -287,6 +288,14 @@ ${LOG_DIR}/align-exons.log: FORCE
 	mv $@.tmp $@
 
 
+#=> ${LOG_DIR}/preferred-accessions --
+${LOG_DIR}/preferred-accessions.log: data/ncbi/geneacs.gz
+	gzip -cd <$< \
+	| psql -d uta_dev -U uta_admin  -c "copy uta_1_0.preferred_accession(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
+	mv $@.tmp $@
+
+
+
 ############################################################################
 #= DB Admin
 
@@ -297,14 +306,14 @@ drop:
 #=> create -- 
 create:
 	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql ../sql/views.sql
+	uta ${CONF_OPTS} load-sql ../sql/views.sql ../sql/preferred_accession.sql
 	uta ${CONF_OPTS} grant-permissions
 	uta ${CONF_OPTS} load-origin data/origin.tsv
 
 post-load: analyze refresh-matviews 
 
 #=> analyze -- analyze tables to update statistics
-#=> grant-permissions -- so that you can update grants on existing databases
+	#=> grant-permissions -- so that you can update grants on existing databases
 #=> refresh-matviews --
 analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
