@@ -299,7 +299,7 @@ create:
 	uta ${CONF_OPTS} create-schema
 	uta ${CONF_OPTS} load-sql ../sql/views.sql
 	uta ${CONF_OPTS} grant-permissions
-	uta ${CONF_OPTS} initialize-schema
+	uta ${CONF_OPTS} load-origin data/origin.tsv
 
 post-load: analyze refresh-matviews 
 

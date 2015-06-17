@@ -6,17 +6,17 @@ import hashlib
 
 import sqlalchemy as sa
 import sqlalchemy.orm as sao
-import sqlalchemy.ext.declarative as saed
+from sqlalchemy.ext.declarative import declarative_base
 
 
 ############################################################################
 # schema name support
 # also see etc/uta.conf
 
-schema_version = "1"
+schema_version = "1.0"
 use_schema = True
 if use_schema:
-    schema_name = "uta" + schema_version
+    schema_name = "uta" + schema_version.replace(".","_")
     schema_name_dot = schema_name + "."
 else:
     schema_name = None
@@ -25,24 +25,17 @@ else:
 
 ############################################################################
 
-Base = saed.declarative_base(
+Base = declarative_base(
     metadata=sa.MetaData(schema=schema_name)
 )
 
-
-class UTABase(object):
-    pass
-    # def __str__(self):
-    #    return unicode(self).encode("utf-8")
-
-
-class Meta(Base, UTABase):
+class Meta(Base):
     __tablename__ = "meta"
     key = sa.Column(sa.Text, primary_key=True, nullable=False)
     value = sa.Column(sa.Text, nullable=False)
 
 
-class Origin(Base, UTABase):
+class Origin(Base):
     __tablename__ = "origin"
 
     # columns:
@@ -59,7 +52,7 @@ class Origin(Base, UTABase):
         self.updated = datetime.datetime.now()
 
 
-class Seq(Base, UTABase):
+class Seq(Base):
     __tablename__ = "seq"
 
     def _seq_hash(context):
@@ -78,7 +71,7 @@ class Seq(Base, UTABase):
     # methods:
 
 
-class SeqAnno(Base, UTABase):
+class SeqAnno(Base):
     __tablename__ = "seq_anno"
     __table_args__ = (
         sa.Index(
@@ -100,7 +93,7 @@ class SeqAnno(Base, UTABase):
     seq = sao.relationship("Seq", backref="aliases")
 
 
-class Gene(Base, UTABase):
+class Gene(Base):
     __tablename__ = "gene"
 
     # columns:
@@ -115,7 +108,7 @@ class Gene(Base, UTABase):
     # methods:
 
 
-class Transcript(Base, UTABase):
+class Transcript(Base):
 
     """class representing unique transcripts, as defined by unique <seq_id,cds_se,exons_se_i>
     """
@@ -140,7 +133,7 @@ class Transcript(Base, UTABase):
     origin = sao.relationship("Origin", backref="transcripts")
 
 
-class ExonSet(Base, UTABase):
+class ExonSet(Base):
     __tablename__ = "exon_set"
     __table_args__ = (
         # TODO: Drop ExonSet unique constraint to support degenerate mappings
@@ -170,7 +163,7 @@ class ExonSet(Base, UTABase):
     # methods:
 
 
-class Exon(Base, UTABase):
+class Exon(Base):
     __tablename__ = "exon"
     __table_args__ = (
         sa.CheckConstraint("start_i < end_i", "exon_start_i_must_be_lt_end_i"),
@@ -196,7 +189,7 @@ class Exon(Base, UTABase):
     exon_set = sao.relationship("ExonSet", backref="exons")
 
 
-class ExonAln(Base, UTABase):
+class ExonAln(Base):
     __tablename__ = "exon_aln"
     __table_args__ = (
     )
