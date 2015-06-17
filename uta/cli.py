@@ -11,7 +11,6 @@ Usage:
   uta (-C CONF ...) [options] drop-schema
   uta (-C CONF ...) [options] create-schema
   uta (-C CONF ...) [options] load-sql FILES ...
-  uta (-C CONF ...) [options] initialize-schema
   uta (-C CONF ...) [options] rebuild
   uta (-C CONF ...) [options] load-origin FILE
   uta (-C CONF ...) [options] load-seqinfo FILE
@@ -55,7 +54,7 @@ import docopt
 
 import uta
 import uta.loading as ul
-usam = uta.models                         # backward compatibility
+from uta.exceptions import UTAError
 
 
 def shell(session, opts, cf):
@@ -65,21 +64,21 @@ def shell(session, opts, cf):
 
 def run(argv=None):
     dispatch_table = [
-        ("align-exons",			ul.align_exons),
-        ("analyze",     	        ul.analyze),
-        ("create-schema",               ul.create_schema),
-        ("drop-schema",                 ul.drop_schema),
-        ("grant-permissions",           ul.grant_permissions),
-        ("load-exonset",                ul.load_exonset),
-        ("load-geneinfo",               ul.load_geneinfo),
-        ("load-origin",                 ul.load_origin),
-        ("load-ncbi-seqgene",           ul.load_ncbi_seqgene),
-        ("load-seqinfo",                ul.load_seqinfo),
-        ("load-sequences",              ul.load_sequences),
-        ("load-sql", 	                ul.load_sql),
-        ("load-txinfo",                 ul.load_txinfo),
-        ("refresh-matviews",            ul.refresh_matviews),
-        ("shell",                       shell),
+        ("align-exons",         ul.align_exons),
+        ("analyze",             ul.analyze),
+        ("create-schema",       ul.create_schema),
+        ("drop-schema",         ul.drop_schema),
+        ("grant-permissions",   ul.grant_permissions),
+        ("load-exonset",        ul.load_exonset),
+        ("load-geneinfo",       ul.load_geneinfo),
+        ("load-origin",         ul.load_origin),
+        ("load-ncbi-seqgene",   ul.load_ncbi_seqgene),
+        ("load-seqinfo",        ul.load_seqinfo),
+        ("load-sequences",      ul.load_sequences),
+        ("load-sql",            ul.load_sql),
+        ("load-txinfo",         ul.load_txinfo),
+        ("refresh-matviews",    ul.refresh_matviews),
+        ("shell",               shell),
     ]
 
     opts = docopt.docopt(__doc__, argv=argv, version=uta.__version__)
