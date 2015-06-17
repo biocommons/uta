@@ -16,7 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 schema_version = "1.0"
 use_schema = True
 if use_schema:
-    schema_name = "uta" + schema_version.replace(".","_")
+    schema_name = "uta_" + schema_version.replace(".","_")
     schema_name_dot = schema_name + "."
 else:
     schema_name = None
