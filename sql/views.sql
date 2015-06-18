@@ -72,15 +72,23 @@ create index tx_exon_set_summary_mv_alt_aln_method_ix on tx_exon_set_summary_mv(
 analyze tx_exon_set_summary_mv;
 grant select on tx_exon_set_summary_mv to public;
 
--- ideally, we'd include cds start and end here, but we don't yet map CDS
--- start and end to alt exon.  This are simple offsets in most cases,
--- except when there are indels, which is why I'm not doing that now.
-create or replace view tx_def_summary_v as
-select TESS.*,cds_start_i,cds_end_i
+create or replace view tx_def_summary_dv as
+select TESS.exon_set_id, TESS.tx_ac, TESS.alt_ac, TESS.alt_aln_method, TESS.alt_strand,
+       TESS.hgnc, TESS.cds_md5, TESS.es_fingerprint, CEF.cds_es_fp, 
+       TESS.n_exons, TESS.se_i, CEF.cds_se_i, TESS.starts_i, TESS.ends_i, TESS.lengths, 
+       T.cds_start_i, T.cds_end_i, CEF.cds_start_exon, CEF.cds_end_exon
 from tx_exon_set_summary_mv TESS
 join transcript T on TESS.tx_ac=T.ac
-where TESS.alt_aln_method = 'transcript';
-comment on view tx_def_summary_v is 'transcript definitions, with exon structures';
+LEFT JOIN _cds_exons_fp_v CEF ON TESS.exon_set_id=CEF.exon_set_id
+WHERE TESS.alt_aln_method = 'transcript';
+comment on view tx_def_summary_dv is 'transcript definitions, with exon structures';
+
+create materialized view tx_def_summary_mv as select * from tx_def_summary_dv WITH NO DATA;
+comment on materialized view tx_def_summary_mv is 'transcript definitions, with exon structures and fingerprints';
+
+-- backward compatbility for older view
+create or replace view tx_def_summary_v as
+select * from tx_def_summary_mv;
 
 
 
