@@ -91,6 +91,15 @@ create or replace view tx_def_summary_v as
 select * from tx_def_summary_mv;
 
 
+CREATE OR REPLACE VIEW tx_similarity_v AS
+SELECT D1.tx_ac as tx_ac1, D2.tx_ac as tx_ac2,
+       D1.cds_md5=D2.cds_md5 as cds_eq,
+       D1.es_fingerprint=D2.es_fingerprint as es_fp_eq,
+       D1.cds_es_fp=D2.cds_es_fp as cds_es_fp_eq
+FROM tx_def_summary_mv D1
+JOIN tx_def_summary_mv D2 on (D1.tx_ac != D2.tx_ac and (D1.cds_md5=D2.cds_md5 or D1.es_fingerprint=D2.es_fingerprint or D1.cds_es_fp=D2.cds_es_fp));
+
+
 
 -- create or replace view gene_aliases_v as
 -- select hgnc,unnest(array_append(string_to_array(aliases,','),hgnc)) as alias from gene ;
