@@ -236,13 +236,16 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 ############################################################################
 #= Loading sets
 
+# core data that needs to be loaded
+load-base: ${LOG_DIR}/ncbi/preferred-accessions.log
+
 load-bic:        $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
 load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
-load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)  ${LOG_DIR}/ncbi/preferred_accessions.log
+load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
 load-ucsc-hg19:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
 load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
 
-load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)  ${LOG_DIR}/ncbi/preferred_accessions.log
+load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)  
 load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
 
 
@@ -287,9 +290,9 @@ ${LOG_DIR}/align-exons.log: FORCE
 	uta ${CONF_OPTS} align-exons >$@.tmp 2>&1
 	mv $@.tmp $@
 
-
 #=> ${LOG_DIR}/preferred-accessions --
-${LOG_DIR}/preferred-accessions.log: data/ncbi/geneacs.gz
+${LOG_DIR}/ncbi/preferred-accessions.log: data/ncbi/geneacs.gz
+	@mkdir -pv ${@D}
 	gzip -cd <$< \
 	| psql -d uta_dev -U uta_admin  -c "copy uta_1_0.preferred_accession(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
