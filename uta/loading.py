@@ -628,8 +628,9 @@ def refresh_matviews(session, opts, cf):
 
     cmds = [
         # N.B. Order matters!
-        "refresh materialized view uta1.exon_set_exons_fp_mv",
-        "refresh materialized view uta1.tx_exon_set_summary_mv",
+        "refresh materialized view exon_set_exons_fp_mv",
+        "refresh materialized view tx_exon_set_summary_mv",
+        "refresh materialized view tx_def_summary_mv",
         # "refresh materialized view uta1.tx_aln_cigar_mv",
         # "refresh materialized view uta1.tx_aln_summary_mv",
     ]

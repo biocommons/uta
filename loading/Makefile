@@ -309,7 +309,7 @@ drop:
 #=> create -- 
 create:
 	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql ../sql/views.sql ../sql/preferred_accession.sql
+	uta ${CONF_OPTS} load-sql ../sql/internal-views.sql ../sql/views.sql ../sql/preferred_accession.sql
 	uta ${CONF_OPTS} grant-permissions
 	uta ${CONF_OPTS} load-origin data/origin.tsv
 

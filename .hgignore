@@ -38,6 +38,8 @@ examples/.ipynb_checkpoints
 hgtools-*
 lib/python/cover
 lib/python/uta/_release.py
+loading/aux/mirrors-ncbi
+loading/aux/sequences
 loading/data
 loading/load
 loading/mirrors-ncbi
