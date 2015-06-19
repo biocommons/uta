@@ -13,6 +13,7 @@ syntax: glob
 *.pyc
 *.pylint
 *.pyo
+*.rej
 *.sha1
 *.sql.gz
 *.sqlite3
