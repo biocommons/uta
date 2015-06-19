@@ -159,9 +159,10 @@ data/ensembl-%seqinfo.gz data/ensembl-%txinfo.gz data/ensembl-%exonset.gz: data/
 
 #=> data/ensembl-%log --
 data/ensembl-%log:
-	@mkdir -pv ${@D}
-	ensembl-fetch --prefix ${@D}/ VHL >$@.tmp 2>&1
-	mv -bfv $@.tmp $@
+	### NOT RUNNING:
+	### @mkdir -pv ${@D}
+	### ensembl-fetch --prefix ${@D}/ VHL >$@.tmp 2>&1"
+	### mv -bfv $@.tmp $@
 
 
 ## --- Generic rules ---
@@ -248,6 +249,8 @@ load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg3
 load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)  
 load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
 
+load-ncbi/acmg-mr: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/acmg-mr/$f.log)  
+load-ensembl-79/acmg-mr: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/acmg-mr/$f.log)
 
 ############################################################################
 #= Loading rules
@@ -325,6 +328,14 @@ analyze refresh-matviews grant-permissions: %:
 # push uta_dev/uta1 to 
 push-dev:
 	psql -h uta.invitae.com -U uta_admin -d 
+
+
+mega-test:
+	make cleanest drop create
+	make load-base
+	make load-ncbi/{refmismatch,acmg-mr}
+	#make load-ensembl-79/{refmismatch,acmg-mr}
+	make align-exons refresh-matviews
 
 
 ############################################################################
