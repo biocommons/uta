@@ -49,7 +49,7 @@ comment on view exon_set_exons_v is 'defining view of "flat" (aggregated) exons 
 create or replace view  exon_set_exons_fp_v as
 select ESE.*,md5(format('%s;%s',lower(ASA.seq_id),ESE.se_i)) as es_fingerprint
 from exon_set_exons_v ESE
-join seq_anno ASA on ESE.alt_ac=ASA.ac;
+join _seq_anno_most_recent ASA on ESE.alt_ac=ASA.ac;
 comment on view exon_set_exons_fp_v is 'flattened (aggregated) exons with exon set fingerprint';
 
 create materialized view exon_set_exons_fp_mv as select * from exon_set_exons_fp_v WITH NO DATA;

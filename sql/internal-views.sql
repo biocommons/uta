@@ -1,5 +1,3 @@
-show search_path;
-
 CREATE OR REPLACE VIEW _cds_exons_v AS
 SELECT ES.exon_set_id, T.ac AS tx_ac, E.ord,
        E.start_i, E.end_i,
@@ -17,6 +15,17 @@ FROM _cds_exons_v
 WHERE cds_ex_start_i IS NOT NULL
 GROUP BY exon_set_id, tx_ac;
 
+
+-- See uta-189: 587 ensembl transcripts changed underlying sequence
+-- between e-70 and e-79. We will arbitrarily use the most recent to
+-- prevent cardinality issues elsewhere.  This is why we should use
+-- sequence hashes only.
+CREATE OR REPLACE VIEW _seq_anno_most_recent AS
+SELECT DISTINCT ON (ac) *
+FROM seq_anno
+ORDER BY ac,added DESC;
+
+
 -- TODO: "distinct" below because the same accession might occur in
 -- multiple origins.  Transcript definitions use accession only (not
 -- origin), which should be fixed in the future. For example, if NCBI
@@ -24,6 +33,8 @@ GROUP BY exon_set_id, tx_ac;
 -- changes between releases, the use of accession only becomes
 -- ambiguous.
 CREATE OR REPLACE VIEW _cds_exons_fp_v AS
-SELECT DISTINCT SA.seq_id, md5(format('%s;%s',LOWER(SA.seq_id),CTEF.cds_se_i)) AS cds_es_fp, CTEF.*
+SELECT SA.seq_id, md5(format('%s;%s',LOWER(SA.seq_id),CTEF.cds_se_i)) AS cds_es_fp, CTEF.*
   FROM _cds_exons_flat_v CTEF
-  JOIN seq_anno SA ON CTEF.tx_ac=SA.ac;
+  JOIN _seq_anno_most_recent SA ON CTEF.tx_ac=SA.ac;
+
+
