@@ -337,6 +337,13 @@ def align_exons(session, opts, cf):
 
     update_period = 50
 
+    def _get_cursor(con):
+        cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+        cur.execute("set role {admin_role};".format(
+            admin_role=cf.get("uta", "admin_role")))
+        cur.execute("set search_path = " + usam.schema_name)
+        return cur
+
     def align(s1, s2):
         score, cigar = utaaa.needleman_wunsch_gotoh_align(str(s1),
                                                           str(s2),
@@ -355,26 +362,25 @@ def align_exons(session, opts, cf):
     INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
     """
 
+    con = session.bind.pool.connect()
+    cur = _get_cursor(con)
+    cur.execute(aln_sel_sql)
+    n_rows = cur.rowcount
+
+    if n_rows == 0:
+        return
+
     fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
     mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
     logger.info("Opened sequence directories: " + ",".join(fa_dirs))
 
-    con = session.bind.pool.connect()
-    cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-
-    cur.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
-
-    cur.execute(aln_sel_sql)
     rows = cur.fetchall()
-    n_rows = len(rows)
     ac_warning = set()
     tx_acs = set()
     aln_rate_s = None
     decay_rate = 0.25
-
     n0, t0 = 0, time.time()
+
     for i_r, r in enumerate(rows):
         if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
             continue
@@ -401,8 +407,7 @@ def align_exons(session, opts, cf):
         tx_aseq, alt_aseq, cigar_str = align(tx_seq, alt_seq)
 
         added = datetime.datetime.now()
-        cur.execute(
-            aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added, tx_aseq, alt_aseq])
+        cur.execute(aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added, tx_aseq, alt_aseq])
         tx_acs.add(r.tx_ac)
 
         if (i_r + 1) == n_rows or (i_r + 1) % update_period == 0:
@@ -631,8 +636,8 @@ def refresh_matviews(session, opts, cf):
         "refresh materialized view exon_set_exons_fp_mv",
         "refresh materialized view tx_exon_set_summary_mv",
         "refresh materialized view tx_def_summary_mv",
-        # "refresh materialized view uta1.tx_aln_cigar_mv",
-        # "refresh materialized view uta1.tx_aln_summary_mv",
+        # "refresh materialized view tx_aln_cigar_mv",
+        # "refresh materialized view tx_aln_summary_mv",
     ]
 
     for cmd in cmds:
