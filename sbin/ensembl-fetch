@@ -33,6 +33,7 @@ sub process1($);
 my $root = "$FindBin::RealBin/..";
 
 my $opts = {
+    'assert-version' => 79,
     'database' => 'homo_sapiens_core_79_37',
     'host' => 'ensembldb.ensembl.org',
     'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
@@ -40,6 +41,7 @@ my $opts = {
     'pass' => undef,
 };
 
+# TODO: use bioutil lut
 my %nc_to_chr = (
     'NC_000001.10' =>  '1', 'NC_000002.11' =>  '2', 'NC_000003.11' => '3',
     'NC_000004.11' =>  '4', 'NC_000005.9'  =>  '5', 'NC_000006.11' => '6',
@@ -70,6 +72,16 @@ GetOptions($opts,
     )
     || die("$0: you got usage issues, homey\n");
 
+
+my $eversion = software_version();
+
+($eversion eq $opts->{'assert-version'})
+    or die(sprintf("expected version $opts->{'assert-version'}, found version $eversion"));
+
+if ($eversion != 79) {
+    warn("This script is known to work with ensembl-79; you're using $eversion");
+}
+
 my $registry = 'Bio::EnsEMBL::Registry';
 $registry->load_registry_from_db(
     -host => $opts->{host},
@@ -78,9 +90,6 @@ $registry->load_registry_from_db(
     -pass => $opts->{pass},
     );
 
-#print("version check=", $registry->version_check(), "\n");
-
-my $eversion = software_version();
 my $origin = "ensembl-$eversion";
 
 my $prefix = $opts->{prefix} || $origin;

@@ -42,9 +42,9 @@
 # $ make refresh-matviews
 
 
-.SUFFIXES :
-.PRECIOUS :
-.PHONY : FORCE
+.SUFFIXES:
+.PRECIOUS:
+.PHONY: FORCE
 .DELETE_ON_ERROR:
 
 SHELL:=/bin/bash -o pipefail -e
@@ -155,14 +155,13 @@ data/ucsc-%/log:
 ## --- Ensembl ---
 
 #=> data/ensembl-%seqinfo.gz data/ensembl-%txinfo.gz data/ensembl-%exonset.gz
-data/ensembl-%seqinfo.gz data/ensembl-%txinfo.gz data/ensembl-%exonset.gz: data/ensembl-%log;
+data/ensembl-%/seqinfo.gz data/ensembl-%/txinfo.gz data/ensembl-%/exonset.gz: data/ensembl-%/log
 
 #=> data/ensembl-%log --
-data/ensembl-%log:
-	### NOT RUNNING:
-	### @mkdir -pv ${@D}
-	### ensembl-fetch --prefix ${@D}/ VHL >$@.tmp 2>&1"
-	### mv -bfv $@.tmp $@
+data/ensembl-%/log:
+	@if ! mkdir ${@D}; then echo "${@D} exists: move it out of the way in order to update" 1>&2; exit 1; fi
+	ENSEMBL_VERSION=$* source ../etc/ensembl.sh; ensembl-fetch --prefix ${@D}/ >$@.tmp 2>&1
+	mv -bfv $@.tmp $@
 
 
 ## --- Generic rules ---
@@ -319,7 +318,7 @@ create:
 post-load: analyze refresh-matviews 
 
 #=> analyze -- analyze tables to update statistics
-	#=> grant-permissions -- so that you can update grants on existing databases
+#=> grant-permissions -- so that you can update grants on existing databases
 #=> refresh-matviews --
 analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
@@ -334,7 +333,7 @@ mega-test:
 	make cleanest drop create
 	make load-base
 	make load-ncbi/{refmismatch,acmg-mr}
-	#make load-ensembl-79/{refmismatch,acmg-mr}
+	make load-ensembl-79/{refmismatch,acmg-mr}
 	make align-exons refresh-matviews
 
 
