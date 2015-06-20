@@ -171,13 +171,14 @@ def load_seqinfo(session, opts, cf):
 
 
 def load_exonset(session, opts, cf):
-    # unlike seq and seq_anno loading, where annotations may be updated at any time,
-    # exonsets are loaded discretely -- that is, we never *add* new exons to
-    # exonsets.
+    # exonsets and associated exons are loaded together
 
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
+
+    known_tx = set([u_tx.ac
+                    for u_tx in session.query(usam.Transcript)])
 
     known_es = set([(u_es.tx_ac, u_es.alt_ac, u_es.alt_aln_method)
                     for u_es in session.query(usam.ExonSet)])
@@ -190,6 +191,15 @@ def load_exonset(session, opts, cf):
 
     for i_es, es in enumerate(esr):
         key = (es.tx_ac, es.alt_ac, es.method)
+    
+        if es.tx_ac not in known_tx:
+            # catch cases where UCSC has refseq transcripts not in UTA
+            # Known causes:
+            # - collecting UCSC data after NCBI data, and new refseq created
+            # - refseq fails alignment criteria (see data/ncbi/ncbi-parse-gff.log)
+            logger.warn("Could not load exon set: unknown transcript {es.tx_ac} in {key}".format(
+                es=es, key=key))
+            continue
 
         if i_es % 50 == 0 or i_es + 1 == n_lines:
             logger.info("{i_es}/{n_lines} {p:.1f}%: loading exonset  ({key})".format(
@@ -288,9 +298,11 @@ def load_txinfo(session, opts, cf):
         try:
             cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
         except KeyError:
-            logger.error("{ac}: not in sequence database; skipping".format(
+            raise Exception("{ac}: not in sequence database; skipping".format(
                 ac=ti.ac))
-            continue
+            #logger.error("{ac}: not in sequence database; skipping".format(
+            #    ac=ti.ac))
+            #continue
 
         cds_md5 = seq_md5(cds_seq)
 
