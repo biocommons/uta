@@ -336,6 +336,15 @@ mega-test:
 	make load-ensembl-79/{refmismatch,acmg-mr}
 	make align-exons refresh-matviews
 
+the-whole-kielbasa:
+	make cleanest drop create
+	make load-base
+	make load-ncbi
+	make load-ensembl-79
+	make load-bic
+	make load-ucsc-hg19
+	make align-exons refresh-matviews
+
 
 ############################################################################
 #= CLEANUP
