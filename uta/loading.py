@@ -113,6 +113,8 @@ def load_seqinfo(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
+    n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
+
     sir = ufsi.SeqInfoReader(gzip.open(opts["FILE"]))
     logger.info("opened " + opts["FILE"])
 
@@ -124,8 +126,9 @@ def load_seqinfo(session, opts, cf):
 
         i_md5 += 1
         if i_md5 % 25 == 1:
-            logger.info("{i_md5}/???: updated/added seq {md5} with {n} acs ({acs})".format(
-                i_md5=i_md5, md5=md5, n=len(sis), acs=",".join(si.ac for si in sis)))
+            logger.info("{i_md5}/{n_rows} {p:.1f}%: updated/added seq {md5} with {n} acs ({acs})".format(
+                i_md5=i_md5, n_rows=n_rows, md5=md5, p=(i_md5 + 1) / n_rows * 100,
+                n=len(sis), acs=",".join(si.ac for si in sis)))
 
         u_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == md5).first()
         if u_seq is None:
@@ -185,7 +188,7 @@ def load_exonset(session, opts, cf):
     logger.info("{n} known exon_set keys; will skip those during loading".format(
         n=len(known_es)))
 
-    n_lines = len(gzip.open(opts["FILE"]).readlines())
+    n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
     esr = ufes.ExonSetReader(gzip.open(opts["FILE"]))
     logger.info("opened " + opts["FILE"])
 
@@ -201,9 +204,9 @@ def load_exonset(session, opts, cf):
                 es=es, key=key))
             continue
 
-        if i_es % 50 == 0 or i_es + 1 == n_lines:
-            logger.info("{i_es}/{n_lines} {p:.1f}%: loading exonset  ({key})".format(
-                i_es=i_es, n_lines=n_lines, p=(i_es + 1) / n_lines * 100, key=str(key)))
+        if i_es % 50 == 0 or i_es + 1 == n_rows:
+            logger.info("{i_es}/{n_rows} {p:.1f}%: loading exonset  ({key})".format(
+                i_es=i_es, n_rows=n_rows, p=(i_es + 1) / n_rows * 100, key=str(key)))
 
         if key in known_es:
             continue
@@ -269,14 +272,14 @@ def load_txinfo(session, opts, cf):
     logger.info("Opened sequence directories: " + ",".join(fa_dirs))
 
     known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
-    n_lines = len(gzip.open(opts["FILE"]).readlines())
+    n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
     tir = ufti.TxInfoReader(gzip.open(opts["FILE"]))
     logger.info("opened " + opts["FILE"])
 
     for i_ti, ti in enumerate(tir):
-        if i_ti % 50 == 0 or i_ti + 1 == n_lines:
-            logger.info("{i_ti}/{n_lines} {p:.1f}%: loading transcript {ac}".format(
-                i_ti=i_ti, n_lines=n_lines, p=(i_ti + 1) / n_lines * 100, ac=ti.ac))
+        if i_ti % 50 == 0 or i_ti + 1 == n_rows:
+            logger.info("{i_ti}/{n_rows} {p:.1f}%: loading transcript {ac}".format(
+                i_ti=i_ti, n_rows=n_rows, p=(i_ti + 1) / n_rows * 100, ac=ti.ac))
 
         if ti.ac in known_acs:
             logger.warning("skipping new definition of transcript " + ti.ac)
