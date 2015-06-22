@@ -69,6 +69,7 @@ include .${CONF}.conf.mk
 .${CONF}.conf.mk: ${GLOBAL_CONF_FN} ${CONF_FN}
 	../sbin/conf-to-vars $^ >$@
 
+schema=$(shell python -c 'import uta.models; print uta.models.schema_name')
 
 ############################################################################
 #= BASIC USAGE
@@ -296,7 +297,7 @@ ${LOG_DIR}/align-exons.log: FORCE
 ${LOG_DIR}/ncbi/preferred-accessions.log: data/ncbi/geneacs.gz
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
-	| psql -d uta_dev -U uta_admin  -c "copy uta_1_0.preferred_accession(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
+	| psql -d uta_dev -U uta_admin  -c "copy ${schema}.preferred_accession(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
