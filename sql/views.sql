@@ -93,6 +93,7 @@ select * from tx_def_summary_mv;
 
 CREATE OR REPLACE VIEW tx_similarity_v AS
 SELECT D1.tx_ac as tx_ac1, D2.tx_ac as tx_ac2,
+       D1.hgnc = D2.hgnc as hgnc_eq,
        D1.cds_md5=D2.cds_md5 as cds_eq,
        D1.es_fingerprint=D2.es_fingerprint as es_fp_eq,
        D1.cds_es_fp=D2.cds_es_fp as cds_es_fp_eq
