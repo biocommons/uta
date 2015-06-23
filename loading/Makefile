@@ -237,9 +237,6 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 ############################################################################
 #= Loading sets
 
-# core data that needs to be loaded
-load-base: ${LOG_DIR}/ncbi/preferred-accessions.log
-
 load-bic:        $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
 load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
 load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
@@ -256,6 +253,7 @@ load-ensembl-79/acmg-mr: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-7
 #= Loading rules
 
 #=> ${LOG_DIR}/origin.log -- 
+load-origin: ${LOG_DIR}/origin.log
 ${LOG_DIR}/origin.log: data/origin.tsv
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-origin $< >$@.tmp 2>&1
@@ -294,12 +292,20 @@ ${LOG_DIR}/align-exons.log: FORCE
 	mv $@.tmp $@
 
 #=> ${LOG_DIR}/preferred-accessions --
+load-ncbi-preferred-accessions: ${LOG_DIR}/ncbi/preferred-accessions.log
 ${LOG_DIR}/ncbi/preferred-accessions.log: data/ncbi/geneacs.gz
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
 	| psql -d uta_dev -U uta_admin  -c "copy ${schema}.preferred_accession(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
 
+
+#=> ${LOG_DIR}/liftover --
+liftover-%: ${LOG_DIR}/liftover-%.log;
+${LOG_DIR}/liftover-%.log: liftover/%.sql
+	@mkdir -pv ${@D}
+	psql -d uta_dev -U uta_admin -e -f $< >$@.tmp 2>&1
+	mv $@.tmp $@
 
 
 ############################################################################
@@ -314,7 +320,6 @@ create:
 	uta ${CONF_OPTS} create-schema
 	uta ${CONF_OPTS} load-sql ../sql/internal-views.sql ../sql/views.sql ../sql/preferred_accession.sql
 	uta ${CONF_OPTS} grant-permissions
-	uta ${CONF_OPTS} load-origin data/origin.tsv
 
 post-load: analyze refresh-matviews 
 
@@ -324,23 +329,28 @@ post-load: analyze refresh-matviews
 analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
 
+dumps/%.pgd.gz:
+	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* | gzip) >$@.tmp 2>$@.log
+	mv "$@.tmp" "$@"
+	sha1sum "$@" >"$@.sha1"
 
-# push uta_dev/uta1 to 
-push-dev:
-	psql -h uta.invitae.com -U uta_admin -d 
+# push 
+push-%:
+	pg_dump -U uta_admin -h localhost -d uta_dev -n $* | psql -h uta.biocommons.org -U uta_admin -d uta_dev
 
 
 mega-test:
 	make cleanest drop create
-	make load-base
+	make load-origin
 	make load-ncbi/{refmismatch,acmg-mr}
 	make load-ensembl-79/{refmismatch,acmg-mr}
 	make align-exons refresh-matviews
 
 the-whole-kielbasa:
 	make cleanest drop create
-	make load-base
-	make load-ncbi
+	make liftover-${schema}
+	make load-origin
+	make load-ncbi load-ncbi-preferred-accessions
 	make load-ensembl-79
 	make load-bic
 	make load-ucsc-hg19
