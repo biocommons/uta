@@ -5,10 +5,10 @@
 # code. You'll also need Log::Log4perl installed. 
 #
 # Tips: 
-# 1) See http://uswest.ensembl.org/info/docs/api/api_git.html
+# * rsync --exclude=.git -HRavz opt/ensembl/setup.sh opt/ensembl/80/{ensembl,bioperl-live}/ projects/biocommons/uta/{etc,sbin,loading/Makefile,loading/etc}/  ens:
+# * See http://uswest.ensembl.org/info/docs/api/api_git.html
 # for ensembl api installation instructions.
-# 2) sudo apt-get install liblog-log4perl-perl
-#
+# * sudo apt-get install libconfig-inifiles-perl liblog-log4perl-perl libdbi-perl libdbd-mysql-perl
 
 use strict;
 use warnings;
@@ -26,15 +26,26 @@ use Bio::EnsEMBL::Registry;
 
 use FindBin;
 
-sub process1($);
+sub process1($$$$);
+sub process_genes($$);
 
 ############################################################################
 
 my $root = "$FindBin::RealBin/..";
 
+#my $opts = {
+#    'assert-version' => 79,
+#    'database' => 'homo_sapiens_core_79_37',
+#    'host' => 'ensembldb.ensembl.org',
+#    'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
+#    'user' => 'anonymous',
+#    'pass' => undef,
+#};
+
 my $opts = {
-    'assert-version' => 79,
-    'database' => 'homo_sapiens_core_79_37',
+    'assert-version' => 80,
+    'divisor' => 4,
+    'database' => 'homo_sapiens_core_80_37',
     'host' => 'ensembldb.ensembl.org',
     'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
     'user' => 'anonymous',
@@ -69,6 +80,8 @@ GetOptions($opts,
 	   'user|u=s',
 	   'config|C=s',
 	   'prefix=s',
+	   'divisor|q=i',
+	   'modulus|m=i',
     )
     || die("$0: you got usage issues, homey\n");
 
@@ -78,8 +91,8 @@ my $eversion = software_version();
 ($eversion eq $opts->{'assert-version'})
     or die(sprintf("expected version $opts->{'assert-version'}, found version $eversion"));
 
-if ($eversion != 79) {
-    warn("This script is known to work with ensembl-79; you're using $eversion");
+if ($eversion != 79 and $eversion != 80) {
+    warn("This script is known to work with ensembl-79 or 80; you're using $eversion");
 }
 
 my $registry = 'Bio::EnsEMBL::Registry';
@@ -90,27 +103,16 @@ $registry->load_registry_from_db(
     -pass => $opts->{pass},
     );
 
-my $origin = "ensembl-$eversion";
-
-my $prefix = $opts->{prefix} || $origin;
-my $tiw_fn = "$prefix/txinfo.gz";
-my $esw_fn = "$prefix/exonset.gz";
-my $faw_fn = "$prefix/fasta.gz";
-
-my $tiw = IO::Zlib->new("$tiw_fn.tmp", "wb");
-(defined $tiw)
-    || die("$tiw_fn.tmp: $!");
-my $esw = IO::Zlib->new("$esw_fn.tmp", "wb");
-my $faw = IO::Zlib->new("$faw_fn.tmp", "wb");
-
-$tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
-$esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
-
 my $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
 my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
 my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
 
+
+my $origin = "ensembl-$eversion";
+my $prefix = $opts->{prefix} || $origin;
+
 if (@ARGV) {
+    die("this block was not converted to use process_genes");
     for(my $i=0; $i<=$#ARGV; $i++) {
 	my $hgnc = $ARGV[$i];
 	chomp($hgnc);
@@ -130,35 +132,69 @@ if (@ARGV) {
 		$logger->warn(sprintf("Requested gene %s; got reply for %s",
 				      $hgnc, $g->external_name()));
 	    }
-	    process1($g);
+	    process1($g,99,88,77);
 	}
     }
 } else {
-    my @GENEs = @{ $ga->fetch_all() };
-    for(my $i=0; $i<=$#GENEs; $i++) {
-	my $g = $GENEs[$i];
-	my $hgnc = $g->external_name();
-	$logger->info(sprintf("%d/%d (%.1f%%): gene %s\n",
-			      ($i+1), ($#GENEs+1), ($i+1)/($#GENEs+1)*100, $hgnc));
-	process1($g);
+    my @genes = @{$ga->fetch_all()};
+    my $ngenes = $#genes+1;
+    my $N = 26;
+    my $nper = $ngenes/$N;
+    for(my $i=0; $i<$N; $i++) {
+	next if (defined $opts->{modulus} and $i % $opts->{divisor} != $opts->{modulus});
+	my $s = int($nper * $i);
+	my $e = int($nper * ($i+1)) - 1;
+	my $pfx = sprintf("$prefix/%c",97+$i);
+	my @subgenes = @genes[$s..$e];
+	$logger->info(sprintf("$pfx: %d/%d (%.1f%%) [%d, %d]...",
+			      ($i+1), $N, ($i+1)/$N*100, $s, $e));
+	process_genes(\@subgenes, $pfx);
     }
 }
-
-$tiw->close();
-$esw->close();
-$faw->close();
-
-rename("$tiw_fn.tmp",$tiw_fn);
-rename("$esw_fn.tmp",$esw_fn);
-rename("$faw_fn.tmp",$faw_fn);
 
 exit(0);
 
 ############################################################################
 
+sub process_genes($$) {
+    my ($subgenes,$prefix) = @_;
+
+    mkdir($prefix);
+    my $tiw_fn = "$prefix/txinfo.gz";
+    my $esw_fn = "$prefix/exonset.gz";
+    my $faw_fn = "$prefix/fasta.gz";
+
+    my $tiw = IO::Zlib->new("$tiw_fn.tmp", "wb");
+    (defined $tiw)
+	|| die("$tiw_fn.tmp: $!");
+    my $esw = IO::Zlib->new("$esw_fn.tmp", "wb");
+    my $faw = IO::Zlib->new("$faw_fn.tmp", "wb");
+
+    $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
+    $esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
+    
+    for(my $i=0; $i<=$#$subgenes; $i++) {
+	my $g = $subgenes->[$i];
+	process1($g,$tiw,$esw,$faw);
+	$logger->info(sprintf("%d/%d (%.1f%%): gene %s\n",
+			      ($i+1), ($#$subgenes+1), ($i+1)/($#$subgenes+1)*100,
+			      $g->external_name()));
+    }
+    
+    $tiw->close();
+    $esw->close();
+    $faw->close();
+
+    rename("$tiw_fn.tmp",$tiw_fn);
+    rename("$esw_fn.tmp",$esw_fn);
+    rename("$faw_fn.tmp",$faw_fn);
+}
+
+
+
 my %tx_seen;
-sub process1($) {
-    my ($g) = @_;
+sub process1($$$$) {
+    my ($g,$tiw,$esw,$faw) = @_;
     my $hgnc = $g->external_name();
 
     my @tx = @{ $g->get_all_Transcripts };
