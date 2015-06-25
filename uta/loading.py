@@ -108,6 +108,8 @@ def load_seqinfo(session, opts, cf):
     # - if md5 not in multimap, add seq_id
     # - if anno for md5 not in multimap, add anno
     # -    .. else: update description if necessary
+    
+    update_period = 100
 
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
@@ -125,7 +127,7 @@ def load_seqinfo(session, opts, cf):
         si = sis[0]
 
         i_md5 += 1
-        if i_md5 % 25 == 1:
+        if i_md5 % update_period == 1:
             logger.info("{i_md5}/{n_rows} {p:.1f}%: updated/added seq {md5} with {n} acs ({acs})".format(
                 i_md5=i_md5, n_rows=n_rows, md5=md5, p=(i_md5 + 1) / n_rows * 100,
                 n=len(sis), acs=",".join(si.ac for si in sis)))
@@ -176,6 +178,8 @@ def load_seqinfo(session, opts, cf):
 def load_exonset(session, opts, cf):
     # exonsets and associated exons are loaded together
 
+    update_period = 50 
+
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
@@ -204,7 +208,7 @@ def load_exonset(session, opts, cf):
                 es=es, key=key))
             continue
 
-        if i_es % 50 == 0 or i_es + 1 == n_rows:
+        if i_es % update_period == 0 or i_es + 1 == n_rows:
             logger.info("{i_es}/{n_rows} {p:.1f}%: loading exonset  ({key})".format(
                 i_es=i_es, n_rows=n_rows, p=(i_es + 1) / n_rows * 100, key=str(key)))
 
@@ -263,6 +267,7 @@ def load_txinfo(session, opts, cf):
     session.execute("set search_path = " + usam.schema_name)
 
     self_aln_method = "transcript"
+    update_period = 250
 
     from bioutils.digests import seq_md5
     from multifastadb import MultiFastaDB
@@ -277,7 +282,7 @@ def load_txinfo(session, opts, cf):
     logger.info("opened " + opts["FILE"])
 
     for i_ti, ti in enumerate(tir):
-        if i_ti % 50 == 0 or i_ti + 1 == n_rows:
+        if i_ti % update_period == 0 or i_ti + 1 == n_rows:
             logger.info("{i_ti}/{n_rows} {p:.1f}%: loading transcript {ac}".format(
                 i_ti=i_ti, n_rows=n_rows, p=(i_ti + 1) / n_rows * 100, ac=ti.ac))
 
@@ -350,7 +355,7 @@ def align_exons(session, opts, cf):
     from multifastadb import MultiFastaDB
     import uta_align.align.algorithms as utaaa
 
-    update_period = 50
+    update_period = 1000
 
     def _get_cursor(con):
         cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
@@ -425,7 +430,7 @@ def align_exons(session, opts, cf):
         cur.execute(aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added, tx_aseq, alt_aseq])
         tx_acs.add(r.tx_ac)
 
-        if (i_r + 1) == n_rows or (i_r + 1) % update_period == 0:
+        if i_r % update_period == 0 or (i_r + 1) == n_rows:
             con.commit()
             n1, t1 = i_r, time.time()
             nd, td = n1 - n0, t1 - t0
@@ -433,12 +438,11 @@ def align_exons(session, opts, cf):
             if aln_rate_s is None:  # aln_rate_s is EWMA smoothed average
                 aln_rate_s = aln_rate
             else:
-                aln_rate_s_old = aln_rate_s
                 aln_rate_s = decay_rate * aln_rate + (1.0 - decay_rate) * aln_rate_s
             etr = (n_rows - i_r - 1) / aln_rate_s        # etr in secs
             etr_s = str(datetime.timedelta(seconds=round(etr)))  # etr as H:M:S
-            logger.info("{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f} aln/sec; etr={etr:.0f}s ({etr_s}); {n_tx} tx".format(
-                i_r=i_r, n_rows=n_rows, p_r=i_r / n_rows * 100, speed=aln_rate_s, etr=etr,
+            logger.info("{i_r}/{n_rows} {p_r:.1f}%; committed; speed={speed:.1f}/{speed_s:.1f} aln/sec (inst/emwa); etr={etr:.0f}s ({etr_s}); {n_tx} tx".format(
+                i_r=i_r, n_rows=n_rows, p_r=i_r / n_rows * 100, speed=aln_rate, speed_s=aln_rate_s, etr=etr,
                 etr_s=etr_s, n_tx=len(tx_acs)))
             tx_acs = set()
             n0, t0 = n1, t1
