@@ -40,3 +40,7 @@ insert into exon_aln
   where EA.tx_exon_id  in (select exon_id from exon)
     and EA.alt_exon_id in (select exon_id from exon);
 select setval('exon_aln_exon_aln_id_seq', (select max(exon_aln_id) from exon_aln));
+
+-- the BIC data had typos in the NCs in the original source data. Fix them.
+update exon_set set alt_ac = 'NC_000013.10' where alt_ac = 'NC_00013.10';
+update exon_set set alt_ac = 'NC_000017.10' where alt_ac = 'NC_00017.10';
