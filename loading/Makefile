@@ -291,12 +291,12 @@ ${LOG_DIR}/align-exons.log: FORCE
 	uta ${CONF_OPTS} align-exons >$@.tmp 2>&1
 	mv $@.tmp $@
 
-#=> ${LOG_DIR}/preferred-accessions --
-load-ncbi-preferred-accessions: ${LOG_DIR}/ncbi/preferred-accessions.log
-${LOG_DIR}/ncbi/preferred-accessions.log: data/ncbi/geneacs.gz
+#=> ${LOG_DIR}/associated-accessions --
+load-ncbi-associated-accessions: ${LOG_DIR}/ncbi/associated-accessions.log
+${LOG_DIR}/ncbi/associated-accessions.log: data/ncbi/geneacs.gz
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
-	| psql -d uta_dev -U uta_admin  -c "copy ${schema}.preferred_accession(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
+	| psql -d uta_dev -U uta_admin  -c "copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
@@ -309,7 +309,8 @@ ${LOG_DIR}/liftover-%.log: liftover/%.sql
 
 
 ############################################################################
-#= DB Admin
+#= DB Building and Administration
+# a 
 
 #=> drop -- 
 drop:
@@ -318,10 +319,9 @@ drop:
 #=> create -- 
 create:
 	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql ../sql/internal-views.sql ../sql/views.sql ../sql/preferred_accession.sql
+	uta ${CONF_OPTS} load-sql ../sql/internal-views.sql ../sql/views.sql ../sql/associated_accessions.sql
 	uta ${CONF_OPTS} grant-permissions
 
-post-load: analyze refresh-matviews 
 
 #=> analyze -- analyze tables to update statistics
 #=> grant-permissions -- so that you can update grants on existing databases
@@ -329,16 +329,7 @@ post-load: analyze refresh-matviews
 analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
 
-dumps/%.pgd.gz:
-	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* | gzip) >$@.tmp 2>$@.log
-	mv "$@.tmp" "$@"
-	sha1sum "$@" >"$@.sha1"
-
-# push 
-push-%:
-	pg_dump -U uta_admin -h localhost -d uta_dev -n $* | psql -h uta.biocommons.org -U uta_admin -d uta_dev
-
-
+#=> mega-test -- DESTRUCTIVE: drop current dev db, recreate with subset of ncbi and ensembl data
 mega-test:
 	make cleanest drop create
 	make load-origin
@@ -348,13 +339,23 @@ mega-test:
 
 the-whole-kielbasa:
 	make cleanest drop create
-	make liftover-${schema}
-	make load-origin
-	make load-ncbi load-ncbi-preferred-accessions
+	make liftover-${schema} load-origin
+	make load-ncbi load-ncbi-associated-accessions
 	make load-ensembl-79
-	make load-bic
 	make load-ucsc-hg19
 	make align-exons refresh-matviews
+
+#=> dump-% -- dump named schema (e.g., uta_20140210) in dumps/ and compute sha1
+dump-%: dumps/%.pgd.gz dumps/%.pgd.gz.sha1;
+
+#=> dumps/%.pgd.gz -- create dump of named schema (e.g., uta_20140210)
+dumps/%.pgd.gz:
+	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* | gzip) >$@.tmp 2>$@.log
+	mv "$@.tmp" "$@"
+
+#=> push-% -- push named schema to uta_dev
+push-%:
+	pg_dump -U uta_admin -h localhost -d uta_dev -n $* | psql -h uta.biocommons.org -U uta_admin -d uta_dev
 
 
 ############################################################################
@@ -371,8 +372,10 @@ cleanest: cleaner
 	/bin/rm -fr logs
 
 
-
-
+.PRECIOUS: %.sha1
+%.sha1: %
+	sha1sum "$*" >"$@.tmp"
+	/bin/mv "$@.tmp" "$@"
 
 
 
