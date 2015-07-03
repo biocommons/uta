@@ -430,7 +430,7 @@ def align_exons(session, opts, cf):
         cur.execute(aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added, tx_aseq, alt_aseq])
         tx_acs.add(r.tx_ac)
 
-        if i_r % update_period == 0 or (i_r + 1) == n_rows:
+        if i_r > 0 and (i_r % update_period == 0 or (i_r + 1) == n_rows):
             con.commit()
             n1, t1 = i_r, time.time()
             nd, td = n1 - n0, t1 - t0
