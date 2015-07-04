@@ -482,6 +482,8 @@ def load_ncbi_geneinfo(session, opts, cf):
 def load_sequences(session, opts, cf):
     from multifastadb import MultiFastaDB
 
+    max_len = int(2e6)
+
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
@@ -490,13 +492,14 @@ def load_sequences(session, opts, cf):
     mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
     logger.info("Opened sequence directories: " + ",".join(fa_dirs))
 
+    # fetch accessions for given sequences
     sql = """
-    select S.seq_id,S.len,array_agg(SA.ac order by SA.ac) as acs
+    select S.seq_id,S.len,array_agg(SA.ac order by SA.ac~'^ENST',SA.ac) as acs
     from seq S
     join seq_anno SA on S.seq_id=SA.seq_id
-    where SA.ac ~ "^(U|NP|NG|ENST|NM)" and S.seq is NULL
+    where S.len <= {max_len} and S.seq is NULL
     group by S.seq_id,len
-    """
+    """.format(max_len=max_len)
 
     def _fetch_first(acs):
         # try all accessions in acs, return sequence of first that returns a
@@ -513,8 +516,12 @@ def load_sequences(session, opts, cf):
         if seq is None:
             logger.warn("No sequence found for {acs}".format(acs=row["acs"]))
             continue
-        assert row["len"] == len(seq), "expected a sequence of length {len} for {md5} ({acs}); length {len2}".format(
-            len=len(seq), md5=row["seq_id"], acs=row["acs"], len2=len(seq))
+        if row["len"] != len(seq):
+            logger.error("Expected a sequence of length {len} for {md5} ({acs}); got sequence of length {len2}".format(
+                len=row["len"], md5=row["seq_id"], acs=row["acs"], len2=len(seq)))
+            continue
+        assert row["len"] == len(seq), "expected a sequence of length {len} for {md5} ({acs}); got length {len2}".format(
+            len=row["len"], md5=row["seq_id"], acs=row["acs"], len2=len(seq))
         session.execute(usam.Seq.__table__.update().values(
             seq=seq).where(usam.Seq.seq_id == row["seq_id"]))
         logger.info("loaded sequence of length {len} for {md5} ({acs})".format(

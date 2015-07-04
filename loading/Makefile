@@ -140,7 +140,6 @@ data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
 	mv -bfv $@.tmp $@
 
 
-
 ## --- UCSC ---
 
 ## You gotta love how easy ucsc makes it to get data. Thanks guys and gals!
@@ -183,7 +182,6 @@ data/%/seqinfo.gz: data/%/fasta.gz
 ## the define section defines a template block of rules. That block is
 ## instantiated once per gene set discovered in aux/gene-sets/ by the
 ## $(eval $(call ... )) section that follows.
-
 
 
 define subset_block
@@ -249,6 +247,7 @@ load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensem
 load-ncbi/acmg-mr: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/acmg-mr/$f.log)  
 load-ensembl-79/acmg-mr: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/acmg-mr/$f.log)
 
+
 ############################################################################
 #= Loading rules
 
@@ -257,6 +256,12 @@ load-origin: ${LOG_DIR}/origin.log
 ${LOG_DIR}/origin.log: data/origin.tsv
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-origin $< >$@.tmp 2>&1
+	mv $@.tmp $@
+
+#=> load-sequences
+load-sequences: ${LOG_DIR}/load-sequences.log
+${LOG_DIR}/load-sequences.log:
+	uta ${CONF_OPTS} load-sequences >$@.tmp 2>&1
 	mv $@.tmp $@
 
 #=> ${LOG_DIR}/%seqinfo.log -- 
@@ -353,9 +358,13 @@ dumps/%.pgd.gz:
 	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* | gzip) >$@.tmp 2>$@.log
 	mv "$@.tmp" "$@"
 
-#=> push-% -- push named schema to uta_dev
-push-%:
-	pg_dump -U uta_admin -h localhost -d uta_dev -n $* | psql -h uta.biocommons.org -U uta_admin -d uta_dev
+#=> push-% -- push named schema
+push-dev-%: logs/uta.biocommons.org/uta_dev/load-%.log;
+
+.PRECIOUS: logs/uta.biocommons.org/uta_dev/load-%.log
+logs/uta.biocommons.org/uta_dev/load-%.log: dumps/%.pgd.gz
+	@mkdir -pv ${@D}
+	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
 
 
 ############################################################################
