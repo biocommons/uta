@@ -345,10 +345,13 @@ mega-test:
 the-whole-kielbasa:
 	make cleanest drop create
 	make liftover-${schema} load-origin
-	make load-ncbi load-ncbi-associated-accessions
+	make load-ncbi-associated-accessions
+	make load-ncbi
 	make load-ensembl-79
 	make load-ucsc-hg19
-	make align-exons refresh-matviews
+	make load-sequences
+	make align-exons
+	make refresh-matviews
 
 #=> dump-% -- dump named schema (e.g., uta_20140210) in dumps/ and compute sha1
 dump-%: dumps/%.pgd.gz dumps/%.pgd.gz.sha1;

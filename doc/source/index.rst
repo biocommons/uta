@@ -13,13 +13,16 @@ Contents
    :maxdepth: 2
 
    overview
-   examples
-   
-   getting_started
+
    installation
-   
+     # building from scratch
+     # installing locally
+
    database
-   modules
+
+   hgvs
+   eutils
+   
    changelog
    license
 
