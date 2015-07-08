@@ -104,7 +104,7 @@ help:
 ## small minority of these are likely transcripts with misc_feature
 ## features.)
 
-MIRRORS_NCBI_ROOT:=aux/mirrors-ncbi/2015/05/16
+MIRRORS_NCBI_ROOT:=aux/mirrors-ncbi/2015/07/05
 
 #=> data/ncbi/geneinfo.gz -- 
 data/ncbi/geneinfo.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
@@ -128,13 +128,26 @@ data/ncbi/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapien
 	ncbi-parse-gbff $^ | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
+
 #=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
-data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
+data/ncbi-GRCh37.p13/exonset.gz data/ncbi-GRCh37.p13/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
 	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
 
 #=> data/ncbi/seqinfo.gz -- 
-data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
+data/ncbi-GRCh37.p13/seqinfo.gz: data/ncbi/exonset.gz
+	@mkdir -pv ${@D}
+	(exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
+	mv -bfv $@.tmp $@
+
+
+#=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
+data/ncbi-GRCh38.p2/exonset.gz data/ncbi-GRCh38.p2/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.28_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
+	@mkdir -pv ${@D}
+	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
+
+#=> data/ncbi/seqinfo.gz -- 
+data/ncbi-GRCh38.p2/seqinfo.gz: data/ncbi/exonset.gz
 	@mkdir -pv ${@D}
 	(exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
@@ -235,11 +248,13 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 ############################################################################
 #= Loading sets
 
-load-bic:        $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
-load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
-load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
-load-ucsc-hg19:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
-load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
+load-bic:             $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
+load-ensembl-79:      $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
+load-ncbi:            $(foreach f,geneinfo                       ,${LOG_DIR}/ncbi/$f.log)
+load-ncbi-GRCh37.p13: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ncbi-GRCh37.p13/$f.log)
+load-ncbi-GRCh38.p2:  $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ncbi-GRCh38.p2/$f.log)
+load-ucsc-hg19:       $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
+load-ucsc-hg38:       $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
 
 load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)  
 load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)

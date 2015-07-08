@@ -109,10 +109,17 @@ dump was generated without users or roles, so no new roles are needed.
   
 #. Install UTA.
 
-   Download a database dump from https://bitbucket.org/biocommons/uta/downloads.
+   Download a database dump:
+   
+   `uta_20140210 <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz>`_ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz.sha1>`_]
+     Original production release. 
+     
+   `uta_20150704 <http://dl.biocommons.org/uta-dumps/uta_20150704.pgd.gz>`_ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20150704.pgd.gz.sha1>`_]
+     Recent development release. Contains NCBI updates through June 2015 and Ensembl-79. Believed to be stable but still in testing.
+
    ::
 
-   $ gzip -cdq uta_20140210.pgd.gz | psql -1 -v ON_ERROR_STOP=1 -d uta -f-
+   $ gzip -cdq uta_20140210.pgd.gz | psql -1 -v ON_ERROR_STOP=1 -d uta -Eae
 
 #. **Optional**: Manually refresh materialized views.
 
