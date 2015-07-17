@@ -27,7 +27,9 @@ use Bio::EnsEMBL::Registry;
 use FindBin;
 
 sub process1($$$$);
-sub process_genes($$);
+sub process_subgenes($$);
+sub process_genes($@);
+sub fetch_gene_by_name($$);
 
 ############################################################################
 
@@ -67,7 +69,7 @@ my %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
 
 my $method = 'genebuild';
 
-my %accepted_biotypes = map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA);
+my %accepted_biotypes = map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA processed_transcript);
 
 ############################################################################
 
@@ -111,32 +113,44 @@ my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
 my $origin = "ensembl-$eversion";
 my $prefix = $opts->{prefix} || $origin;
 
+my @genes;
 if (@ARGV) {
-    die("this block was not converted to use process_genes");
-    for(my $i=0; $i<=$#ARGV; $i++) {
-	my $hgnc = $ARGV[$i];
+    for my $hgnc (@ARGV) {
 	chomp($hgnc);
-	my @GENEs = @{ $ga->fetch_all_by_external_name($hgnc) };
-	if ($#GENEs == -1) {
-	    $logger->error("gene $hgnc is not in Ensembl");
-	    next;
-	}
-	if ($#GENEs >= 1) {
-	    $logger->warn(sprintf("gene $hgnc: got %d replies (processing all)",
-			  $#GENEs+1));
-	}
-	$logger->info(sprintf("%d/%d (%.1f%%): gene %s\n",
-			      ($i+1), ($#ARGV+1), ($i+1)/($#ARGV+1)*100, $hgnc));
-	foreach my $g (@GENEs) {
-	    if ($hgnc ne $g->external_name()) {
-		$logger->warn(sprintf("Requested gene %s; got reply for %s",
-				      $hgnc, $g->external_name()));
-	    }
-	    process1($g,99,88,77);
-	}
+	push(@genes, fetch_Gene_by_name($ga,$hgnc));
     }
 } else {
-    my @genes = @{$ga->fetch_all()};
+    @genes = @{$ga->fetch_all()};
+}
+process_genes($opts,@genes);
+
+exit(0);
+
+############################################################################
+
+sub fetch_Gene_by_name($$) {
+    my ($ga, $hgnc) = @_;
+    my @Genes = @{ $ga->fetch_all_by_external_name($hgnc) };
+    if ($#Genes == -1) {
+	$logger->error("gene $hgnc is not in Ensembl");
+	next;
+    }
+    if ($#Genes >= 1) {
+	$logger->warn(sprintf("gene $hgnc: got %d replies (processing all)",
+			      $#Genes+1));
+    }
+    foreach my $g (@Genes) {
+	if ($hgnc ne $g->external_name()) {
+	    $logger->warn(sprintf("Requested gene %s; got reply for %s",
+				  $hgnc, $g->external_name()));
+	}
+    }
+    return @Genes;
+}
+
+
+sub process_genes($@) {
+    my ($opts, @genes) = @_;
     my $ngenes = $#genes+1;
     my $N = 26;
     my $nper = $ngenes/$N;
@@ -148,15 +162,12 @@ if (@ARGV) {
 	my @subgenes = @genes[$s..$e];
 	$logger->info(sprintf("$pfx: %d/%d (%.1f%%) [%d, %d]...",
 			      ($i+1), $N, ($i+1)/$N*100, $s, $e));
-	process_genes(\@subgenes, $pfx);
+	process_subgenes(\@subgenes, $pfx);
     }
 }
 
-exit(0);
 
-############################################################################
-
-sub process_genes($$) {
+sub process_subgenes($$) {
     my ($subgenes,$prefix) = @_;
 
     mkdir($prefix);
