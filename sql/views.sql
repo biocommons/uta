@@ -74,7 +74,7 @@ grant select on tx_exon_set_summary_mv to public;
 
 create or replace view tx_def_summary_dv as
 select TESS.exon_set_id, TESS.tx_ac, TESS.alt_ac, TESS.alt_aln_method, TESS.alt_strand,
-       TESS.hgnc, TESS.cds_md5, TESS.es_fingerprint, CEF.cds_es_fp, 
+       TESS.hgnc, TESS.cds_md5, TESS.es_fingerprint, CEF.cds_es_fp, CEF.cds_exon_lengths_fp, 
        TESS.n_exons, TESS.se_i, CEF.cds_se_i, TESS.starts_i, TESS.ends_i, TESS.lengths, 
        T.cds_start_i, T.cds_end_i, CEF.cds_start_exon, CEF.cds_end_exon
 from tx_exon_set_summary_mv TESS
@@ -96,13 +96,16 @@ SELECT D1.tx_ac as tx_ac1, D2.tx_ac as tx_ac2,
        D1.hgnc = D2.hgnc as hgnc_eq,
        D1.cds_md5=D2.cds_md5 as cds_eq,
        D1.es_fingerprint=D2.es_fingerprint as es_fp_eq,
-       D1.cds_es_fp=D2.cds_es_fp as cds_es_fp_eq
+       D1.cds_es_fp=D2.cds_es_fp as cds_es_fp_eq,
+       D1.cds_exon_lengths_fp=D2.cds_exon_lengths_fp as cds_exon_lengths_fp_eq
 FROM tx_def_summary_mv D1
 JOIN tx_def_summary_mv D2 on (D1.tx_ac != D2.tx_ac
-     		       	      and (D1.hgnc=D2.hgnc
-     		       	     	   or D1.cds_md5=D2.cds_md5
-				   or D1.es_fingerprint=D2.es_fingerprint
-				   or D1.cds_es_fp=D2.cds_es_fp));
+                              and (D1.hgnc=D2.hgnc
+                                   or D1.cds_md5=D2.cds_md5
+                                   or D1.es_fingerprint=D2.es_fingerprint
+                                   or D1.cds_es_fp=D2.cds_es_fp
+                                   or D1.cds_exon_lengths_fp=D2.cds_exon_lengths_fp
+                                   ));
 
 
 
@@ -111,7 +114,7 @@ JOIN tx_def_summary_mv D2 on (D1.tx_ac != D2.tx_ac
 -- 
 -- create or replace view tx_aln_cigar_dv as
 -- select AES.tx_ac,AES.alt_ac,AES.alt_strand,AES.alt_aln_method,
--- 	   count(*) as n_exons, string_agg(EA.cigar,';'  order by TEX.ord) as cigars
+--         count(*) as n_exons, string_agg(EA.cigar,';'  order by TEX.ord) as cigars
 -- from exon_set TES
 -- join exon_set AES on TES.tx_ac=AES.tx_ac and TES.alt_aln_method='transcript' and AES.alt_aln_method!='transcript'
 -- join exon TEX on TES.exon_set_id=TEX.exon_set_id
