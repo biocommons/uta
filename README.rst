@@ -6,7 +6,7 @@ UTA -- Universal Transcript Archive
 
 .. `Docs <http://pythonhosted.org/uta/>`_ | 
 
-`PyPI <https://pypi.python.org/pypi/uta>`_ | |build_status|
+|build_status|
 
 
 Overview
