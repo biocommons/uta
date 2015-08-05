@@ -35,29 +35,9 @@ sub fetch_Gene_by_name($$);
 
 my $root = "$FindBin::RealBin/..";
 
-#my $opts = {
-#    'assert-version' => 79,
-#    'database' => 'homo_sapiens_core_79_37',
-#    'host' => 'ensembldb.ensembl.org',
-#    'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
-#    'user' => 'anonymous',
-#    'pass' => undef,
-#};
-
-#my $opts = {
-#    'assert-version' => 80,
-#    'divisor' => 4,
-#    'database' => 'homo_sapiens_core_80_37',
-#    'host' => 'ensembldb.ensembl.org',
-#    'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
-#    'user' => 'anonymous',
-#    'pass' => undef,
-#};
-
 my $opts = {
-    'assert-version' => 81,
     'divisor' => 1,
-    'database' => 'homo_sapiens_core_81_37',
+    'modulus' => 0,
     'host' => 'ensembldb.ensembl.org',
     'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
     'user' => 'anonymous',
@@ -199,9 +179,10 @@ GetOptions($opts,
 
 
 my $eversion = software_version();
+my $origin = "ensembl-$eversion";
+my $prefix = $opts->{prefix} || $origin;
+mkdir($prefix);
 
-($eversion eq $opts->{'assert-version'})
-    or die(sprintf("expected version $opts->{'assert-version'}, found version $eversion"));
 
 my $registry = 'Bio::EnsEMBL::Registry';
 $registry->load_registry_from_db(
@@ -209,16 +190,19 @@ $registry->load_registry_from_db(
     -user => $opts->{user},
     -port => $opts->{port},
     -pass => $opts->{pass},
+    -species => 'homo sapiens',
     );
+
+#$registry->version_check()
+#    || die("Version check failed");
 
 my $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
 my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
 my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
 
+$logger->info(sprintf("connected to %s @ %s:%s", 
+		      $ga->dbc()->dbname(), $opts->{host}, $opts->{port}));
 
-my $origin = "ensembl-$eversion";
-my $prefix = $opts->{prefix} || $origin;
-mkdir($prefix);
 
 my @Genes;
 if (@ARGV) {
