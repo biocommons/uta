@@ -95,8 +95,26 @@ directory.  The path is specified in etc/global.conf.
 NCBI
 ^^^^
 
+Data from NCBI are pulled using tools in a separate repo. Briefly:
+
+* Clone https://bitbucket.org/biocommons/mirrors-ncbi
+
+* Type `make update`
+
+  When this is completed, you will have a dated snapshot of NCBI data used by UTA.
+
+* Make a symlink to the source data directory::
+
+  cd loading/aux
+  ln -s ../../../mirrors-ncbi # adjust as necessary
+
+* The loading makefile will pull data from that source as necessary
+
+
 Ensembl
 ^^^^^^^
+
+
 
 LRG
 ^^^
