@@ -86,13 +86,20 @@ comment on view tx_def_summary_dv is 'transcript definitions, with exon structur
 create materialized view tx_def_summary_mv as select * from tx_def_summary_dv WITH NO DATA;
 comment on materialized view tx_def_summary_mv is 'transcript definitions, with exon structures and fingerprints';
 
+create index tx_def_summary_mv_tx_ac on uta_20150729.tx_def_summary_mv (tx_ac);
+create index tx_def_summary_mv_alt_ac on uta_20150729.tx_def_summary_mv (alt_ac);
+create index tx_def_summary_mv_alt_aln_method on uta_20150729.tx_def_summary_mv (alt_aln_method);
+create index tx_def_summary_mv_hgnc on uta_20150729.tx_def_summary_mv (hgnc);
+
+
 -- backward compatbility for older view
 create or replace view tx_def_summary_v as
 select * from tx_def_summary_mv;
 
 
 CREATE OR REPLACE VIEW tx_similarity_v AS
-SELECT D1.tx_ac as tx_ac1, D2.tx_ac as tx_ac2,
+SELECT DISTINCT
+       D1.tx_ac as tx_ac1, D2.tx_ac as tx_ac2,
        D1.hgnc = D2.hgnc as hgnc_eq,
        D1.cds_md5=D2.cds_md5 as cds_eq,
        D1.es_fingerprint=D2.es_fingerprint as es_fp_eq,
