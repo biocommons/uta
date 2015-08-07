@@ -62,6 +62,7 @@ LOG_DIR:=logs/${CONF}
 CONF_FN=../etc/${CONF}.conf
 GLOBAL_CONF_FN:=../etc/global.conf
 CONF_OPTS:=--conf=${GLOBAL_CONF_FN} --conf=${CONF_FN}
+PSQL_ARGS:=-d uta_dev -U uta_admin
 
 _:=$(shell mkdir -p ${LOG_DIR})
 
@@ -316,7 +317,7 @@ load-ncbi-associated-accessions: ${LOG_DIR}/ncbi/associated-accessions.log
 ${LOG_DIR}/ncbi/associated-accessions.log: data/ncbi/geneacs.gz
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
-	| psql -d uta_dev -U uta_admin  -c "copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
+	| psql ${PSQL_ARGS} -c "copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
@@ -324,7 +325,7 @@ ${LOG_DIR}/ncbi/associated-accessions.log: data/ncbi/geneacs.gz
 liftover-%: ${LOG_DIR}/liftover-%.log;
 ${LOG_DIR}/liftover-%.log: liftover/%.sql
 	@mkdir -pv ${@D}
-	psql -d uta_dev -U uta_admin -e -f $< >$@.tmp 2>&1
+	psql ${PSQL_ARGS} -e -f $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
@@ -339,7 +340,10 @@ drop:
 #=> create -- 
 create:
 	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql ../sql/internal-views.sql ../sql/views.sql ../sql/associated_accessions.sql
+	uta ${CONF_OPTS} load-sql \
+		../sql/internal-views.sql \
+		../sql/views.sql \
+		../sql/associated_accessions.sql
 	uta ${CONF_OPTS} grant-permissions
 
 
@@ -359,14 +363,15 @@ mega-test:
 
 the-whole-kielbasa:
 	make cleanest drop create
-	make liftover-${schema} load-origin
-	make load-ncbi-associated-accessions
-	make load-ncbi
-	make load-ensembl-79
+	make liftover-${schema}
+	make load-origin
+	make load-ncbi load-ncbi-associated-accessions
+	make load-ensembl-79 load-ensembl-81
 	make load-ucsc-hg19
 	make load-sequences
 	make align-exons
 	make refresh-matviews
+
 
 #=> dump-% -- dump named schema (e.g., uta_20140210) in dumps/ and compute sha1
 dump-%: dumps/%.pgd.gz dumps/%.pgd.gz.sha1;
