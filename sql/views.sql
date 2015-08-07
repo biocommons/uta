@@ -86,10 +86,10 @@ comment on view tx_def_summary_dv is 'transcript definitions, with exon structur
 create materialized view tx_def_summary_mv as select * from tx_def_summary_dv WITH NO DATA;
 comment on materialized view tx_def_summary_mv is 'transcript definitions, with exon structures and fingerprints';
 
-create index tx_def_summary_mv_tx_ac on uta_20150729.tx_def_summary_mv (tx_ac);
-create index tx_def_summary_mv_alt_ac on uta_20150729.tx_def_summary_mv (alt_ac);
-create index tx_def_summary_mv_alt_aln_method on uta_20150729.tx_def_summary_mv (alt_aln_method);
-create index tx_def_summary_mv_hgnc on uta_20150729.tx_def_summary_mv (hgnc);
+create index tx_def_summary_mv_tx_ac on tx_def_summary_mv (tx_ac);
+create index tx_def_summary_mv_alt_ac on tx_def_summary_mv (alt_ac);
+create index tx_def_summary_mv_alt_aln_method on tx_def_summary_mv (alt_aln_method);
+create index tx_def_summary_mv_hgnc on tx_def_summary_mv (hgnc);
 
 
 -- backward compatbility for older view
@@ -113,41 +113,3 @@ JOIN tx_def_summary_mv D2 on (D1.tx_ac != D2.tx_ac
                                    or D1.cds_es_fp=D2.cds_es_fp
                                    or D1.cds_exon_lengths_fp=D2.cds_exon_lengths_fp
                                    ));
-
-
-
--- create or replace view gene_aliases_v as
--- select hgnc,unnest(array_append(string_to_array(aliases,','),hgnc)) as alias from gene ;
--- 
--- create or replace view tx_aln_cigar_dv as
--- select AES.tx_ac,AES.alt_ac,AES.alt_strand,AES.alt_aln_method,
---         count(*) as n_exons, string_agg(EA.cigar,';'  order by TEX.ord) as cigars
--- from exon_set TES
--- join exon_set AES on TES.tx_ac=AES.tx_ac and TES.alt_aln_method='transcript' and AES.alt_aln_method!='transcript'
--- join exon TEX on TES.exon_set_id=TEX.exon_set_id
--- join exon AEX on AES.exon_set_id=AEX.exon_set_id and TEX.ord=AEX.ord
--- join exon_aln EA on EA.tx_exon_id=TEX.exon_id and EA.alt_exon_id=AEX.exon_id
--- group by AES.tx_ac,AES.alt_ac,AES.alt_strand,AES.alt_aln_method;
--- 
--- create materialized view tx_aln_cigar_mv as select * from tx_aln_cigar_dv WITH NO DATA;
--- create index tx_aln_cigar_mv_alt_ac_ix on tx_aln_cigar_mv(alt_ac);
--- create index tx_aln_cigar_mv_tx_ac_ix on tx_aln_cigar_mv(tx_ac);
--- create index tx_aln_cigar_mv_alt_aln_method_ix on tx_aln_cigar_mv(alt_aln_method);
--- analyze tx_aln_cigar_mv;
--- grant select on tx_aln_cigar_mv to public;
--- 
--- 
--- create or replace view tx_aln_summary_v as
--- select TESS.*,TAC.cigars
--- from tx_exon_set_summary_mv as TESS
--- join tx_aln_cigar_mv TAC on TESS.tx_ac=TAC.tx_ac and TESS.alt_ac=TAC.alt_ac and TESS.alt_aln_method=TAC.alt_aln_method
--- where TESS.alt_aln_method != 'transcript';
--- comment on view tx_def_summary_v is 'transcript alignments on alternate seqeuences, with exon structures';
--- 
--- create materialized view tx_aln_summary_mv as select * from tx_aln_summary_v WITH NO DATA;
--- create index tx_aln_summary_mv_tx_ac_ix on tx_aln_summary_mv(tx_ac);
--- create index tx_aln_summary_mv_alt_ac_ix on tx_aln_summary_mv(alt_ac);
--- create index tx_aln_summary_mv_alt_aln_method_ix on tx_aln_summary_mv(alt_aln_method);
--- grant select on tx_aln_summary_mv to public;
-
-
