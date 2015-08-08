@@ -36,7 +36,7 @@ sub fetch_Gene_by_name($$);
 my $root = "$FindBin::RealBin/..";
 
 my $opts = {
-    'divisor' => 1,
+    'divisor' => 1000,
     'modulus' => 0,
     'host' => 'ensembldb.ensembl.org',
     'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
@@ -214,6 +214,7 @@ if (@ARGV) {
     @Genes = @{$ga->fetch_all()};
     my $n0 = $#Genes+1;
     @Genes = grep {$_->external_db() eq 'HGNC'} @Genes;
+    @Genes = sort {$a->external_name() cmp $b->external_name()} @Genes;
     my $n1 = $#Genes+1;
     $logger->info(sprintf("%d Genes fetched, %d after filtering by HGNC", $n0, $n1));
 }
@@ -259,11 +260,18 @@ sub process_genes($@) {
 	next if (defined $opts->{modulus} and $i % $opts->{divisor} != $opts->{modulus});
 	my $s = int($nper * $i);
 	my $e = int($nper * ($i+1)) - 1;
-	my $pfx = sprintf("$prefix/%03d",$i);
+	my $pfx = sprintf("$prefix/%04d",$i);
 	my @subgenes = @genes[$s..$e];
-	$logger->info(sprintf("$pfx: %d/%d (%.1f%%) [%d, %d]...",
-			      ($i+1), $N, ($i+1)/$N*100, $s, $e));
-	process_subgenes(\@subgenes, $pfx);
+	my $msg = sprintf("$pfx: %d/%d (%.1f%%) [%d, %d] = [%s,%s]...",
+			  ($i+1), $N, ($i+1)/$N*100, $s, $e,
+			  $subgenes[0]->external_name(), $subgenes[$#subgenes]->external_name());
+	if (-d $pfx) {
+	    $logger->info($msg . "$pfx already exists; skipping");
+	} else {
+	    mkdir($pfx);
+	    $logger->info($msg);
+	    process_subgenes(\@subgenes, $pfx);
+	}
     }
 }
 
@@ -271,7 +279,6 @@ sub process_genes($@) {
 sub process_subgenes($$) {
     my ($subgenes,$prefix) = @_;
 
-    mkdir($prefix);
     my $tiw_fn = "$prefix/txinfo.gz";
     my $esw_fn = "$prefix/exonset.gz";
     my $faw_fn = "$prefix/fasta.gz";
