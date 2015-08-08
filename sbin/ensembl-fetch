@@ -15,6 +15,7 @@ use warnings;
 
 use Config::IniFiles;
 use Data::Dumper;
+use File::Path qw(remove_tree);
 use Getopt::Long qw(:config gnu_compat);
 use IO::Compress::Gzip;
 use IO::File;
@@ -37,7 +38,7 @@ my $root = "$FindBin::RealBin/..";
 
 my $opts = {
     'divisor' => 1000,
-    'modulus' => 0,
+    'modulus' => undef,
     'host' => 'ensembldb.ensembl.org',
     'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
     'user' => 'anonymous',
@@ -262,15 +263,18 @@ sub process_genes($@) {
 	my $e = int($nper * ($i+1)) - 1;
 	my $pfx = sprintf("$prefix/%04d",$i);
 	my @subgenes = @genes[$s..$e];
-	my $msg = sprintf("$pfx: %d/%d (%.1f%%) [%d, %d] = [%s,%s]...",
+	my $msg = sprintf("subset: $pfx: %d/%d (%.1f%%) [%d, %d] = [%s,%s]...",
 			  ($i+1), $N, ($i+1)/$N*100, $s, $e,
 			  $subgenes[0]->external_name(), $subgenes[$#subgenes]->external_name());
 	if (-d $pfx) {
 	    $logger->info($msg . "$pfx already exists; skipping");
 	} else {
-	    mkdir($pfx);
+	    my $tpfx = $pfx . ".tmp";
+	    remove_tree($tpfx);
+	    mkdir($tpfx);
 	    $logger->info($msg);
-	    process_subgenes(\@subgenes, $pfx);
+	    process_subgenes(\@subgenes, $tpfx);
+	    rename($tpfx,$pfx);
 	}
     }
 }
