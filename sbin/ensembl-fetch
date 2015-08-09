@@ -37,7 +37,8 @@ sub fetch_Gene_by_name($$);
 my $root = "$FindBin::RealBin/..";
 
 my $opts = {
-    'divisor' => 1000,
+    'npartitions' => 1000,
+    'divisor' => undef,
     'modulus' => undef,
     'host' => 'ensembldb.ensembl.org',
     'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
@@ -45,7 +46,7 @@ my $opts = {
     'pass' => undef,
 };
 
-my %nc_to_chr = (
+my %ac_to_name = (
     'NC_000001.10' => '1'  ,    'NC_000002.11' => '2'  ,    'NC_000003.11' => '3'  ,    'NC_000004.11' => '4'  ,
     'NC_000005.9'  => '5'  ,    'NC_000006.11' => '6'  ,    'NC_000007.13' => '7'  ,    'NC_000008.10' => '8'  ,
     'NC_000009.11' => '9'  ,    'NC_000010.10' => '10' ,    'NC_000011.9'  => '11' ,    'NC_000012.11' => '12' ,
@@ -155,7 +156,7 @@ my %nc_to_chr = (
     'NT_167246.1'  => 'HSCHR6_MHC_MANN_CTG1',    'NT_167247.1'  => 'HSCHR6_MHC_MCF_CTG1',    'NT_167248.1'  => 'HSCHR6_MHC_QBL_CTG1',
     'NT_167249.1'  => 'HSCHR6_MHC_SSTO_CTG1',    'NT_167250.1'  => 'HSCHR4_1_CTG9',    'NT_167251.1'  => 'HSCHR17_1_CTG5',
     );
-my %chr_to_nc = map { $nc_to_chr{$_} => $_ } keys %nc_to_chr;
+my %name_to_ac = map { $ac_to_name{$_} => $_ } keys %ac_to_name;
 
 
 my $method = 'genebuild';
@@ -168,13 +169,14 @@ Log::Log4perl->init_once( "$root/etc/logging.conf" );
 my $logger = Log::Log4perl->get_logger();
 
 GetOptions($opts,
-	   'host|h=s',
-	   'port|p=s',
-	   'user|u=s',
 	   'config|C=s',
-	   'prefix=s',
-	   'divisor|q=i',
+	   'divisor|d=i',
+	   'host|h=s',
 	   'modulus|m=i',
+	   'npartitions|n=i',
+	   'port|p=s',
+	   'prefix=s',
+	   'user|u=s',
     )
     || die("$0: you got usage issues, homey\n");
 
@@ -255,10 +257,12 @@ sub fetch_Gene_by_name($$) {
 sub process_genes($@) {
     my ($opts, @genes) = @_;
     my $ngenes = $#genes+1;
-    my $N = $opts->{divisor};
+    my $N = $opts->{npartitions};
     my $nper = $ngenes/$N;
     for(my $i=0; $i<$N; $i++) {
-	next if (defined $opts->{modulus} and $i % $opts->{divisor} != $opts->{modulus});
+	next if (defined $opts->{modulus} 
+		 and defined $opts->{divisor}
+		 and $i % $opts->{divisor} != $opts->{modulus});
 	my $s = int($nper * $i);
 	my $e = int($nper * ($i+1)) - 1;
 	my $pfx = sprintf("$prefix/%04d",$i);
@@ -345,12 +349,12 @@ sub process1($$$$) {
 	    next;
 	}
 	my $srn = $tx_c->to_Slice()->seq_region_name;
-	if (not exists $chr_to_nc{$srn}) {
-	    $logger->warn(sprintf("gene %s, tx %s (%s): on %s, no NC available; skipping",
+	if (not exists $name_to_ac{$srn}) {
+	    $logger->warn(sprintf("gene %s, tx %s (%s): on %s, no accession available; skipping",
 				  $hgnc, $tx->display_id(), $g->biotype(), $srn));
 	    next;
 	}
-	my $nc = $chr_to_nc{$srn};
+	my $ac = $name_to_ac{$srn};
 	my $seq = $tx->seq->seq;
 
 	$logger->info(sprintf("%s (%s; %s); %d nt\n",$tx->display_id,$hgnc,$tx->strand,length($seq)));
@@ -361,7 +365,7 @@ sub process1($$$$) {
 	# write exonset
 	my @g_exons = @{ $tx->get_all_Exons() };
 	my $g_exons_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @g_exons ));
-	$esw->print( join("\t", $tx->display_id(), $nc, $method, $tx->strand(), $g_exons_str), "\n");
+	$esw->print( join("\t", $tx->display_id(), $ac, $method, $tx->strand(), $g_exons_str), "\n");
 
 	# write txinfo
 	my $tm = $tx->get_TranscriptMapper();
