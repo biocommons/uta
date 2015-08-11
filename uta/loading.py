@@ -482,6 +482,9 @@ def load_ncbi_geneinfo(session, opts, cf):
 def load_sequences(session, opts, cf):
     from multifastadb import MultiFastaDB
 
+    # TODO: Don't store sequences in UTA
+    # load sequences up to max_len in size
+    # 2e6 was chosen empirically based on sizes of NMs, NGs, NWs, NTs, NCs
     max_len = int(2e6)
 
     session.execute("set role {admin_role};".format(
@@ -512,10 +515,11 @@ def load_sequences(session, opts, cf):
         return None
 
     for row in session.execute(sql):
-        seq = _fetch_first(row["acs"]).upper()
+        seq = _fetch_first(row["acs"])
         if seq is None:
             logger.warn("No sequence found for {acs}".format(acs=row["acs"]))
             continue
+        seq = seq.upper()
         if row["len"] != len(seq):
             logger.error("Expected a sequence of length {len} for {md5} ({acs}); got sequence of length {len2}".format(
                 len=row["len"], md5=row["seq_id"], acs=row["acs"], len2=len(seq)))
