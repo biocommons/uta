@@ -47,7 +47,6 @@ import sys
 
 import Bio.SeqIO
 from bioutils.digests import seq_md5
-import eutils.clientx
 
 from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter, TxInfoReader
