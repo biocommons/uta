@@ -126,48 +126,35 @@ help: config
 ## features.)
 
 
-#=> ${NCBI_ET_DIR}/geneinfo.gz -- 
-${NCBI_ET_DIR}/geneinfo.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+#=> data/ncbi/geneinfo.gz -- 
+data/ncbi/geneinfo.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
 	@mkdir -pv ${@D}
 	(ncbi-parse-geneinfo $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
-#=> ${NCBI_ET_DIR}/geneacs.gz -- 
+#=> data/ncbi/geneacs.gz -- 
 # filtering records in python is slow; prefilter humans (tax_id=9606)
-${NCBI_ET_DIR}/geneacs.gz: ${NCBI_ET_DIR}/gene2refseq_9606.gz
+data/ncbi/geneacs.gz: data/ncbi/gene2refseq_9606.gz
 	ncbi-parse-gene2refseq $< | gzip -c >$@.tmp 2>$@.log
 	mv -bfv $@.tmp $@
 .PRECIOUS: /tmp/gene2refseq_9606.gz
-${NCBI_ET_DIR}/gene2refseq_9606.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/gene2refseq.gz
+data/ncbi/gene2refseq_9606.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/gene2refseq.gz
 	gzip -cdq <$< | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
-#=> ${NCBI_ET_DIR}/gbff.txinfo.gz -- 
-${NCBI_ET_DIR}/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/mRNA_Prot/human.?.rna.gbff.gz))
+#=> data/ncbi/gbff.txinfo.gz -- 
+data/ncbi/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/mRNA_Prot/human.?.rna.gbff.gz))
 	@mkdir -pv ${@D}
 	ncbi-parse-gbff $^ | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
-
-#=> ${NCBI_ET_DIR}/exonset.gz ${NCBI_ET_DIR}/txinfo.gz -- 
-${NCBI_ET_DIR}-GRCh37.p13/exonset.gz ${NCBI_ET_DIR}-GRCh37.p13/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 ${NCBI_ET_DIR}/geneacs.gz ${NCBI_ET_DIR}/gbff.txinfo.gz
+#=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
+data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
 	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
 
-#=> ${NCBI_ET_DIR}/seqinfo.gz -- 
-${NCBI_ET_DIR}-GRCh37.p13/seqinfo.gz: ${NCBI_ET_DIR}/exonset.gz
-	@mkdir -pv ${@D}
-	(exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
-	mv -bfv $@.tmp $@
-
-
-#=> ${NCBI_ET_DIR}/exonset.gz ${NCBI_ET_DIR}/txinfo.gz -- 
-${NCBI_ET_DIR}-GRCh38.p2/exonset.gz ${NCBI_ET_DIR}-GRCh38.p2/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.28_knownrefseq_alignments.gff3 ${NCBI_ET_DIR}/geneacs.gz ${NCBI_ET_DIR}/gbff.txinfo.gz
-	@mkdir -pv ${@D}
-	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
-
-#=> ${NCBI_ET_DIR}/seqinfo.gz -- 
-${NCBI_ET_DIR}-GRCh38.p2/seqinfo.gz: ${NCBI_ET_DIR}/exonset.gz
+#=> data/ncbi/seqinfo.gz -- 
+data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
 	@mkdir -pv ${@D}
 	(exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
@@ -258,7 +245,7 @@ data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs
 	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
 endef
 
-data/ucsc-hg19/%/acs data/ucsc-hg38/%/acs: ${NCBI_ET_DIR}/%/acs
+data/ucsc-hg19/%/acs data/ucsc-hg38/%/acs: data/ncbi/%/acs
 	@mkdir -pv ${@D}
 	ln -rs $< $@
 
@@ -269,13 +256,11 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 ############################################################################
 #= Loading sets
 
-load-bic:             $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
-load-ensembl-79:      $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
-load-ncbi:            $(foreach f,geneinfo                       ,${LOG_DIR}/ncbi/${NCBI_TS}/$f.log)
-load-ncbi-GRCh37.p13: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ncbi-GRCh37.p13/$f.log)
-load-ncbi-GRCh38.p2:  $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ncbi-GRCh38.p2/$f.log)
-load-ucsc-hg19:       $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
-load-ucsc-hg38:       $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
+load-bic:        $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
+load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
+load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
+load-ucsc-hg19:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
+load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
 
 load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)  
 load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
@@ -334,7 +319,7 @@ ${LOG_DIR}/align-exons.log: FORCE
 
 #=> ${LOG_DIR}/associated-accessions --
 load-ncbi-associated-accessions: ${LOG_DIR}/ncbi/associated-accessions.log
-${LOG_DIR}/ncbi/associated-accessions.log: ${NCBI_ET_DIR}/geneacs.gz
+${LOG_DIR}/ncbi/associated-accessions.log: data/ncbi/geneacs.gz
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
 	| psql ${PSQL_ARGS} -c "copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
@@ -385,7 +370,7 @@ the-whole-kielbasa:
 	make cleanest drop create
 	make liftover-${schema}
 	make load-origin
-	make load-ncbi load-ncbi-GRCh37.p13 load-ncbi-GRCh38.p2 load-ncbi-associated-accessions
+	make load-ncbi load-ncbi-associated-accessions
 	make load-ensembl-79
 	make load-ucsc-hg19
 	make load-sequences
