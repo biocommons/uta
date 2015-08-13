@@ -144,11 +144,19 @@ data/ncbi/gene2refseq_9606.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/gene2refseq.gz
 
 #=> data/ncbi/gbff.txinfo.gz -- build transcript definitions from gbff files
 # N.B. the main use of these is to build a map of ac->hgnc for the ncbi/txinfo files
-data/ncbi/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz))
-	@mkdir -pv ${@D}
-	(ncbi-parse-gbff $^ | gzip -c >$@.tmp) 2>$@.log.tmp
+# Since we only care about NM and NR, prefilter those files to save parse time
+GBFF_DIR:=${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/mRNA_Prot
+GBFF_FILES:=$(wildcard ${GBFF_DIR}/human.*.rna.gbff.gz)
+GBFF_BASES:=$(sort $(subst ${GBFF_DIR}/,,${GBFF_FILES}))
+.PRECIOUS: data/ncbi/tmp/%.gbff.gz
+data/ncbi/tmp/%.gbff.gz: ${GBFF_DIR}/%.gbff.gz
+	@mkdir -p ${@D}
+	gzip -cdq $< | perl -ne 'BEGIN {$$/="//\n"} while (<>) {print if m/^LOCUS\s+N[RM]/}' | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
-	mv -bfv $@.log.tmp $@.log
+data/ncbi/gbff.txinfo.gz: $(addprefix data/ncbi/tmp/,${GBFF_BASES})
+	@mkdir -pv ${@D}
+	((zgrep -El 'LOCUS\s+N[MR]' $^ || true) | xargs -r ncbi-parse-gbff | gzip -c >$@.tmp) 2>$@.log.tmp
+	mv -bfv $@.tmp $@; mv -bfv $@.log.tmp $@.log
 
 #=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- build exonset definitions from gff files
 data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
