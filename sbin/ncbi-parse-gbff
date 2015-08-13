@@ -25,6 +25,7 @@ NM_138933.2 NC_000010.10    splign  -1  52645340,52645435;52...
 from __future__ import division
 
 import argparse
+from collections import Counter
 import gzip
 import io
 import itertools
@@ -44,7 +45,7 @@ from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter
 from uta.formats.geneaccessions import GeneAccessionsReader
 
-transcript_origin = "NCBI RefSeq"
+origin = "NCBI RefSeq"
 
 
 def parse_args(argv):
@@ -54,7 +55,7 @@ def parse_args(argv):
     ap.add_argument("GBFF_FILES",
                     nargs="+")
     ap.add_argument("--origin", "-o",
-                    default="NCBI gbff")
+                    default=origin)
     ap.add_argument("--prefix", "-p",
                     default="ncbi-gbff")
     opts = ap.parse_args(argv)
@@ -101,12 +102,16 @@ if __name__ == "__main__":
     tiw = TxInfoWriter(sys.stdout)
 
     total_genes = set()
+    skipped_ids = set()
     for fn in opts.GBFF_FILES:
         fh = gzip.open(fn)
         logger.info("opened " + fn)
         genes = set()
+        prefixes = Counter()
         for r in Bio.SeqIO.parse(fh, "gb"):
+            prefixes.update([r.id[:2]])
             if r.id.partition("_")[0] not in ["NM", "NR"]:
+                skipped_ids.add(r.id)
                 continue
             srf = SeqRecordFacade(r)
             cds_se_i = srf.cds_se_i
@@ -120,7 +125,7 @@ if __name__ == "__main__":
                         )
             tiw.write(ti)
             genes.add(srf.hgnc)
-        logger.info("{} genes in {}".format(len(genes), fn))
+        logger.info("{ng} genes in {fn} ({c})".format(ng=len(genes), fn=fn, c=prefixes))
         total_genes ^= genes
     logger.info("{} genes in {} files".format(
         len(total_genes), len(opts.GBFF_FILES)))
