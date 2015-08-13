@@ -136,6 +136,7 @@ if __name__ == "__main__":
 
     total_genes = set()
     skipped_ids = set()
+    all_prefixes = Counter()
     for fn in opts.GBFF_FILES:
         flo = gzip.open(fn)
         logger.info("opened " + fn)
@@ -159,7 +160,6 @@ if __name__ == "__main__":
             genes.add(srf.hgnc)
         logger.info("{ng} genes in {fn} ({c})".format(ng=len(genes), fn=fn, c=prefixes))
         total_genes ^= genes
-    logger.info("{} genes in {} files".format(
-        len(total_genes), len(opts.GBFF_FILES)))
-
-
+        all_prefixes += prefixes
+    logger.info("{ng} genes in {nf} files ({c})".format(
+        ng=len(total_genes), nf=len(opts.GBFF_FILES), c=all_prefixes))
