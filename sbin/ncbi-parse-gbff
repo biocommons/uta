@@ -22,7 +22,7 @@ NM_138933.2 NC_000010.10    splign  -1  52645340,52645435;52...
 """
 
 
-from __future__ import division
+from __future__ import division, unicode_literals
 
 import argparse
 from collections import Counter
@@ -36,6 +36,7 @@ import pprint
 import pkg_resources
 import re
 import sys
+import cStringIO as StringIO
 
 import Bio.SeqIO
 import Bio.SeqRecord
@@ -68,8 +69,12 @@ class SeqRecordFacade(Bio.SeqRecord.SeqRecord):
         self._sr = seqrecord
 
     @property
+    def id(self):
+        return self._sr.id
+
+    @property
     def hgnc(self):
-        genes = [f for f in r.features if f.type == "gene"][
+        genes = [f for f in self._sr.features if f.type == "gene"][
             0].qualifiers["gene"]
         assert len(genes) == 1
         return genes[0]
@@ -77,7 +82,7 @@ class SeqRecordFacade(Bio.SeqRecord.SeqRecord):
     @property
     def cds_se_i(self):
         try:
-            cds = [f for f in r.features if f.type == "CDS"][0]
+            cds = [f for f in self._sr.features if f.type == "CDS"][0]
         except IndexError:
             return None
         return (cds.location.start.real, cds.location.end.real)
@@ -85,10 +90,38 @@ class SeqRecordFacade(Bio.SeqRecord.SeqRecord):
     @property
     def exons_se_i(self):
         # ,"misc_feature"]]
-        exons = [f for f in r.features if f.type in ["exon"]]
+        exons = [f for f in self._sr.features if f.type in ["exon"]]
         se = [(f.location.start.real, f.location.end.real) for f in exons]
         return se
 
+
+def gbff_filter(it):
+    """pre-filter genbank file stream for records that match a specific LOCUS pattern"""
+    delim = "//"
+    emit = False
+    locus_re = re.compile(r'LOCUS\s+N[MR]')
+    for line in it:
+        if line.startswith("LOCUS") and locus_re.match(line):
+            emit = True
+        if emit:
+            yield line
+            if line.startswith(delim):
+                emit = False
+
+def gbff_block_reader(it):
+    """yield strings, each representing a full genbank record"""
+    delim = "//"
+    emit = None
+    locus_re = re.compile(r'LOCUS\s+N[MR]')
+    for line in it:
+        if line.startswith("LOCUS") and locus_re.match(line):
+            emit = ''
+        if emit is None:
+            continue
+        emit += line
+        if line.startswith(delim):
+            yield SeqRecordFacade(Bio.SeqIO.read(io.StringIO(emit), "gb"))
+            emit = None
 
 if __name__ == "__main__":
     logging_conf_fn = pkg_resources.resource_filename(
@@ -104,18 +137,17 @@ if __name__ == "__main__":
     total_genes = set()
     skipped_ids = set()
     for fn in opts.GBFF_FILES:
-        fh = gzip.open(fn)
+        flo = gzip.open(fn)
         logger.info("opened " + fn)
         genes = set()
         prefixes = Counter()
-        for r in Bio.SeqIO.parse(fh, "gb"):
-            prefixes.update([r.id[:2]])
-            if r.id.partition("_")[0] not in ["NM", "NR"]:
-                skipped_ids.add(r.id)
+        for srf in (SeqRecordFacade(r) for r in Bio.SeqIO.parse(flo, "gb")):
+            prefixes.update([srf.id[:2]])
+            if srf.id.partition("_")[0] not in ["NM", "NR"]:
+                skipped_ids.add(srf.id)
                 continue
-            srf = SeqRecordFacade(r)
             cds_se_i = srf.cds_se_i
-            ti = TxInfo(ac=r.id,
+            ti = TxInfo(ac=srf.id,
                         origin=opts.origin,
                         hgnc=srf.hgnc,
                         cds_se_i=None if cds_se_i is None else "{},{}".format(
@@ -129,3 +161,5 @@ if __name__ == "__main__":
         total_genes ^= genes
     logger.info("{} genes in {} files".format(
         len(total_genes), len(opts.GBFF_FILES)))
+
+
