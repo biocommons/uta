@@ -142,13 +142,14 @@ data/ncbi/gene2refseq_9606.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/gene2refseq.gz
 	gzip -cdq <$< | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
-#=> data/ncbi/gbff.txinfo.gz -- 
+#=> data/ncbi/gbff.txinfo.gz -- build transcript definitions from gbff files
+# N.B. the main use of these is to build a map of ac->hgnc for the ncbi/txinfo files
 data/ncbi/gbff.txinfo.gz: $(sort $(wildcard ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/mRNA_Prot/human.?.rna.gbff.gz))
 	@mkdir -pv ${@D}
 	ncbi-parse-gbff $^ | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
-#=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- 
+#=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- build exonset definitions from gff files
 data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
 	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
