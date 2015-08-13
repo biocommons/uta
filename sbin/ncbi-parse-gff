@@ -94,15 +94,16 @@ def read_transcript_data(fn):
             except AttributeError:
                 raise Exception("Failed at", line)
         raise StopIteration
-
-    return itertools.groupby(_read_lines(fn), key=lambda e: e["aln"])
+    def _key(e):
+        return (e["tx_ac"], not e["ref_ac"].startswith("NC_"), e["ref_ac"], e["aln"])
+    return itertools.groupby(sorted(_read_lines(fn), key=_key), key=_key)
 
 
 def convert_exon_data(opts, exon_recs):
     """return (TxInfo,ExonSet) tuple for given exon record data"""
     er0 = exon_recs[0]
     ti = TxInfo(ac=er0["tx_ac"],
-                origin="NCBI RefSeq",
+                origin="NCBI RefSeq GFF",
                 hgnc=None,
                 cds_se_i=None,
                 exons_se_i=";".join(
@@ -141,7 +142,7 @@ if __name__ == "__main__":
         tir = TxInfoReader(gzip.open(opts.txinfo, "r"))
         tx2ti = {ti.ac: ti for ti in tir}
         logger.info(
-            "read {} gene-accession mappings from {}".format(len(tx2ti), opts.txinfo))
+            "read {} CDS data from {}".format(len(tx2ti), opts.txinfo))
     else:
         tx2ti = None
         logger.info("No gbff txinfo provided (-T); CDS start,end will be undefined for all transcripts")
@@ -153,12 +154,13 @@ if __name__ == "__main__":
     tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "w"))
 
     tis = {}
+    ti_written = defaultdict(lambda: False)
     ac_not_in_gbff = set()
     ac_exons_differ = set()
     ac_in_source = set()
     ac_failed = set()
 
-    for aln, eri in read_transcript_data(opts.in_fn):
+    for _, eri in read_transcript_data(opts.in_fn):
         exon_recs = list(eri)
         er0 = exon_recs[0]
 
@@ -174,16 +176,16 @@ if __name__ == "__main__":
         ti, es = convert_exon_data(opts, exon_recs)
         ac_in_source.add(ti.ac)
 
-        # complain if we've seen this transcript before and the
-        # transcript exon coordinates don't match
-        #
-        # TODO: Urgent: This case is a real problem. We should
-        # prioritize NC and align against only those when transcript
-        # exon structures change.
+        # A core assumption in UTA is that an accession has a single
+        # exon structure. When the exon structure for a NM (or NR)
+        # differ when aligned to (say) an NC and NW, it means that the
+        # the genome-based annotation is questionable, probably due to
+        # assembly issues.
         if ti.ac in tis:
             if ti.exons_se_i != tis[ti.ac].exons_se_i:
-                logger.warn("{ti.ac}: defined on against two references and "
-                            "transcript exon sets don't match".format(ti=ti))
+                logger.warn("{ti.ac}~{es.alt_ac}: transcript already defined with a"
+                    " different transcript exon structure; skipping\n  {es1}\n  {es2}".format(ti=ti, es=es, es1=ti.exons_se_i, es2=tis[ti.ac].exons_se_i))
+                continue
         else:
             tis[ti.ac] = ti
 
@@ -193,8 +195,9 @@ if __name__ == "__main__":
             if tx2gene:
                 ti.hgnc = tx2gene.get(ti.ac, None)
         except KeyError:
-            logger.warn("skipping transcript {ti.ac}; no gene info in {opts.geneinfo}".format(
+            logger.warn("no gene info in {opts.geneinfo} for {ti.ac}; skipping transcript".format(
                 ti=ti, opts=opts))
+            continue
 
         # Compare exon structure from gbff with input gff
         # If gff tx is in gbff, compare exon structure and liftover CDS start and end
@@ -210,9 +213,10 @@ if __name__ == "__main__":
         except KeyError:
             ac_not_in_gbff.add(ti.ac)
 
-        tiw.write(ti)
+        if not ti_written[ti.ac]:
+            tiw.write(ti)
+            ti_written[ti] = True
         esw.write(es)
-
 
 
     for fn in [ti_fn, es_fn]:
