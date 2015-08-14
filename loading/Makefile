@@ -368,21 +368,32 @@ create:
 analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
 
+
 #=> mega-test -- DESTRUCTIVE: drop current dev db, recreate with subset of ncbi and ensembl data
-mega-test:
+happy-meal:
 	make cleanest drop create
+	#make liftover-${schema}
 	make load-origin
+	make load-ncbi-associated-accessions
+
 	make load-ncbi/{refmismatch,acmg-mr}
 	make load-ensembl-79/{refmismatch,acmg-mr}
-	make align-exons refresh-matviews
+	make load-ucsc-hg19
+
+	make load-sequences
+	make align-exons
+	make refresh-matviews
 
 the-whole-kielbasa:
 	make cleanest drop create
 	make liftover-${schema}
 	make load-origin
-	make load-ncbi load-ncbi-associated-accessions
+	make load-ncbi-associated-accessions
+
+	make load-ncbi
 	make load-ensembl-79
 	make load-ucsc-hg19
+
 	make load-sequences
 	make align-exons
 	make refresh-matviews
