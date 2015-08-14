@@ -52,7 +52,7 @@ from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter, TxInfoReader
 from uta.formats.geneaccessions import GeneAccessionsReader
 
-origin = "NCBI RefSeq"
+origin = "NCBI"
 
 
 def parse_args(argv):

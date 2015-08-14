@@ -1,5 +1,5 @@
 name	descr	url	url_ac_fmt
-NCBI RefSeq	NCBI RefSeq (nuccore) repository	http://www.ncbi.nlm.nih.gov/refseq/	http://www.ncbi.nlm.nih.gov/nuccore/{ac}
+NCBI	NCBI RefSeq (nuccore) repository	http://www.ncbi.nlm.nih.gov/refseq/	http://www.ncbi.nlm.nih.gov/nuccore/{ac}
 BIC	Breast Cancer Information Core	http://research.nhgri.nih.gov/bic/	
 uta0	UTA version 0	http://bitbucket.org/biocommons/uta	
 ensembl-79	Ensembl 79	http://ensembl.org/	

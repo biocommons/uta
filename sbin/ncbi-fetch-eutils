@@ -54,7 +54,7 @@ from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.geneinfo import GeneInfo, GeneInfoWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter
 
-transcript_origin = "NCBI RefSeq"
+origin = "NCBI"
 
 
 def parse_args(argv):
@@ -64,7 +64,7 @@ def parse_args(argv):
     ap.add_argument("GENES",
                     nargs="*")
     ap.add_argument("--prefix", "-p",
-                    default="ncbi")
+                    default=origin
     opts = ap.parse_args(argv)
     return opts
 
@@ -168,7 +168,7 @@ if __name__ == "__main__":
         try:
             e_tx = ec.fetch_nuccore_by_ac(ac)
             es = TxInfo(ac=ac,
-                        origin=transcript_origin,
+                        origin=opts.origin,
                         hgnc=e_tx.gene,
                         cds_se_i=",".join([str(c) for c in e_tx.cds_se_i]),
                         exons_se_i=";".join(

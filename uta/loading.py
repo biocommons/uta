@@ -8,6 +8,7 @@ import logging
 import time
 
 from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
+from sqlalchemy.orm.exc import NoResultFound;
 
 import uta
 import uta.formats.exonset as ufes
@@ -140,8 +141,12 @@ def load_seqinfo(session, opts, cf):
             session.add(u_seq)
 
             for si in sis:
-                u_ori = session.query(usam.Origin).filter(
-                    usam.Origin.name == si.origin).one()
+                try:
+                    u_ori = session.query(usam.Origin).filter(
+                        usam.Origin.name == si.origin).one()
+                except NoResultFound as e:
+                    logger.error("No origin for "+si.origin)
+                    raise e
                 u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
                                          ac=si.ac, descr=si.descr)
                 session.add(u_seqanno)
@@ -295,8 +300,12 @@ def load_txinfo(session, opts, cf):
             logger.warning(ti.ac + ": no exons?!; skipping.")
             continue
 
-        ori = session.query(usam.Origin).filter(
-            usam.Origin.name == ti.origin).one()
+        try:
+            ori = session.query(usam.Origin).filter(
+                usam.Origin.name == ti.origin).one()
+        except NoResultFound as e:
+            logger.error("No origin for " + ti.origin)
+            raise e
 
         if ti.cds_se_i:
             cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(","))
