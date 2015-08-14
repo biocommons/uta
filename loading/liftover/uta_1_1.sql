@@ -73,11 +73,11 @@ alter table exon_aln add constraint exon_aln_tx_exon_id_fkey
       FOREIGN KEY (tx_exon_id) REFERENCES exon(exon_id)
       ON DELETE CASCADE ON UPDATE CASCADE;
 
--- remove unused origins
-delete from origin where origin_id in (2,4,9,10);
-
 -- reassign BIC transcripts as from BIC origin
 update transcript set origin_id=8 where origin_id=1 and ac ~ '^U';
+
+-- remove unused origins
+delete from origin where origin_id in (2,4,9,10);
 
 -- drop all ensembl origins to prep for reload (sigh)
 delete from origin where origin_id in (5,11);
