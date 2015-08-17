@@ -19,12 +19,7 @@ default: help
 
 #=> help -- display this help message
 help: config
-	@if type makefile-extract-documentation >/dev/null 2>/dev/null; then \
-		makefile-extract-documentation "${SELF}"; \
-	else \
-		echo "Could not find makefile-extract-documentation; please 'pip install biocommons.dev'" 1>&2; \
-		exit 1; \
-	fi
+	@dev/makefile-extract-documentation "${SELF}"; 
 
 config:
 	@echo CONFIGURATION

@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+__doc__ = """this is what I do"""
+
+import logging
+import os
+import re
+import sys
+
+
+class Assembly(object):
+    """Parse an assembly file from NCBI, like this one:
+      ftp://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/All/GCF_000001405.p13.assembly.txt
+    """
+
+    def __init__(self, body):
+        self._body = body
+    
+    def assembly_name(self):
+        return re.match('^# Assembly Name:\s+(\S+)').group(1)
+
+    def description(self):
+        pass
+
+    def taxid(self):
+        pass
+    
+    def genbank_accession(self):
+        pass
+
+    def refseq_accession(self):
+        pass
+
+    def assembly_units(self):
+        pass
+
+    def sequences(self):
+        pass
+
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+
+    assy = Assembly(open(sys.argv[1],'r').read())
+
+    import IPython; IPython.embed()	  ### TODO: Remove IPython.embed()
