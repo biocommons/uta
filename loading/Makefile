@@ -404,14 +404,16 @@ dump-%: dumps/%.pgd.gz dumps/%.pgd.gz.sha1;
 
 #=> dumps/%.pgd.gz -- create dump of named schema (e.g., uta_20140210)
 dumps/%.pgd.gz:
+	# Takes ~5 minutes
 	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* | gzip) >$@.tmp 2>$@.log
 	mv "$@.tmp" "$@"
 
-#=> push-% -- push named schema
+#=> push-% -- push schemas to dev (you're on your own for stg and prd)
 push-dev-%: logs/uta.biocommons.org/uta_dev/load-%.log;
 
 .PRECIOUS: logs/uta.biocommons.org/uta_dev/load-%.log
 logs/uta.biocommons.org/uta_dev/load-%.log: dumps/%.pgd.gz
+	# Takes ~5 minutes
 	@mkdir -pv ${@D}
 	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
 

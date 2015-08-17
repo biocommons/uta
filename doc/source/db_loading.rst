@@ -39,7 +39,7 @@ environment variables:
 
 ::
 
-    export PGDATA=/local/home/reece/var/pg/9.3-test
+    export PGDATA=/local/home/reece/var/pg/9.4
     export PGHOST=localhost
     export PGPORT=5432
     export PGDATABASE=uta_dev
@@ -53,7 +53,7 @@ installed::
     pg_ctl -D $PGDATA -l logfile start
 
 By default, PostgreSQL specifies local "trust" authentication in
-pg_hba.conf and is required for these instructions.
+pg_hba.conf for local connections.
 
 Then, create users and a uta database::
 
@@ -187,10 +187,9 @@ The current practice is to dump UTA, then restore to Amazon RDS for
 the public instance (uta.invitae.com).
 
 ::
-
-    sname=uta_20150527
-    pg_dump -d uta_dev -n $sname | gzip -c > dumps/$sname.pgd.gz
-    gzip -cd <$sname.pgd.gz | psql -h uta.invitae.com -U uta_admin
+   sname=uta_20150813
+   make dumps/$sname.pgd.gz  # takes ~5 minutes
+   make push-dev-$sname
 
 The dump and restore each take ~5 minutes.  If you don't care about
 the intermediate, you can pipe directly of course.
