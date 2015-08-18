@@ -1,9 +1,9 @@
 License
 =======
 
-.. _hgvs: https://bitbucket.org/biocommons/hgvs
+.. _uta: https://bitbucket.org/biocommons/uta
 
-hgvs_ is released under the `Apache License 2.0
+uta_ is released under the `Apache License 2.0
 <http://www.apache.org/licenses/LICENSE-2.0>`_, the text of which appears
 below::
 
