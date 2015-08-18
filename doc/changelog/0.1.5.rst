@@ -1,0 +1,21 @@
+0.1.5 (2014-01-03)
+##################
+
+*changes since 0.1.3 (2014-01-03)*
+
+Bug Fixes
+$$$$$$$$$
+
+New Features
+$$$$$$$$$$$$
+
+Changes
+$$$$$$$
+
+Security
+$$$$$$$$
+
+Other Changes
+$$$$$$$$$$$$$
+
+* fixed doc building and dropped upload_sphinx (in favor of upload_docs); moved docs to doc/source [`4dbc0f653939 <https://bitbucket.org/biocommons/uta/commits/4dbc0f653939>`_]
