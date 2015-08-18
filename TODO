@@ -1,2 +1,4 @@
+* update changelog clog files
 * put uta.__version__ in meta table
-
+* write real loading docs
+* move docs to rtd
