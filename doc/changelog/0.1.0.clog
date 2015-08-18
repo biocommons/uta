@@ -1,0 +1,41 @@
+clog format 1
+* 0.1.0 (2013-12-30)
+# changes since 0.0.3 (2013-10-21)
+** Bug Fixes
+** New Features
+** Changes
+** Security
+** Other Changes
+> added Apache license and code boilerplate to all source files and scripts [3d692ea0d5a2]
+> update default host to uta.invitae.com CNAME [605e6e399e5f]
+> updated README; added sbin/uta-shell [c3931dda575b]
+> #58: migrated uta to publicly-accessible RDS instance and updated uta defaults [d609a81d1ec9]
+> updated sbin/uta-pg-to-sqlite to include protein_hash and meta tables [bade1ac7f98c]
+> added sbin/fasta-hash-to-tsv [af8cdea82e96]
+> updated uta-pg-to-sqlite script to embed version number and name file (name no longer accepted from commandline) [cc8598eeedc8]
+> uta-pg-to-sqlite: order records and output loading info [785501f0e8d4]
+> use uta0 database by default (rather than reece's db) [59d60c55cc35]
+> #62: synchronized setup files among UTA program components [4319672439a1]
+> updated README.rst [a2b81a989aff]
+> added jenkins target to makefile [7f509a0b2a0e]
+> bring back ez_setup [1b8cec6df88a]
+> Makefile: new rule ve-test to execute tests in a fresh ve (as in with jenkins) [779fc64e42d9]
+> removed localhost UTA_DB_URL setting in Makefile [e2948fc5577c]
+> changed NC_000014.10 to NC_000014.8 [8a0f92bd39ea]
+> added get_tx_seq() method [38424d1df2d9]
+> removed mapping code that now lives in hgvs [e353859717a1]
+> doc/ updates (incomplete) [4323c2a0fec1]
+> fetch-tx-* scripts: include gene name in response [c8b55ca6bcf5]
+> start feature branch [32732d3ea403]
+> fixed start <= end for negative coordinates [432b799d29db]
+> corrected NC number for ch14 in genomeutils [e8aea8436a46]
+> fixed ci_to_human with additonal logic checks [f547aa8355dc]
+> updating intron mapping coordinates [16bcb4919240]
+> format edits [bb25bc960fe3]
+> tests and bug fixes for offsets and strands [06d5e4a0fcdf]
+> transcriptmapper with offsets [4dc927d62610]
+> first offset commit [6d7f936c0304]
+> updated webservice index.html help [221cbbb5dfec]
+> fixed strand bug in webservice api hgvs to genomic coords [d475267ab253]
+> Created a web directory and moved the webservice in there for future expansion. Created a help page and additional API call for NM to genomic coords. Restructured the API links and versioned the URLs [6725c420f067]
+> added NEFL-dbSNP to the tests [c887969c51a6]

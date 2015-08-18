@@ -1,0 +1,30 @@
+0.0.3 (2013-10-21)
+##################
+
+*changes since 0.0.2 (2013-10-15)*
+
+Bug Fixes
+$$$$$$$$$
+
+New Features
+$$$$$$$$$$$$
+
+Changes
+$$$$$$$
+
+Security
+$$$$$$$$
+
+Other Changes
+$$$$$$$$$$$$$
+
+* fixed uta.__version__, I think [`71ea26442ebe <https://bitbucket.org/biocommons/uta/commits/71ea26442ebe>`_]
+* minor setup.py and Makefile changes; +x on bin/uta-webservice [`045b6c412919 <https://bitbucket.org/biocommons/uta/commits/045b6c412919>`_]
+* fixed and commented out DNAH11 tests; see TODO [`1b9fe0bd9edb <https://bitbucket.org/biocommons/uta/commits/1b9fe0bd9edb>`_]
+* changed logic for db connection info (set UTA_DB_URL=postgresql://localhost/) [`ffa815074d8d <https://bitbucket.org/biocommons/uta/commits/ffa815074d8d>`_]
+* don't run test_uta_db_sa_models.py (not ready yet) [`8073d4465978 <https://bitbucket.org/biocommons/uta/commits/8073d4465978>`_]
+* added sbin/dbsnp-rs-summary-to-tsv [`250fe0dc69df <https://bitbucket.org/biocommons/uta/commits/250fe0dc69df>`_]
+* catch errors related to webservice calls [`d5675d6acead <https://bitbucket.org/biocommons/uta/commits/d5675d6acead>`_]
+* added uta-webservice and requirements [`35b847867c8f <https://bitbucket.org/biocommons/uta/commits/35b847867c8f>`_]
+* added tests for HGVSMapper.hgvsg_to_hgvsc [`527cbaf6cd27 <https://bitbucket.org/biocommons/uta/commits/527cbaf6cd27>`_]
+* updated Makefile and setup.py [`33b25cca8f3e <https://bitbucket.org/biocommons/uta/commits/33b25cca8f3e>`_]

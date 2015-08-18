@@ -1,0 +1,16 @@
+clog format 1
+* 0.0.2 (2013-10-15)
+# changes since 0.0.1 (2013-10-09)
+** Bug Fixes
+** New Features
+** Changes
+** Security
+** Other Changes
+> implemented HGVSMapper.hgvsg_to_hgvsc with tests [a508efd70568]
+> update hgvsmapper and add DNAH11 tests [137912d1b76f]
+> comment out doctests that require db connection [3441affbcb39]
+> raise InvalidIntervalError for intervals outside transcript bounds [6ad61ee30739]
+> updated README with installation instructions [482fce4e5917]
+> removed stray import IPython [90a5caac6aea]
+> changed max_extent default to False; updated TranscriptMapper and tests to use max_extent [a3d0adc5eec7]
+> rewrote intervalmapper for min/max extent support, with tests [6e8dc808c42b]

@@ -1,0 +1,53 @@
+0.1.0 (2013-12-30)
+##################
+
+*changes since 0.0.3 (2013-10-21)*
+
+Bug Fixes
+$$$$$$$$$
+
+New Features
+$$$$$$$$$$$$
+
+Changes
+$$$$$$$
+
+Security
+$$$$$$$$
+
+Other Changes
+$$$$$$$$$$$$$
+
+* added Apache license and code boilerplate to all source files and scripts [`3d692ea0d5a2 <https://bitbucket.org/biocommons/uta/commits/3d692ea0d5a2>`_]
+* update default host to uta.invitae.com CNAME [`605e6e399e5f <https://bitbucket.org/biocommons/uta/commits/605e6e399e5f>`_]
+* updated README; added sbin/uta-shell [`c3931dda575b <https://bitbucket.org/biocommons/uta/commits/c3931dda575b>`_]
+* `#58 <https://bitbucket.org/biocommons/uta/issues/58/>`_: migrated uta to publicly-accessible RDS instance and updated uta defaults [`d609a81d1ec9 <https://bitbucket.org/biocommons/uta/commits/d609a81d1ec9>`_]
+* updated sbin/uta-pg-to-sqlite to include protein_hash and meta tables [`bade1ac7f98c <https://bitbucket.org/biocommons/uta/commits/bade1ac7f98c>`_]
+* added sbin/fasta-hash-to-tsv [`af8cdea82e96 <https://bitbucket.org/biocommons/uta/commits/af8cdea82e96>`_]
+* updated uta-pg-to-sqlite script to embed version number and name file (name no longer accepted from commandline) [`cc8598eeedc8 <https://bitbucket.org/biocommons/uta/commits/cc8598eeedc8>`_]
+* uta-pg-to-sqlite: order records and output loading info [`785501f0e8d4 <https://bitbucket.org/biocommons/uta/commits/785501f0e8d4>`_]
+* use uta0 database by default (rather than reece's db) [`59d60c55cc35 <https://bitbucket.org/biocommons/uta/commits/59d60c55cc35>`_]
+* `#62 <https://bitbucket.org/biocommons/uta/issues/62/>`_: synchronized setup files among UTA program components [`4319672439a1 <https://bitbucket.org/biocommons/uta/commits/4319672439a1>`_]
+* updated README.rst [`a2b81a989aff <https://bitbucket.org/biocommons/uta/commits/a2b81a989aff>`_]
+* added jenkins target to makefile [`7f509a0b2a0e <https://bitbucket.org/biocommons/uta/commits/7f509a0b2a0e>`_]
+* bring back ez_setup [`1b8cec6df88a <https://bitbucket.org/biocommons/uta/commits/1b8cec6df88a>`_]
+* Makefile: new rule ve-test to execute tests in a fresh ve (as in with jenkins) [`779fc64e42d9 <https://bitbucket.org/biocommons/uta/commits/779fc64e42d9>`_]
+* removed localhost UTA_DB_URL setting in Makefile [`e2948fc5577c <https://bitbucket.org/biocommons/uta/commits/e2948fc5577c>`_]
+* changed NC_000014.10 to NC_000014.8 [`8a0f92bd39ea <https://bitbucket.org/biocommons/uta/commits/8a0f92bd39ea>`_]
+* added get_tx_seq() method [`38424d1df2d9 <https://bitbucket.org/biocommons/uta/commits/38424d1df2d9>`_]
+* removed mapping code that now lives in hgvs [`e353859717a1 <https://bitbucket.org/biocommons/uta/commits/e353859717a1>`_]
+* doc/ updates (incomplete) [`4323c2a0fec1 <https://bitbucket.org/biocommons/uta/commits/4323c2a0fec1>`_]
+* fetch-tx-* scripts: include gene name in response [`c8b55ca6bcf5 <https://bitbucket.org/biocommons/uta/commits/c8b55ca6bcf5>`_]
+* start feature branch [`32732d3ea403 <https://bitbucket.org/biocommons/uta/commits/32732d3ea403>`_]
+* fixed start <= end for negative coordinates [`432b799d29db <https://bitbucket.org/biocommons/uta/commits/432b799d29db>`_]
+* corrected NC number for ch14 in genomeutils [`e8aea8436a46 <https://bitbucket.org/biocommons/uta/commits/e8aea8436a46>`_]
+* fixed ci_to_human with additonal logic checks [`f547aa8355dc <https://bitbucket.org/biocommons/uta/commits/f547aa8355dc>`_]
+* updating intron mapping coordinates [`16bcb4919240 <https://bitbucket.org/biocommons/uta/commits/16bcb4919240>`_]
+* format edits [`bb25bc960fe3 <https://bitbucket.org/biocommons/uta/commits/bb25bc960fe3>`_]
+* tests and bug fixes for offsets and strands [`06d5e4a0fcdf <https://bitbucket.org/biocommons/uta/commits/06d5e4a0fcdf>`_]
+* transcriptmapper with offsets [`4dc927d62610 <https://bitbucket.org/biocommons/uta/commits/4dc927d62610>`_]
+* first offset commit [`6d7f936c0304 <https://bitbucket.org/biocommons/uta/commits/6d7f936c0304>`_]
+* updated webservice index.html help [`221cbbb5dfec <https://bitbucket.org/biocommons/uta/commits/221cbbb5dfec>`_]
+* fixed strand bug in webservice api hgvs to genomic coords [`d475267ab253 <https://bitbucket.org/biocommons/uta/commits/d475267ab253>`_]
+* Created a web directory and moved the webservice in there for future expansion. Created a help page and additional API call for NM to genomic coords. Restructured the API links and versioned the URLs [`6725c420f067 <https://bitbucket.org/biocommons/uta/commits/6725c420f067>`_]
+* added NEFL-dbSNP to the tests [`c887969c51a6 <https://bitbucket.org/biocommons/uta/commits/c887969c51a6>`_]

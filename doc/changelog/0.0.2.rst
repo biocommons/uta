@@ -1,0 +1,28 @@
+0.0.2 (2013-10-15)
+##################
+
+*changes since 0.0.1 (2013-10-09)*
+
+Bug Fixes
+$$$$$$$$$
+
+New Features
+$$$$$$$$$$$$
+
+Changes
+$$$$$$$
+
+Security
+$$$$$$$$
+
+Other Changes
+$$$$$$$$$$$$$
+
+* implemented HGVSMapper.hgvsg_to_hgvsc with tests [`a508efd70568 <https://bitbucket.org/biocommons/uta/commits/a508efd70568>`_]
+* update hgvsmapper and add DNAH11 tests [`137912d1b76f <https://bitbucket.org/biocommons/uta/commits/137912d1b76f>`_]
+* comment out doctests that require db connection [`3441affbcb39 <https://bitbucket.org/biocommons/uta/commits/3441affbcb39>`_]
+* raise InvalidIntervalError for intervals outside transcript bounds [`6ad61ee30739 <https://bitbucket.org/biocommons/uta/commits/6ad61ee30739>`_]
+* updated README with installation instructions [`482fce4e5917 <https://bitbucket.org/biocommons/uta/commits/482fce4e5917>`_]
+* removed stray import IPython [`90a5caac6aea <https://bitbucket.org/biocommons/uta/commits/90a5caac6aea>`_]
+* changed max_extent default to False; updated TranscriptMapper and tests to use max_extent [`a3d0adc5eec7 <https://bitbucket.org/biocommons/uta/commits/a3d0adc5eec7>`_]
+* rewrote intervalmapper for min/max extent support, with tests [`6e8dc808c42b <https://bitbucket.org/biocommons/uta/commits/6e8dc808c42b>`_]

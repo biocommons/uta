@@ -1,0 +1,18 @@
+clog format 1
+* 0.0.3 (2013-10-21)
+# changes since 0.0.2 (2013-10-15)
+** Bug Fixes
+** New Features
+** Changes
+** Security
+** Other Changes
+> fixed uta.__version__, I think [71ea26442ebe]
+> minor setup.py and Makefile changes; +x on bin/uta-webservice [045b6c412919]
+> fixed and commented out DNAH11 tests; see TODO [1b9fe0bd9edb]
+> changed logic for db connection info (set UTA_DB_URL=postgresql://localhost/) [ffa815074d8d]
+> don't run test_uta_db_sa_models.py (not ready yet) [8073d4465978]
+> added sbin/dbsnp-rs-summary-to-tsv [250fe0dc69df]
+> catch errors related to webservice calls [d5675d6acead]
+> added uta-webservice and requirements [35b847867c8f]
+> added tests for HGVSMapper.hgvsg_to_hgvsc [527cbaf6cd27]
+> updated Makefile and setup.py [33b25cca8f3e]
