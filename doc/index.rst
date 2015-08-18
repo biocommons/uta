@@ -13,17 +13,9 @@ Contents
    :maxdepth: 2
 
    overview
-
    installation
-     # building from scratch
-     # installing locally
-
    database
-
-   hgvs
-   eutils
-   
-   changelog
+   Change Log <changelog>
    license
 
 
