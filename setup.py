@@ -6,18 +6,10 @@ with open("doc/description.txt") as f:
     long_description = f.read()
 
 
-def version_handler(mgr, options):
-    version = mgr.get_current_version()
-    if version.endswith("dev"):
-        version += "-" + \
-            mgr._invoke(
-                "log", "-l1", "-r.", "--template", "{node|short}").strip()
-    return version
-
 setup(
     license="Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
     long_description=long_description,
-    use_vcs_version={"version_handler": version_handler},
+    use_scm_version=True,
     zip_safe=True,
 
     author="UTA Contributors",
@@ -69,8 +61,8 @@ setup(
     ],
 
     setup_requires=[
-        "hgtools",
         "nose",
+        "setuptools_scm",
         "sphinx",
         "sphinxcontrib-fulltoc",
     ],
