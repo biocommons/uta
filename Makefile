@@ -33,7 +33,9 @@ config:
 setup: develop
 
 #=> docs -- make sphinx docs
-docs: setup build_sphinx
+changelog:
+	make -C doc/changelog
+docs: setup changelog build_sphinx
 
 #=> build_sphinx
 # sphinx docs needs to be able to import packages
