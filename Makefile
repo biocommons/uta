@@ -86,7 +86,7 @@ ci-test-ve: ve
 #= UTILITY TARGETS
 
 #=> changelog
-doc/source/changelog.rst: ChangeLog
+doc/source/changelog.rst: CHANGELOG
 	clog-txt-to-rst <$< >$@
 
 #=> lint -- run lint, flake, etc
