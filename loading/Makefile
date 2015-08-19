@@ -336,9 +336,9 @@ ${LOG_DIR}/ncbi/associated-accessions.log: data/ncbi/geneacs.gz
 	mv $@.tmp $@
 
 
-#=> ${LOG_DIR}/liftover --
-liftover-%: ${LOG_DIR}/liftover-%.log;
-${LOG_DIR}/liftover-%.log: liftover/%.sql
+#=> ${LOG_DIR}/migrate --
+migrate-%: ${LOG_DIR}/migrate-%.log;
+${LOG_DIR}/migrate-%.log: migrate/%.sql
 	@mkdir -pv ${@D}
 	psql ${PSQL_ARGS} -e -f $< >$@.tmp 2>&1
 	mv $@.tmp $@

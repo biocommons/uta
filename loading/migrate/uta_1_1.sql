@@ -82,3 +82,5 @@ delete from origin where origin_id in (2,4,9,10);
 -- drop all ensembl origins to prep for reload (sigh)
 delete from origin where origin_id in (5,11);
 
+-- drop all unannotated sequences
+delete from seq S where not exists (select 1 from seq_anno SA where SA.seq_id=S.seq_id);
