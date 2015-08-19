@@ -161,7 +161,8 @@ my %name_to_ac = map { $ac_to_name{$_} => $_ } keys %ac_to_name;
 
 my $method = 'genebuild';
 
-my %accepted_biotypes = map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA processed_transcript);
+my $accepted_biotypes = undef;	# no filtering
+#my $accepted_biotypes = { map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA processed_transcript) };
 
 ############################################################################
 
@@ -337,7 +338,7 @@ sub process1($$$$) {
 	}
 	push(@{$tx_seen{$tx->display_id}},$hgnc);
 
-	if (not exists $accepted_biotypes{$tx->biotype}) {
+	if (defined $accepted_biotypes and not exists $accepted_biotypes->{$tx->biotype}) {
 	    $logger->info(sprintf("%s: is type %s; skipping",$tx->display_id,$tx->biotype));
 	    next;
 	}
