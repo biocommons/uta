@@ -369,34 +369,28 @@ analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
 
 
-#=> mega-test -- DESTRUCTIVE: drop current dev db, recreate with subset of ncbi and ensembl data
-happy-meal:
+
+_mega:
 	make cleanest drop create
-	#make liftover-${schema}
+	if [ "${_UTA_MK_MIGRATE}" = "1" ]; then make migrate-${schema}; fi
 	make load-origin
 	make load-ncbi-associated-accessions
-
-	make load-ncbi/{refmismatch,acmg-mr}
-	make load-ensembl-79/{refmismatch,acmg-mr}
-	make load-ucsc-hg19
-
-	make load-sequences
+	make ${_UTA_MK_DATASETS}
+	# make load-sequences # sequences should now be added as needed by load-txinfo and load-exonset
 	make align-exons
 	make refresh-matviews
+
+happy-meal:
+	make _mega _UTA_MK_MIGRATE=0 _UTA_MK_DATASETS="load-ncbi/{refmismatch,acmg-mr} load-ensembl-79/{refmismatch,acmg-mr} load-ucsc-hg19"
+
+# full build, but without existing data
+cheeseburger-royale:
+	make _mega _UTA_MK_MIGRATE=0 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
 
 the-whole-kielbasa:
-	make cleanest drop create
-	make liftover-${schema}
-	make load-origin
-	make load-ncbi-associated-accessions
+	make _mega _UTA_MK_MIGRATE=1 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
 
-	make load-ncbi
-	make load-ensembl-79
-	make load-ucsc-hg19
 
-	make load-sequences
-	make align-exons
-	make refresh-matviews
 
 
 #=> dump-% -- dump named schema (e.g., uta_20140210) in dumps/ and compute sha1
