@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import csv
+import fileinput
 import logging
 import os
 import sys
@@ -14,20 +15,21 @@ cols = ['hgnc','tx_ac','pro_ac','origin']
 if __name__ == "__main__":
     ec = eutils.client.Client()
 
-    core_179_acs = open("core-179.acs").read().strip().split()
     o_flo = csv.DictWriter(f=sys.stdout, fieldnames=cols, delimiter=b'\t')
     o_flo.writeheader()
 
-    for ac in core_179_acs:
+    for ac in fileinput.input():
+        ac = ac.strip()
         esr = ec.esearch(db='nuccore', term=ac)
         assert esr.count == 1, "expected exactly 1 reply for "+ac
         for id in esr.ids:
             gbset = ec.efetch(db='nuccore', id=id)
             assert len(gbset.gbseqs) == 1, "expected exactly 1 reply for id="+id
             gbseq = gbset.gbseqs[0]
+            cds_quals = gbseq.features.cds.qualifiers
             o_flo.writerow({
-                'hgnc': gbseq.cds.qualifiers['gene'],
+                'hgnc': cds_quals['gene'],
                 'tx_ac': gbseq.acv,
-                'pro_ac': gbseq.cds.qualifiers['protein_id'],
-                'origin': 'NCBI (CORE-179 via eutils)',
+                'pro_ac': cds_quals['protein_id'],
+                'origin': 'NCBI',
                 })
