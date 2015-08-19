@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# launch ensembl-fetch jobs
+# necessary because we were having sporadic disconnection failures
+
+ev=79
+d=4
+dir=ensembl-$ev
+launch_sleep=30
+crash_sleep=180
+
+source ~/opt/ensembl/$ev/setup.sh
+PATH=~/projects/biocommons/uta/sbin:$PATH
+
+mkdir -pv $dir
+
+for m in $(seq 0 $(($d-1))); do
+    echo "# launching $m/$d..." 1>&2
+    (
+	while true; do
+    	    date +"%F-%T: starting ensembl-fetch ($m/$d)."
+	    ensembl-fetch -d $d -m $m
+	    date +"%F-%T: ensembl-fetch exited ($?); sleeping $crash_sleep s."
+	    sleep $crash_sleep
+	done
+    ) >>$dir/m$m-of-d$d.log 2>&1 &
+
+    sleep $launch_sleep
+done
