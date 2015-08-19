@@ -8,13 +8,20 @@ import logging
 import time
 
 from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
-from sqlalchemy.orm.exc import NoResultFound;
+from bioutils.digests import seq_md5
+from bioutils.sequences import reverse_complement
+from multifastadb import MultiFastaDB
+from sqlalchemy.orm.exc import NoResultFound
+import psycopg2.extras
+import uta_align.align.algorithms as utaaa
 
 import uta
 import uta.formats.exonset as ufes
 import uta.formats.geneinfo as ufgi
 import uta.formats.seqinfo as ufsi
 import uta.formats.txinfo as ufti
+import uta.parsers.geneinfo
+import uta.parsers.seqgene
 
 usam = uta.models                         # backward compatibility
 
@@ -97,20 +104,20 @@ def load_origin(session, opts, cf):
     session.commit()
 
 
-
 def load_seqinfo(session, opts, cf):
     """load Seq entries with accessions from fasta file
     """
 
-    # TODO: load_seqinfo is horrifically slow. There must be a better way.
-    # To try:
-    # - fetch all md5,alias pairs as multimap
-    # - loop over input (as-is); for each md5,alias pair:
-    # - if md5 not in multimap, add seq_id
-    # - if anno for md5 not in multimap, add anno
-    # -    .. else: update description if necessary
-    
+    # TODO: load_seqinfo is horrifically slow (via sqlalchemy). There
+    # must be a better way.
+
     update_period = 100
+
+    # TODO: Don't store sequences in UTA
+    # load sequences up to max_len in size
+    # 2e6 was chosen empirically based on sizes of NMs, NGs, NWs, NTs, NCs
+    max_len = int(2e6)
+
 
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
@@ -121,63 +128,68 @@ def load_seqinfo(session, opts, cf):
     sir = ufsi.SeqInfoReader(gzip.open(opts["FILE"]))
     logger.info("opened " + opts["FILE"])
 
-    i_md5 = 0
-    for md5, si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
-                                          key=lambda si: si.md5):
-        sis = list(si_iter)
-        si = sis[0]
+    mfdb = _get_mfdb(cf)
 
-        i_md5 += 1
-        if i_md5 % update_period == 1:
-            logger.info("{i_md5}/{n_rows} {p:.1f}%: updated/added seq {md5} with {n} acs ({acs})".format(
-                i_md5=i_md5, n_rows=n_rows, md5=md5, p=(i_md5 + 1) / n_rows * 100,
-                n=len(sis), acs=",".join(si.ac for si in sis)))
+    _md5_seq_cache = {}
+    def _upsert_seq(si):
+        if si.md5 in _md5_seq_cache:
+            return _md5_seq_cache[si.md5]
 
         u_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == md5).first()
         if u_seq is None:
-            # if the seq doesn't exist, we can add it and the sequence
-            # annotations without fear of collision (which is faster)
-            u_seq = usam.Seq(seq_id=md5, len=si.len, seq=si.seq)
+            seq = str(mfdb[si.ac]).upper()
+            if int(si.len) != len(seq):
+                raise RuntimeError("Expected a sequence of length {si.len} for {si.md5}; got length {len2} for {si.ac}; skipping".format(
+                    si=si, len2=len(seq)))
+            iseq = seq if len(seq) < max_len else None
+            u_seq = usam.Seq(seq_id=si.md5, len=si.len, seq=iseq)
             session.add(u_seq)
+        _md5_seq_cache[si.md5] = u_seq
+        return _md5_seq_cache[si.md5]
 
-            for si in sis:
-                try:
-                    u_ori = session.query(usam.Origin).filter(
-                        usam.Origin.name == si.origin).one()
-                except NoResultFound as e:
-                    logger.error("No origin for "+si.origin)
-                    raise e
+    i_md5 = 0
+    n_created = 0
+    for md5, si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
+                                          key=lambda si: si.md5):
+        sis = list(si_iter)
+    
+        # if sequence doesn't exist in sequence table, make it
+        # this is to satisfy a FK dependency, which should be reconsidered
+        si = sis[0]
+        try:
+            u_seq = _upsert_seq(si)
+        except RuntimeError as e:
+            logger.exception(e)
+            continue
+
+        for si in sis:
+            u_ori = session.query(usam.Origin).filter(
+                usam.Origin.name == si.origin).one()
+            u_seqanno = session.query(usam.SeqAnno).filter(
+                usam.SeqAnno.origin_id == u_ori.origin_id,
+                usam.SeqAnno.ac == si.ac).first()
+            logger.debug("seq_anno({si.origin},{si.ac},{si.md5}) {st}".format(
+                si=si, st="exists" if u_seqanno is not None else "doesn't exist"))
+            if u_seqanno:
+                # update descr, perhaps
+                if u_seqanno.seq_id != si.md5:
+                    raise RuntimeError("{si.origin}:{si.ac} for {si.md5}: accession already exists for {seq_id}".format(
+                        si=si, seq_id=u_seqanno.seq_id))
+                if si.descr and u_seqanno.descr != si.descr:
+                    u_seqanno.descr = si.descr
+                    session.merge(u_seqanno)
+            else:
+                # create the new annotation
                 u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
                                          ac=si.ac, descr=si.descr)
                 session.add(u_seqanno)
+                n_created += 1
 
+        i_md5 += 1
+        if i_md5 % update_period == 1:
+            logger.info("{n_created} annotations created/{i_md5} sequences seen ({p:.1f}%)/{n_rows} sequences total".format(
+                n_created=n_created, i_md5=i_md5, n_rows=n_rows, md5=md5, p=i_md5 / n_rows * 100))
             session.commit()
-
-        else:
-            # the seq existed, and therefore some of the incoming annotations may
-            # exist. Need to check first.
-            for si in sis:
-                u_ori = session.query(usam.Origin).filter(
-                    usam.Origin.name == si.origin).one()
-                u_seqanno = session.query(usam.SeqAnno).filter(
-                    usam.SeqAnno.origin_id == u_ori.origin_id,
-                    usam.SeqAnno.seq_id == si.md5,
-                    usam.SeqAnno.ac == si.ac).first()
-                if u_seqanno:
-                    # update descr, perhaps
-                    if si.descr and u_seqanno.descr != si.descr:
-                        u_seqanno.descr = si.descr
-                        session.merge(u_seqanno)
-                        logger.info("updated description for " + si.ac)
-                else:
-                    # create the new descr
-                    u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
-                                             ac=si.ac, descr=si.descr)
-                    session.add(u_seqanno)
-
-            session.commit()
-            logger.debug("updated annotations for seq {md5} with {n} acs ({acs})".format(
-                md5=md5, n=len(sis), acs=",".join(si.ac for si in sis)))
 
 
 def load_exonset(session, opts, cf):
@@ -266,7 +278,6 @@ def load_geneinfo(session, opts, cf):
 
 
 def load_txinfo(session, opts, cf):
-    # TODO: add cds_md5 column and load here
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
@@ -274,12 +285,7 @@ def load_txinfo(session, opts, cf):
     self_aln_method = "transcript"
     update_period = 250
 
-    from bioutils.digests import seq_md5
-    from multifastadb import MultiFastaDB
-
-    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
-    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
-    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
+    mfdb = _get_mfdb(cf)
 
     known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
     n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
@@ -309,19 +315,20 @@ def load_txinfo(session, opts, cf):
 
         if ti.cds_se_i:
             cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(","))
+            try:
+                cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
+            except KeyError:
+                #raise Exception("{ac}: not in sequence database; skipping".format(
+                #    ac=ti.ac))
+                logger.error("{ac}: not in sequence database; skipping".format(
+                    ac=ti.ac))
+                continue
+            cds_md5 = seq_md5(cds_seq)
         else:
             cds_start_i = cds_end_i = None
+            cds_md5 = None
 
-        try:
-            cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
-        except KeyError:
-            #raise Exception("{ac}: not in sequence database; skipping".format(
-            #    ac=ti.ac))
-            logger.error("{ac}: not in sequence database; skipping".format(
-                ac=ti.ac))
-            continue
-
-        cds_md5 = seq_md5(cds_seq)
+        assert (cds_start_i is not None) ^ (cds_md5 is None), "failed: cds_start_i is None i.f.f. cds_md5_is None"
 
         u_tx = usam.Transcript(
             ac=ti.ac,
@@ -359,11 +366,6 @@ def align_exons(session, opts, cf):
     # N.B. setup.py declares dependencies for using uta as a client.  The
     # imports below are loading depenencies only and are not in setup.py.
 
-    import psycopg2.extras
-    from bioutils.sequences import reverse_complement
-    from multifastadb import MultiFastaDB
-    import uta_align.align.algorithms as utaaa
-
     update_period = 1000
 
     def _get_cursor(con):
@@ -399,9 +401,7 @@ def align_exons(session, opts, cf):
     if n_rows == 0:
         return
 
-    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
-    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
-    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
+    mfdb = _get_mfdb(cf)
 
     rows = cur.fetchall()
     ac_warning = set()
@@ -420,12 +420,18 @@ def align_exons(session, opts, cf):
                 "{r.tx_ac}: Not in sequence sources; can't align".format(r=r))
             ac_warning.add(r.tx_ac)
             continue
+        if tx_seq is None:
+            logger.error("{ac}: Sequence is None?".format(ac=r.tx_ac))
+            continue
         try:
             alt_seq = mfdb.fetch(r.alt_ac, r.alt_start_i, r.alt_end_i)
         except KeyError:
             logger.warning(
                 "{r.alt_ac}: Not in sequence sources; can't align".format(r=r))
             ac_warning.add(r.alt_ac)
+            continue
+        if alt_seq is None:
+            logger.error("{ac}: Sequence is None?".format(ac=r.alt_ac))
             continue
 
         if r.alt_strand == MINUS_STRAND:
@@ -465,7 +471,6 @@ def load_ncbi_geneinfo(session, opts, cf):
     import data as downloaded (by you) from 
     ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
     """
-    import uta.parsers.geneinfo
 
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
@@ -489,7 +494,6 @@ def load_ncbi_geneinfo(session, opts, cf):
 
 
 def load_sequences(session, opts, cf):
-    from multifastadb import MultiFastaDB
 
     # TODO: Don't store sequences in UTA
     # load sequences up to max_len in size
@@ -500,9 +504,7 @@ def load_sequences(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
-    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
-    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
+    mfdb = _get_mfdb(cf)
 
     # fetch accessions for given sequences
     sql = """
@@ -574,7 +576,6 @@ def load_ncbi_seqgene(session, opts, cf):
         ti["exon_se_i"] = [s[1:3] for s in segs]
         return ti
 
-    import uta.parsers.seqgene
 
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
@@ -696,6 +697,14 @@ def analyze(session, opts, cf):
         logger.info(cmd)
         session.execute(cmd)
     session.commit()
+
+
+def _get_mfdb(cf):
+    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
+    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
+    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
+    return mfdb
+
 
 
 # <LICENSE>
