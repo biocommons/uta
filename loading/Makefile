@@ -64,10 +64,6 @@ GLOBAL_CONF_FN:=../etc/global.conf
 CONF_OPTS:=--conf=${GLOBAL_CONF_FN} --conf=${CONF_FN}
 PSQL_ARGS:=-d uta_dev -U uta_admin
 
-NCBI_TS:=2015/07/31
-MIRRORS_NCBI_ROOT:=aux/mirrors-ncbi/${NCBI_TS}
-NCBI_ET_DIR:=data/ncbi/${NCBI_TS}
-
 _:=$(shell mkdir -p ${LOG_DIR})
 
 include .${CONF}.conf.mk
@@ -90,11 +86,7 @@ config:
 	@echo "GLOBAL_CONF_FN = ${GLOBAL_CONF_FN}"
 	@echo "LOG_DIR = ${LOG_DIR}"
 	@echo "PSQL_ARGS = ${PSQL_ARGS}"
-
-	@echo "NCBI_TS = ${NCBI_TS}"
-	@echo "MIRRORS_NCBI_ROOT = ${MIRRORS_NCBI_ROOT}"
-	@echo "NCBI_ET_DIR = ${NCBI_ET_DIR}"
-
+	@echo "ncbi_mirrors_data_dir = ${ncbi_mirrors_data_dir}"
 
 #=> help -- 
 help: config
@@ -127,7 +119,7 @@ help: config
 
 
 #=> data/ncbi/geneinfo.gz -- 
-data/ncbi/geneinfo.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+data/ncbi/geneinfo.gz: ${ncbi_mirrors_data_dir}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
 	@mkdir -pv ${@D}
 	(ncbi-parse-geneinfo $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
@@ -135,17 +127,19 @@ data/ncbi/geneinfo.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/GENE_INFO/Mammalia/Homo_sa
 #=> data/ncbi/geneacs.gz -- 
 # filtering records in python is slow; prefilter humans (tax_id=9606)
 data/ncbi/geneacs.gz: data/ncbi/gene2refseq_9606.gz
+	@mkdir -pv ${@D}
 	ncbi-parse-gene2refseq $< | gzip -c >$@.tmp 2>$@.log
 	mv -bfv $@.tmp $@
 .PRECIOUS: /tmp/gene2refseq_9606.gz
-data/ncbi/gene2refseq_9606.gz: ${MIRRORS_NCBI_ROOT}/gene/DATA/gene2refseq.gz
+data/ncbi/gene2refseq_9606.gz: ${ncbi_mirrors_data_dir}/gene/DATA/gene2refseq.gz
+	@mkdir -pv ${@D}
 	gzip -cdq <$< | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
 
 #=> data/ncbi/gbff.txinfo.gz -- build transcript definitions from gbff files
 # N.B. the main use of these is to build a map of ac->hgnc for the ncbi/txinfo files
 # Since we only care about NM and NR, prefilter those files to save parse time
-GBFF_DIR:=${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/mRNA_Prot
+GBFF_DIR:=${ncbi_mirrors_data_dir}/refseq/H_sapiens/mRNA_Prot
 GBFF_FILES:=$(wildcard ${GBFF_DIR}/human.*.rna.gbff.gz)
 GBFF_BASES:=$(sort $(subst ${GBFF_DIR}/,,${GBFF_FILES}))
 .PRECIOUS: data/ncbi/tmp/%.gbff.gz
@@ -159,7 +153,7 @@ data/ncbi/gbff.txinfo.gz: $(addprefix data/ncbi/tmp/,${GBFF_BASES})
 	mv -bfv $@.tmp $@; mv -bfv $@.log.tmp $@.log
 
 #=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- build exonset definitions from gff files
-data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${MIRRORS_NCBI_ROOT}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
+data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${ncbi_mirrors_data_dir}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
 	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
 
@@ -240,19 +234,16 @@ data/%/$(1)/acs: data/%/$(1)/txinfo.gz
 data/%/$(1)/seqinfo.gz: data/%/seqinfo.gz data/%/$(1)/acs
 	@mkdir -pv $${@D}
 	gzip -cdq <$$< | seqinfo-filter -T $$(word 2,$$^) -R '^[NA]C_' - | gzip -cq >$$@
-	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
 
 .PRECIOUS: data/%/$(1)/geneinfo.gz
 data/%/$(1)/geneinfo.gz: data/%/geneinfo.gz aux/gene-sets/$(1).hgnc
 	@mkdir -pv $${@D}
 	gzip -cdq <$$< | geneinfo-filter -G $$(word 2,$$^) - | gzip -cq >$$@
-	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
 
 .PRECIOUS: data/%/$(1)/exonset.gz
 $(notice data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs)
 data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs
 	gzip -cdq <$$< | exonset-filter -T $$(word 2,$$^) - | gzip -cq >$$@
-	@printf "%d $$@\n" $$$$(gzip -cdq <$$@ | wc -l)
 endef
 
 data/ucsc-hg19/%/acs data/ucsc-hg38/%/acs: data/ncbi/%/acs
