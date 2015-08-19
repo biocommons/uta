@@ -153,7 +153,7 @@ if __name__ == "__main__":
     esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "w"))
     tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "w"))
 
-    tis = {}
+    ties = {}
     ti_written = defaultdict(lambda: False)
     ac_not_in_gbff = set()
     ac_exons_differ = set()
@@ -181,13 +181,18 @@ if __name__ == "__main__":
         # differ when aligned to (say) an NC and NW, it means that the
         # the genome-based annotation is questionable, probably due to
         # assembly issues.
-        if ti.ac in tis:
-            if ti.exons_se_i != tis[ti.ac].exons_se_i:
-                logger.warn("{ti.ac}~{es.alt_ac}: transcript already defined with a"
-                    " different transcript exon structure; skipping\n  {es1}\n  {es2}".format(ti=ti, es=es, es1=ti.exons_se_i, es2=tis[ti.ac].exons_se_i))
+        if ti.ac in ties:
+            prev_ti, prev_es = ties[ti.ac]
+            if ti.exons_se_i != prev_ti.exons_se_i:
+                logger.warn("{ti.ac}~{es.alt_ac}: transcript already "
+                    "defined with a different transcript exon "
+                    "structure against {prev_es.alt_ac}; skipping".format(
+                        ti=ti, es=es, prev_ti=prev_ti, prev_es=prev_es))
+                logger.info("  {ti.ac}~{es.alt_ac}: {ti.exons_se_i}".format(ti=ti, es=es))
+                logger.info("  {ti.ac}~{es.alt_ac}: {ti.exons_se_i}".format(ti=prev_ti, es=prev_es))
                 continue
         else:
-            tis[ti.ac] = ti
+            ties[ti.ac] = (ti,es)
 
         # gene info isn't in gff; pull gene info for transcripts from
         # geneacs file (if -G provided)
@@ -195,25 +200,30 @@ if __name__ == "__main__":
             if tx2gene:
                 ti.hgnc = tx2gene.get(ti.ac, None)
         except KeyError:
-            logger.warn("no gene info in {opts.geneinfo} for {ti.ac}; skipping transcript".format(
+            logger.warn("{ti.ac}: no gene info in {opts.geneinfo}; skipping transcript".format(
                 ti=ti, opts=opts))
             continue
 
         # Compare exon structure from gbff with input gff
         # If gff tx is in gbff, compare exon structure and liftover CDS start and end
         # If not, add to ac_not_in_gbff warning list
-        try:
-            if tx2ti:
+        if tx2ti:
+            try:
                 gbff_ti = tx2ti[ti.ac]
                 ti.cds_se_i = gbff_ti.cds_se_i  # possibly None
                 if ti.exons_se_i != gbff_ti.exons_se_i:
-                    logging.warn("{ac}  (gff): {exons}".format(ac=ti.ac, exons=ti.exons_se_i))
-                    logging.warn("{ac} (gbff): {exons}".format(ac=gbff_ti.ac, exons=gbff_ti.exons_se_i))
+                    logger.warn("{ac}: gff and gbff exon structures disagree".format(ac=ti.ac))
+                    logger.info("{ac}  (gff): {exons}".format(ac=ti.ac, exons=ti.exons_se_i))
+                    logger.info("{ac} (gbff): {exons}".format(ac=gbff_ti.ac, exons=gbff_ti.exons_se_i))
                     ac_exons_differ.add(ti.ac)
-        except KeyError:
-            ac_not_in_gbff.add(ti.ac)
+            except KeyError:
+                logger.warn("{ti.ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
+                    ti=ti, opts=opts))
+                ac_not_in_gbff.add(ti.ac)
+                continue
 
         if not ti_written[ti.ac]:
+            # write a single txinfo line once; multiple may occur for multiple alignments of e.g., one NM to NC, NW, NT
             tiw.write(ti)
             ti_written[ti] = True
         esw.write(es)
