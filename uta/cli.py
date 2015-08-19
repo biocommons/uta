@@ -46,7 +46,7 @@ Examples:
 
 ############################################################################
 
-import ConfigParser
+import configparser
 import logging
 import time
 
@@ -88,7 +88,7 @@ def run(argv=None):
 
     # cf_loaded: deal with docopt issue
     # https://github.com/docopt/docopt/issues/134
-    cf = ConfigParser.SafeConfigParser()
+    cf = configparser.ConfigParser()
     cf_loaded = dict()
     for conf_fn in opts["--conf"]:
         if conf_fn not in cf_loaded:
