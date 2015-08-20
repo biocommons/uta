@@ -210,18 +210,16 @@ $logger->info(sprintf("connected to %s @ %s:%s",
 
 my @Genes;
 if (@ARGV) {
-    for my $hgnc (@ARGV) {
-	chomp($hgnc);
-	push(@Genes, fetch_Gene_by_name($ga,$hgnc));
-    }
+    @Genes = map {fetch_Gene_by_name($ga,$_)} @ARGV;
 } else {
     @Genes = @{$ga->fetch_all()};
-    my $n0 = $#Genes+1;
-    @Genes = grep {$_->external_db() eq 'HGNC'} @Genes;
-    @Genes = sort {$a->external_name() cmp $b->external_name()} @Genes;
-    my $n1 = $#Genes+1;
-    $logger->info(sprintf("%d Genes fetched, %d after filtering by HGNC", $n0, $n1));
 }
+
+my $n0 = $#Genes+1;
+@Genes = grep {$_->external_db() eq 'HGNC'} @Genes;
+my $n1 = $#Genes+1;
+$logger->info(sprintf("%d Genes fetched, %d after filtering for HGNC", $n0, $n1));
+
 process_genes($opts,@Genes);
 
 exit(0);
@@ -240,11 +238,6 @@ sub fetch_Gene_by_name($$) {
 	$logger->error("gene $hgnc is not in Ensembl");
 	return;
     }
-    if ($#Genes >= 1) {
-	$logger->error(sprintf("gene $hgnc: expected 1 reply, got %d (%s)",
-			       $#Genes+1, join("; ", map {sprintf("%s:%s",$_->external_db(), $_->external_name())} @Genes)));
-	die();
-    }
     foreach my $g (@Genes) {
 	if ($hgnc ne $g->external_name()) {
 	    $logger->warn(sprintf("Requested gene %s; got reply for %s",
@@ -258,9 +251,10 @@ sub fetch_Gene_by_name($$) {
 sub process_genes($@) {
     my ($opts, @genes) = @_;
     my $ngenes = $#genes+1;
-    my $N = $opts->{npartitions};
-    my $nper = $ngenes/$N;
-    for(my $i=0; $i<$N; $i++) {
+    my $npart = $ngenes < $opts->{npartitions} ? 1 : $opts->{npartitions};
+    my $nper = $ngenes/$npart;
+    @genes = sort {$a->external_name() cmp $b->external_name()} @genes;
+    for(my $i=0; $i<$npart; $i++) {
 	next if (defined $opts->{modulus} 
 		 and defined $opts->{divisor}
 		 and $i % $opts->{divisor} != $opts->{modulus});
@@ -269,8 +263,8 @@ sub process_genes($@) {
 	my $pfx = sprintf("$prefix/%04d",$i);
 	my @subgenes = @genes[$s..$e];
 	my $msg = sprintf("subset: $pfx: %d/%d (%.1f%%) [%d, %d] = [%s,%s]...",
-			  ($i+1), $N, ($i+1)/$N*100, $s, $e,
-			  $subgenes[0]->external_name(), $subgenes[$#subgenes]->external_name());
+			  ($i+1), $npart, ($i+1)/$npart*100, $s, $e,
+			  'a', 'b'); # $subgenes[0]->external_name(), $subgenes[$#subgenes]->external_name());
 	if (-d $pfx) {
 	    $logger->info($msg . "$pfx already exists; skipping");
 	} else {
@@ -356,6 +350,11 @@ sub process1($$$$) {
 	    next;
 	}
 	my $ac = $name_to_ac{$srn};
+	if ($ac !~ m/^NC_/) {
+	    $logger->warn(sprintf("gene %s, tx %s (%s): on non-chromosomal sequence %s (%s); skipping",
+				  $hgnc, $tx->display_id(), $g->biotype(), $ac, $srn));
+	    next;
+	}
 	my $seq = $tx->seq->seq;
 
 	$logger->info(sprintf("%s (%s; %s); %d nt\n",$tx->display_id,$hgnc,$tx->strand,length($seq)));
