@@ -195,7 +195,7 @@ def load_seqinfo(session, opts, cf):
 def load_exonset(session, opts, cf):
     # exonsets and associated exons are loaded together
 
-    update_period = 50 
+    update_period = 25
 
     session.execute("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role")))
@@ -216,22 +216,18 @@ def load_exonset(session, opts, cf):
     for i_es, es in enumerate(esr):
         key = (es.tx_ac, es.alt_ac, es.method)
     
+        if key in known_es:
+            continue
+        known_es.add(key)
+
         if es.tx_ac not in known_tx:
             # catch cases where UCSC has refseq transcripts not in UTA
             # Known causes:
             # - collecting UCSC data after NCBI data, and new refseq created
             # - refseq fails alignment criteria (see data/ncbi/ncbi-parse-gff.log)
-            logger.warn("Could not load exon set: unknown transcript {es.tx_ac} in {key}".format(
+            logger.warn("Could not load exon set {key}: unknown transcript {es.tx_ac}".format(
                 es=es, key=key))
             continue
-
-        if i_es % update_period == 0 or i_es + 1 == n_rows:
-            logger.info("{i_es}/{n_rows} {p:.1f}%: loading exonset  ({key})".format(
-                i_es=i_es, n_rows=n_rows, p=(i_es + 1) / n_rows * 100, key=str(key)))
-
-        if key in known_es:
-            continue
-        known_es.add(key)
 
         u_es = usam.ExonSet(
             tx_ac=es.tx_ac,
@@ -254,6 +250,10 @@ def load_exonset(session, opts, cf):
             session.add(u_ex)
 
         session.commit()
+        if i_es % update_period == 0 or i_es + 1 == n_rows:
+            logger.info("{i_es}/{n_rows} {p:.1f}%: committed; (most recent exonset: {key})".format(
+                i_es=i_es, n_rows=n_rows, p=(i_es + 1) / n_rows * 100, key=str(key)))
+
 
 
 def load_geneinfo(session, opts, cf):
@@ -390,7 +390,8 @@ def align_exons(session, opts, cf):
     """
 
     aln_ins_sql = """
-    INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq) VALUES (%s,%s,%s,%s,%s,%s)
+    INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq)
+    VALUES (%s,%s,%s,%s,%s,%s)
     """
 
     con = session.bind.pool.connect()
@@ -403,6 +404,12 @@ def align_exons(session, opts, cf):
 
     mfdb = _get_mfdb(cf)
 
+    def _fetch_seq(ac, s, e):
+        logger.info("fetching sequence {ac}[{s}:{e}]".format(ac=ac,s=s,e=e))
+        seq = mfdb.fetch(ac,s,e)
+        assert seq is not None, "sequence {ac}[{s}:{e}] should never be None (coordinates bogus?)".format(ac=ac,s=s,e=e)
+        return seq
+
     rows = cur.fetchall()
     ac_warning = set()
     tx_acs = set()
@@ -413,25 +420,21 @@ def align_exons(session, opts, cf):
     for i_r, r in enumerate(rows):
         if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
             continue
+
         try:
-            tx_seq = mfdb.fetch(r.tx_ac, r.tx_start_i, r.tx_end_i)
+            tx_seq = _fetch_seq(r.tx_ac, r.tx_start_i, r.tx_end_i)
         except KeyError:
             logger.warning(
                 "{r.tx_ac}: Not in sequence sources; can't align".format(r=r))
             ac_warning.add(r.tx_ac)
             continue
-        if tx_seq is None:
-            logger.error("{ac}: Sequence is None?".format(ac=r.tx_ac))
-            continue
+
         try:
-            alt_seq = mfdb.fetch(r.alt_ac, r.alt_start_i, r.alt_end_i)
+            alt_seq = _fetch_seq(r.alt_ac, r.alt_start_i, r.alt_end_i)
         except KeyError:
             logger.warning(
                 "{r.alt_ac}: Not in sequence sources; can't align".format(r=r))
-            ac_warning.add(r.alt_ac)
-            continue
-        if alt_seq is None:
-            logger.error("{ac}: Sequence is None?".format(ac=r.alt_ac))
+            ac_warning.add(r.tx_ac)
             continue
 
         if r.alt_strand == MINUS_STRAND:
