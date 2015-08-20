@@ -80,9 +80,9 @@ class SeqAnno(Base):
 
     # columns:
     seq_anno_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    seq_id = sa.Column(sa.Text, sa.ForeignKey("seq.seq_id"), index=True)
+    seq_id = sa.Column(sa.Text, sa.ForeignKey("seq.seq_id", onupdate="CASCADE", ondelete="CASCADE"), index=True)
     origin_id = sa.Column(
-        sa.Integer, sa.ForeignKey("origin.origin_id"), nullable=False)
+        sa.Integer, sa.ForeignKey("origin.origin_id", onupdate="CASCADE", ondelete="CASCADE"), nullable=False)
     ac = sa.Column(sa.Text, index=True, nullable=False)
     descr = sa.Column(sa.Text)
     added = sa.Column(
@@ -121,7 +121,7 @@ class Transcript(Base):
     # columns:
     ac = sa.Column(sa.Text, primary_key=True)
     origin_id = sa.Column(
-        sa.Integer, sa.ForeignKey("origin.origin_id"), nullable=False, index=True)
+        sa.Integer, sa.ForeignKey("origin.origin_id", onupdate="CASCADE", ondelete="CASCADE"), nullable=False, index=True)
     hgnc = sa.Column(sa.Text)  # , sa.ForeignKey("gene.hgnc"))
     cds_start_i = sa.Column(sa.Integer) #, nullable=False)
     cds_end_i = sa.Column(sa.Integer) #, nullable=False)
@@ -143,7 +143,7 @@ class ExonSet(Base):
 
     # columns:
     exon_set_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
-    tx_ac = sa.Column(sa.Text, sa.ForeignKey("transcript.ac"), nullable=False)
+    tx_ac = sa.Column(sa.Text, sa.ForeignKey("transcript.ac", onupdate="CASCADE", ondelete="CASCADE"), nullable=False)
     # TODO: alt_ac should be seq_id -- a reference to a sequence hash
     alt_ac = sa.Column(sa.Text, nullable=False)
     alt_strand = sa.Column(sa.SmallInteger, nullable=False)
@@ -179,7 +179,7 @@ class Exon(Base):
     # columns:
     exon_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
     exon_set_id = sa.Column(
-        sa.Integer, sa.ForeignKey("exon_set.exon_set_id"), nullable=False, index=True)
+        sa.Integer, sa.ForeignKey("exon_set.exon_set_id", onupdate="CASCADE", ondelete="CASCADE"), nullable=False, index=True)
     start_i = sa.Column(sa.Integer, nullable=False)
     end_i = sa.Column(sa.Integer, nullable=False)
     ord = sa.Column(sa.Integer, nullable=False)
@@ -197,9 +197,9 @@ class ExonAln(Base):
     # columns:
     exon_aln_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
     tx_exon_id = sa.Column(
-        sa.Integer, sa.ForeignKey("exon.exon_id"), index=True, nullable=False)
+        sa.Integer, sa.ForeignKey("exon.exon_id", onupdate="CASCADE", ondelete="CASCADE"), index=True, nullable=False)
     alt_exon_id = sa.Column(
-        sa.Integer, sa.ForeignKey("exon.exon_id"), index=True, nullable=False)
+        sa.Integer, sa.ForeignKey("exon.exon_id", onupdate="CASCADE", ondelete="CASCADE"), index=True, nullable=False)
     cigar = sa.Column(sa.Text, nullable=False)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)
