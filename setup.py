@@ -48,6 +48,7 @@ setup(
         "biopython",
         "bioutils",
         "colorlog",
+        "configparser",
         "docopt",
         "eutils",
         "multifastadb",
