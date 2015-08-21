@@ -47,32 +47,6 @@ update exon_set set alt_ac = 'NC_000017.10' where alt_ac = 'NC_00017.10';
 
 
 
--- make column constraints cascade
-alter table exon_set drop constraint exon_set_tx_ac_fkey;
-alter table exon_set add constraint exon_set_tx_ac_fkey
-      FOREIGN KEY (tx_ac) REFERENCES transcript(ac)
-      ON DELETE CASCADE ON UPDATE CASCADE;
-alter table seq_anno drop constraint seq_anno_origin_id_fkey;
-alter table seq_anno add constraint seq_anno_origin_id_fkey
-      FOREIGN KEY (origin_id) REFERENCES origin(origin_id)
-      ON DELETE CASCADE ON UPDATE CASCADE;
-alter table transcript drop constraint transcript_origin_id_fkey;
-alter table transcript add constraint transcript_origin_id_fkey
-      FOREIGN KEY (origin_id) REFERENCES origin(origin_id)
-      ON DELETE CASCADE ON UPDATE CASCADE;
-alter table exon drop constraint exon_exon_set_id_fkey;
-alter table exon add constraint exon_exon_set_id_fkey
-      FOREIGN KEY (exon_set_id) REFERENCES exon_set(exon_set_id)
-      ON DELETE CASCADE ON UPDATE CASCADE;
-alter table exon_aln drop constraint exon_aln_alt_exon_id_fkey;
-alter table exon_aln add constraint exon_aln_alt_exon_id_fkey
-      FOREIGN KEY (alt_exon_id) REFERENCES exon(exon_id)
-      ON DELETE CASCADE ON UPDATE CASCADE;
-alter table exon_aln drop constraint exon_aln_tx_exon_id_fkey;
-alter table exon_aln add constraint exon_aln_tx_exon_id_fkey
-      FOREIGN KEY (tx_exon_id) REFERENCES exon(exon_id)
-      ON DELETE CASCADE ON UPDATE CASCADE;
-
 -- reassign BIC transcripts as from BIC origin
 update transcript set origin_id=8 where origin_id=1 and ac ~ '^U';
 
