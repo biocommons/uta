@@ -15,6 +15,8 @@ from sqlalchemy.orm.exc import NoResultFound
 import psycopg2.extras
 import uta_align.align.algorithms as utaaa
 
+from .lru_cache import lru_cache
+
 import uta
 import uta.formats.exonset as ufes
 import uta.formats.geneinfo as ufgi
@@ -55,7 +57,8 @@ def create_schema(session, opts, cf):
     usam.Base.metadata.create_all(session.bind)
     session.add(usam.Meta(key="schema_version", value=usam.schema_version))
     session.add(
-        usam.Meta(key="created", value=datetime.datetime.now().isoformat()))
+        usam.Meta(key="created on", value=datetime.datetime.now().isoformat()))
+    session.add(usam.Meta(key="created by", value=uta.__version__))
     session.add(usam.Meta(
         key="license", value="CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/deed.en_US"))
     session.commit()
@@ -204,11 +207,6 @@ def load_exonset(session, opts, cf):
     known_tx = set([u_tx.ac
                     for u_tx in session.query(usam.Transcript)])
 
-    known_es = set([(u_es.tx_ac, u_es.alt_ac, u_es.alt_aln_method)
-                    for u_es in session.query(usam.ExonSet)])
-    logger.info("{n} known exon_set keys; will skip those during loading".format(
-        n=len(known_es)))
-
     n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
     esr = ufes.ExonSetReader(gzip.open(opts["FILE"]))
     logger.info("opened " + opts["FILE"])
@@ -216,10 +214,6 @@ def load_exonset(session, opts, cf):
     for i_es, es in enumerate(esr):
         key = (es.tx_ac, es.alt_ac, es.method)
     
-        if key in known_es:
-            continue
-        known_es.add(key)
-
         if es.tx_ac not in known_tx:
             # catch cases where UCSC has refseq transcripts not in UTA
             # Known causes:
@@ -228,6 +222,16 @@ def load_exonset(session, opts, cf):
             logger.warn("Could not load exon set {key}: unknown transcript {es.tx_ac}".format(
                 es=es, key=key))
             continue
+
+        existing = session.query(usam.ExonSet).filter(
+                usam.ExonSet.tx_ac == es.tx_ac,
+                usam.ExonSet.alt_ac == es.alt_ac,
+                usam.ExonSet.alt_aln_method == es.alt_aln_method,
+                )
+        if existing.count() > 0:
+            logger.warn("Replacing exon set with key {key}".format(key=key))
+            existing.delete(synchronize=True)
+            session.commit()
 
         u_es = usam.ExonSet(
             tx_ac=es.tx_ac,
@@ -253,7 +257,6 @@ def load_exonset(session, opts, cf):
         if i_es % update_period == 0 or i_es + 1 == n_rows:
             logger.info("{i_es}/{n_rows} {p:.1f}%: committed; (most recent exonset: {key})".format(
                 i_es=i_es, n_rows=n_rows, p=(i_es + 1) / n_rows * 100, key=str(key)))
-
 
 
 def load_geneinfo(session, opts, cf):
@@ -287,31 +290,38 @@ def load_txinfo(session, opts, cf):
 
     mfdb = _get_mfdb(cf)
 
-    known_acs = set([u_ti.ac for u_ti in session.query(usam.Transcript)])
     n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
     tir = ufti.TxInfoReader(gzip.open(opts["FILE"]))
     logger.info("opened " + opts["FILE"])
 
+    @lru_cache(maxsize=100)
+    def _fetch_origin_by_name(name):
+        try:
+            ori = session.query(usam.Origin).filter(
+                usam.Origin.name == name).one()
+        except NoResultFound as e:
+            logger.error("No origin for " + ti.origin)
+            raise e
+        return ori
+
+
     for i_ti, ti in enumerate(tir):
         if i_ti % update_period == 0 or i_ti + 1 == n_rows:
             logger.info("{i_ti}/{n_rows} {p:.1f}%: loading transcript {ac}".format(
-                i_ti=i_ti, n_rows=n_rows, p=(i_ti + 1) / n_rows * 100, ac=ti.ac))
-
-        if ti.ac in known_acs:
-            logger.warning("skipping new definition of transcript " + ti.ac)
-            continue
-        known_acs.add(ti.ac)
+                i_ti=i_ti+1, n_rows=n_rows, p=(i_ti + 1) / n_rows * 100, ac=ti.ac))
 
         if ti.exons_se_i == "":
             logger.warning(ti.ac + ": no exons?!; skipping.")
             continue
 
-        try:
-            ori = session.query(usam.Origin).filter(
-                usam.Origin.name == ti.origin).one()
-        except NoResultFound as e:
-            logger.error("No origin for " + ti.origin)
-            raise e
+        ori = _fetch_origin_by_name(ti.origin)
+
+        existing = session.query(usam.Transcript).filter(
+            usam.Transcript.ac == ti.ac,
+            usam.Transcript.origin_id == ori.origin_id)
+        if existing.count() > 0:
+            logger.warning("dropping existing {ti.origin}:{ti.ac}".format(ti=ti))
+            existing.delete()
 
         if ti.cds_se_i:
             cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(","))
