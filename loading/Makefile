@@ -362,24 +362,23 @@ analyze refresh-matviews grant-permissions: %:
 
 
 _mega:
-	make cleanest drop create
-	if [ "${_UTA_MK_MIGRATE}" = "1" ]; then make migrate-${schema}; fi
+	if [ "${_UTA_MK_ANEW}" = "1" ]; then make drop create migrate-${schema}; fi
+	make cleanest 
 	make load-origin
 	make load-ncbi-associated-accessions
 	make ${_UTA_MK_DATASETS}
-	# make load-sequences # sequences should now be added as needed by load-txinfo and load-exonset
 	make align-exons
 	make refresh-matviews
 
 happy-meal:
-	make _mega _UTA_MK_MIGRATE=0 _UTA_MK_DATASETS="load-ncbi/{refmismatch,acmg-mr} load-ensembl-79/{refmismatch,acmg-mr} load-ucsc-hg19"
+	make _mega _UTA_MK_ANEW=0 _UTA_MK_DATASETS="load-ncbi/{refmismatch,acmg-mr} load-ensembl-79/{refmismatch,acmg-mr} load-ucsc-hg19"
 
-# full build, but without existing data
+# full data load, layered on whatever's already in uta_1_1
 cheeseburger-royale:
-	make _mega _UTA_MK_MIGRATE=0 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
+	make _mega _UTA_MK_ANEW=0 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
 
 the-whole-kielbasa:
-	make _mega _UTA_MK_MIGRATE=1 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
+	make _mega _UTA_MK_ANEW=1 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
 
 
 
