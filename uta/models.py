@@ -109,8 +109,9 @@ class Gene(Base):
 
 
 class Transcript(Base):
+    """class representing unique transcripts, as defined by unique
+    accessions (only).
 
-    """class representing unique transcripts, as defined by unique <seq_id,cds_se,exons_se_i>
     """
     __tablename__ = "transcript"
     __table_args__ = (
