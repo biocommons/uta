@@ -158,12 +158,12 @@ class ExonSet(Base):
     # methods
     def exons_se_i(self, transcript_order=False):
         """return exon [start_i,end_i) pairs in reference sequence order, or transcript order if requested"""
-        rev = transcript_order and self.ref_strand == -1
+        rev = transcript_order and self.alt_strand == -1
         return [(e.start_i, e.end_i) for e in sorted(self.exons, key=lambda e: e.start_i, reverse=rev)]
 
     def exons_as_str(self, transcript_order=False):
         """return exon [start_i,end_i) pairs in reference sequence order, or transcript order if requested"""
-        rev = transcript_order and self.ref_strand == -1
+        rev = transcript_order and self.alt_strand == -1
         return ";".join("{e.start_i},{e.end_i}".format(e=e)
                         for e in sorted(self.exons, key=lambda e: e.start_i, reverse=rev))
 
