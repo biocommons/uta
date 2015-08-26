@@ -12,6 +12,7 @@ from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
 from bioutils.digests import seq_md5
 from bioutils.sequences import reverse_complement
 from multifastadb import MultiFastaDB
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 import psycopg2.extras
 import uta_align.align.algorithms as utaaa
@@ -243,25 +244,29 @@ def load_exonset(session, opts, cf):
     n_new = 0
     n_unchanged = 0
     n_deprecated = 0
+    n_errors = 0
     for i_es, es in enumerate(esr):
-        n, o = _upsert_exon_set_record(session, es.tx_ac, es.alt_ac, es.strand, es.method, es.exons_se_i)
-        session.commit()
-
-        (no) = (n is not None, o is not None)
-        if no == (True, False):
-            n_new += 1
-        elif no == (True, True):
-            n_deprecated += 1
-        elif no == (False, True):
-            n_unchanged += 1
-
-        if i_es % update_period == 0 or i_es + 1 == n_rows:
+        try:
+            n, o = _upsert_exon_set_record(session, es.tx_ac, es.alt_ac, es.strand, es.method, es.exons_se_i)
             session.commit()
-            logger.info("{i_es}/{n_rows} {p:.1f}%; {n_new} new, {n_unchanged} unchanged, {n_deprecated} deprecated"
-                        " committed".format(
-                            i_es=i_es, n_rows=n_rows,
-                            n_new=n_new, n_unchanged=n_unchanged, n_deprecated=n_deprecated,
-                            p=(i_es + 1) / n_rows * 100))
+        except IntegrityError as e:
+            logger.exception(e)
+            session.rollback()
+            n_errors += 1
+        finally:        
+            (no) = (n is not None, o is not None)
+            if no == (True, False):
+                n_new += 1
+            elif no == (True, True):
+                n_deprecated += 1
+            elif no == (False, True):
+                n_unchanged += 1
+
+            if i_es % update_period == 0 or i_es + 1 == n_rows:
+                logger.info("{i_es}/{n_rows} {p:.1f}%; {n_new} new, {n_unchanged} unchanged, {n_deprecated} deprecated, {n_errors} n_errors".format(
+                    i_es=i_es, n_rows=n_rows,
+                    n_new=n_new, n_unchanged=n_unchanged, n_deprecated=n_deprecated, n_errors=n_errors,
+                    p=(i_es + 1) / n_rows * 100))
     session.commit()
 
 
@@ -587,7 +592,8 @@ def load_txinfo(session, opts, cf):
 
     n_new = 0
     n_unchanged = 0
-    n_deprecated = 0
+    n_cds_changed = 0
+    n_exons_changed = 0
 
     for i_ti, ti in enumerate(tir):
         if ti.exons_se_i == "":
@@ -605,8 +611,22 @@ def load_txinfo(session, opts, cf):
             usam.Transcript.ac == ti.ac,
             )
         assert existing.count() <= 1, "Expected max 1 existing transcripts with accession {ti.ac}".format(ti=ti)
-        if existing.count() == 0:
-            # Case 1/2: Doesn't exist, make new
+
+        u_tx = None
+
+        if existing.count() == 1:
+            u_tx = existing[0]
+            if (u_tx.cds_start_i, u_tx.cds_end_i) != (cds_start_i, cds_end_i):
+                u_tx.ac = "{u_tx.ac}/{u_tx.cds_start_i}..{u_tx.cds_end_i}".format(u_tx=u_tx)
+                logger.warn("Transcript {ti.ac}: CDS coordinates changed!; renamed to {u_tx.ac}".format(ti=ti, u_tx=u_tx))
+                session.flush()
+                u_tx = None
+                n_cds_changed += 1
+
+        # state: u_tx is set if a transcript was found and was
+        # unchanged, or None if 1) no such was found or 2) was found
+        # and had updated CDS coords.
+        if u_tx is None:
             ori = _fetch_origin_by_name(ti.origin)
 
             if ti.cds_se_i:
@@ -631,10 +651,7 @@ def load_txinfo(session, opts, cf):
             )
             session.add(u_tx)
 
-        elif existing.count() == 1:
-            # Case 2/2: Exists; ensure consistent CDS boundaries
-            u_tx = existing[0]
-            assert (u_tx.cds_start_i, u_tx.cds_end_i) == (cds_start_i, cds_end_i), "Transcript {ti.ac}: CDS coordinates changed!".format(ti=ti)
+
 
         # state: transcript now exists, either existing or freshly-created
 
@@ -646,20 +663,18 @@ def load_txinfo(session, opts, cf):
             n_new += 1
         elif no == (True, True):
             logger.warn("Transcript {ti.ac} exon structure changed".format(ti=ti))
-            n_deprecated += 1
+            n_exons_changed += 1
         elif no == (False, True):
-            logger.info("Transcript {ti.ac} exon structure unchanged".format(ti=ti))
+            logger.debug("Transcript {ti.ac} exon structure unchanged".format(ti=ti))
             n_unchanged += 1
 
         if i_ti % update_period == 0 or i_ti + 1 == n_rows:
             session.commit()
-            logger.info("{i_ti}/{n_rows} {p:.1f}%; {n_new} new, {n_unchanged} unchanged, {n_deprecated} deprecated"
-                        " committed".format(
-                            i_ti=i_ti, n_rows=n_rows,
-                            n_new=n_new, n_unchanged=n_unchanged, n_deprecated=n_deprecated,
-                            p=(i_ti + 1) / n_rows * 100))
-
-
+            logger.info("{i_ti}/{n_rows} {p:.1f}%; {n_new} new, {n_unchanged} unchanged, "
+                        "{n_cds_changed} cds changed, {n_exons_changed} exons changed; commited".format(
+                i_ti=i_ti, n_rows=n_rows,
+                n_new=n_new, n_unchanged=n_unchanged, n_cds_changed=n_cds_changed, n_exons_changed=n_exons_changed,
+                p=(i_ti + 1) / n_rows * 100))
 
 
 
@@ -723,12 +738,9 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
 
     assert existing.count() <= 1, "Expected max 1 existing exon sets with key ({key})".format(key=key)
 
-    if existing.count() == 0:
-        old_es = None
-
-    elif existing.count() == 1:
+    if existing.count() == 1:
         es = existing[0]
-        if es.exons_as_str() == ess:
+        if es.exons_as_str(transcript_order=True) == ess:
             return (None, es)
 
         # state: 1 exon set exists, and it differs from incoming
@@ -738,6 +750,8 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
         es.alt_aln_method = method + "/" + esh
         session.flush()
         old_es = es
+    else:
+        old_es = None
 
     es = usam.ExonSet(
         tx_ac=tx_ac,
