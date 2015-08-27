@@ -15,7 +15,7 @@ cols = ['hgnc','tx_ac','pro_ac','origin']
 if __name__ == "__main__":
     ec = eutils.client.Client()
 
-    o_flo = csv.DictWriter(f=sys.stdout, fieldnames=cols, delimiter=b'\t')
+    o_flo = csv.DictWriter(f=sys.stdout, fieldnames=cols, delimiter=b'\t', lineterminator='\n')
     o_flo.writeheader()
 
     for ac in fileinput.input():

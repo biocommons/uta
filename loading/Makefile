@@ -100,7 +100,7 @@ help: config
 ## Using NCBI data structures is a bit like playing Thimblerig with
 ## Romulans at an archaeological dig.  The current flow is:
 ## gene/DATA/gene_info.gz     --> geneinfo.gz
-## gene/DATA/gene2refseq.gz   --> geneacs.gz ---------+
+## gene/DATA/gene2refseq.gz   --> assocacs.gz --------+
 ## refseq/mRNA_protein/(gbff) --> gbff.txinfo.gz  --v v
 ## refseq/assembly/(gff)      ---------------------------> txinfo, exonset
 ##
@@ -108,7 +108,7 @@ help: config
 ## 1) In this process, the gbff files provide only the cds start and
 ## end. To my knowledge, gbff and eutils are the only sources of cds
 ## s,e.
-## 2) In principle, geneinfo and geneacs could be built from gbff
+## 2) In principle, geneinfo and assocacs could be built from gbff
 ## instead, and probably should be for more likely consistency.
 ## 3) I've learned the hard way that none of the above files are
 ## guaranteed to be synchronized. For example, on 2015-05-18, 4190
@@ -124,16 +124,16 @@ data/ncbi/geneinfo.gz: ${ncbi_mirrors_data_dir}/gene/DATA/GENE_INFO/Mammalia/Hom
 	(ncbi-parse-geneinfo $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
-#=> data/ncbi/geneacs.gz -- 
+#=> data/ncbi/assocacs.gz -- 
 # filtering records in python is slow; prefilter humans (tax_id=9606)
-data/ncbi/geneacs.gz: data/ncbi/gene2refseq_9606.gz
-	@mkdir -pv ${@D}
-	ncbi-parse-gene2refseq $< | gzip -c >$@.tmp 2>$@.log
-	mv -bfv $@.tmp $@
 .PRECIOUS: /tmp/gene2refseq_9606.gz
-data/ncbi/gene2refseq_9606.gz: ${ncbi_mirrors_data_dir}/gene/DATA/gene2refseq.gz
+data/ncbi/tmp/gene2refseq_9606.gz: ${ncbi_mirrors_data_dir}/gene/DATA/gene2refseq.gz
 	@mkdir -pv ${@D}
 	gzip -cdq <$< | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
+	mv -bfv $@.tmp $@
+data/ncbi/assocacs.gz: data/ncbi/tmp/gene2refseq_9606.gz
+	@mkdir -pv ${@D}
+	ncbi-parse-gene2refseq $< | gzip -c >$@.tmp 2>$@.log
 	mv -bfv $@.tmp $@
 
 #=> data/ncbi/gbff.txinfo.gz -- build transcript definitions from gbff files
@@ -153,7 +153,7 @@ data/ncbi/gbff.txinfo.gz: $(addprefix data/ncbi/tmp/,${GBFF_BASES})
 	mv -bfv $@.tmp $@; mv -bfv $@.log.tmp $@.log
 
 #=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- build exonset definitions from gff files
-data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${ncbi_mirrors_data_dir}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/geneacs.gz data/ncbi/gbff.txinfo.gz
+data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${ncbi_mirrors_data_dir}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/assocacs.gz data/ncbi/gbff.txinfo.gz
 	@mkdir -pv ${@D}
 	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
 
@@ -227,7 +227,7 @@ data/%/$(1)/txinfo.gz: data/%/txinfo.gz aux/gene-sets/$(1).hgnc
 .PRECIOUS: data/%/$(1)/acs
 data/%/$(1)/acs: data/%/$(1)/txinfo.gz
 	@mkdir -pv $${@D}
-	gzip -cdq <$$< | tail -n+2 | cut -f2 | sort -u >$$@.tmp
+	gzip -cdq <$$< | tail -n +2 | cut -f2 | sort -u >$$@.tmp
 	mv -bfv $$@.tmp $$@
 
 .PRECIOUS: data/%/$(1)/seqinfo.gz
@@ -319,13 +319,16 @@ ${LOG_DIR}/align-exons.log: FORCE
 	mv $@.tmp $@
 
 #=> ${LOG_DIR}/associated-accessions --
-load-ncbi-associated-accessions: ${LOG_DIR}/ncbi/associated-accessions.log
-${LOG_DIR}/ncbi/associated-accessions.log: data/ncbi/geneacs.gz
+load-assocacs: ${LOG_DIR}/merged.assocacs.log
+${LOG_DIR}/merged.assocacs.log: data/merged.assocacs.gz
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
-	| psql ${PSQL_ARGS} -c "copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
+	| psql ${PSQL_ARGS} -c "truncate ${schema}.associated_accessions; copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
 
+data/merged.assocacs.gz: data/ncbi/assocacs.gz $(wildcard aux/assocacs.d/*.gz)
+	(zcat $< | head -n1 || true; for f in $^; do zcat $$f | tail -n +2; done | sort -u) | gzip -c >$@.tmp
+	mv $@.tmp $@
 
 #=> ${LOG_DIR}/migrate --
 migrate-%: ${LOG_DIR}/migrate-%.log;
@@ -387,6 +390,7 @@ the-whole-kielbasa:
 dump-%: dumps/%.pgd.gz dumps/%.pgd.gz.sha1;
 
 #=> dumps/%.pgd.gz -- create dump of named schema (e.g., uta_20140210)
+.PRECIOUS: dumps/%.pgd.gz
 dumps/%.pgd.gz:
 	# Takes ~5 minutes
 	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* | gzip) >$@.tmp 2>$@.log
@@ -420,41 +424,4 @@ cleanest: cleaner
 %.sha1: %
 	sha1sum "$*" >"$@.tmp"
 	/bin/mv "$@.tmp" "$@"
-
-
-
-#### ############################################################################
-#### ## SETUP
-#### 
-#### #=> setup-perl: install perl packages
-#### # TODO: consider perl brew instead
-#### setup-perl:
-#### 	./sbin/perl-module-install --install-base ve   Log::Log4perl
-
-
-#### ############################################################################
-#### ## build main data
-#### 
-#### #=> main/ncbi-core.seqinfo.gz -- 
-#### main/ncbi-core.seqinfo.gz:
-#### 	fasta-to-seqinfo -o 'NCBI RefSeq' ${SEQ_DIR}/{hs_*.fa,refseq*.fna,human*.faa,human*.fna} \
-#### 	| gzip -cq >$@.tmp
-#### 	mv -bfv $@.tmp $@
-#### 
-#### #=> main/ncbi.log -- 
-#### main/ncbi.log: %.log: main/genes.hgnc.gz
-#### 	{ gzip -cdq <$< | ncbi-fetch -p $* 2>&1 | tee $@.tmp; } && mv -bfv $@.tmp $@
-#### 
-#### 
-#### #=> main/uta0.exonset.gz main/uta0.txinfo.gz main/uta0.fasta.gz -- 
-#### main/uta0.exonset.gz main/uta0.txinfo.gz main/uta0.fasta.gz: main/uta0.log;
-#### 
-#### #=> main/uta0.log -- 
-#### main/uta0.log:
-#### 	uta0-fetch -d ${@D} >$@.tmp 2>&1 && mv -bfv $@.tmp $@
-#### 
-#### #=> main/uta0.seqinfo.gz -- 
-#### main/uta0.seqinfo.gz: main/uta0.fasta.gz
-#### 	fasta-to-seqinfo -o uta0  $< | gzip -cq >$@.tmp && mv -bfv $@.tmp $@
-
 
