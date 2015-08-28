@@ -37,6 +37,7 @@ sub fetch_Gene_by_name($$);
 my $root = "$FindBin::RealBin/..";
 
 my $opts = {
+    'primary-only' => 0,
     'npartitions' => 1000,
     'divisor' => undef,
     'modulus' => undef,
@@ -178,6 +179,7 @@ GetOptions($opts,
 	   'port|p=s',
 	   'prefix=s',
 	   'user|u=s',
+	   'primary-only+',
     )
     || die("$0: you got usage issues, homey\n");
 
@@ -264,7 +266,7 @@ sub process_genes($@) {
 	my @subgenes = @genes[$s..$e];
 	my $msg = sprintf("subset: $pfx: %d/%d (%.1f%%) [%d, %d] = [%s,%s]...",
 			  ($i+1), $npart, ($i+1)/$npart*100, $s, $e,
-			  'a', 'b'); # $subgenes[0]->external_name(), $subgenes[$#subgenes]->external_name());
+			  $subgenes[0]->external_name(), $subgenes[$#subgenes]->external_name());
 	if (-d $pfx) {
 	    $logger->info($msg . "$pfx already exists; skipping");
 	} else {
@@ -350,7 +352,7 @@ sub process1($$$$) {
 	    next;
 	}
 	my $ac = $name_to_ac{$srn};
-	if ($ac !~ m/^NC_/) {
+	if ($opts->{primary_only} and $ac !~ m/^NC_/) {
 	    $logger->warn(sprintf("gene %s, tx %s (%s): on non-chromosomal sequence %s (%s); skipping",
 				  $hgnc, $tx->display_id(), $g->biotype(), $ac, $srn));
 	    next;
