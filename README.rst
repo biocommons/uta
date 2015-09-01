@@ -78,50 +78,46 @@ Or, in Python::
   }
 
 
-Making a Local Copy of UTA
---------------------------
+Installing UTA Locally
+----------------------
 
 These instructions are for Linux/Unix. A similar process should work for
 other platforms.
 
-UTA installs in a single *schema*, named like uta\_\ ``date``. Multiple
-versions of UTA may be installed in a single database.  UTA can easily
-coexist within existing databases with unrelated schemas. The database
-dump was generated without users or roles, so no new roles are needed.
+UTA releases are in a single *schema*, named like uta\_\ ``date``.
+Multiple versions of UTA may be installed in a single
+database.  UTA can easily coexist within existing databases with
+unrelated schemas.
 
 #. Install PostgreSQL. Make sure that you can log in with psql.
 
 #. Choose a database in which to install uta. The schema name ``uta`` is
    assumed in these instructions.
 
-   **Optional**: Create the database with ``createdb uta``.
+   If you don't have an existing database, create one with ``createdb
+   uta``.
 
-#. **Optional**: Install schema without data.
-
-   Installing the schema is a quick way to identify permissions issues.
-
-   Fetch a schema dump from
-   https://bitbucket.org/biocommons/uta/downloads. Schema dumps have
-   ``-schema`` in the filename.
-   ::
-
-   $ gzip -cdq uta_20140210-schema.pgd.gz | psql -1 -v ON_ERROR_STOP=1 -d uta -f-
-  
-#. Install UTA.
-
-   Download a database dump:
+#. Download a database dump:
    
-   `uta_20140210 <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz>`_ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz.sha1>`_]
-     Original production release. 
-     
-   `uta_20150704 <http://dl.biocommons.org/uta-dumps/uta_20150704.pgd.gz>`_ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20150704.pgd.gz.sha1>`_]
-     Recent development release. Contains NCBI updates through June 2015 and Ensembl-79. Believed to be stable but still in testing.
+   **uta_2015827**
+     | Contains NCBI updates through August 2015 and Ensembl-79.
+     | `schema only (5KB) <http://dl.biocommons.org/uta-dumps/uta_20150827-schema.pgd.gz>`__ | `schema+data (571MB) <http://dl.biocommons.org/uta-dumps/uta_20150827.pgd.gz>`__ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20150827.pgd.gz.sha1>`__]
+
+   **uta_20140210**
+     | Original production release w/data from manuscript
+     | `schema only (5KB) <http://dl.biocommons.org/uta-dumps/uta_20140210-schema.pgd.gz>`__ | `schema+data (358MB) <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz>`__ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz.sha1>`__]
+
+
+#. Install database
 
    ::
 
-   $ gzip -cdq uta_20140210.pgd.gz | psql -1 -v ON_ERROR_STOP=1 -d uta -Eae
+   $ gzip -cdq uta_20150827.pgd.gz | psql -1aeE -d uta -v ON_ERROR_STOP=1
 
-#. **Optional**: Manually refresh materialized views.
+   *Optional*: Installing an empty schema is a good way to find and
+   debug loading issues quickly. See above for schema-only dumps.
+  
+#. Manually refresh materialized views.
 
    UTA uses materialized views to speed up some queries. You probably want
    to refresh those with ``refresh materialized view <viewname>``.  At
@@ -129,23 +125,6 @@ dump was generated without users or roles, so no new roles are needed.
    materialized views.
 
 
-
-Package Installation
---------------------
-
-.. note:: Again, the UTA Python package **is not** required (or even very
-   useful) for connecting to the UTA database.
-
-Tested on Ubuntu 13.04, Python 2.7.5::
-
-  $ pip install hg+ssh://hg@bitbucket.org/biocommons/uta
-
-Alternatively, you may clone and install::
-
-  $ pip clone hg+ssh://hg@bitbucket.org/biocommons/uta
-  $ cd uta
-  $ make install
-  (or, equivalently, python setup.py install)
 
 
 Development and Testing
