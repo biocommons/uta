@@ -1,6 +1,5 @@
-===================================
-UTA -- Universal Transcript Archive
-===================================
+uta -- Universal Transcript Archive
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 *bringing smiles to transcript users since 2013*
 
@@ -10,7 +9,7 @@ UTA -- Universal Transcript Archive
 
 
 Overview
---------
+@@@@@@@@
 
 The UTA (Universal Transcript Archive) stores transcripts aligned to
 sequence references (typically genome reference assemblies). It supports
@@ -38,7 +37,7 @@ available.)
 
 
 Accessing the Public UTA Instance
----------------------------------
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 Invitae provides a public instance of UTA.  The connection parameters are:
 
@@ -79,56 +78,52 @@ Or, in Python::
 
 
 Installing UTA Locally
-----------------------
+@@@@@@@@@@@@@@@@@@@@@@
 
-These instructions are for Linux/Unix. A similar process should work for
-other platforms.
+`docker <http://docker.com>`_ enables the distribution of lightweight,
+isolated packages that run on essentially many platforms.  When you
+use this approach, you will end up with a local UTA installation that
+runs as a local postgresql process.
 
-UTA releases are in a single *schema*, named like uta\_\ ``date``.
-Multiple versions of UTA may be installed in a single
-database.  UTA can easily coexist within existing databases with
-unrelated schemas.
+#. `Install docker <https://docs.docker.com/installation/>`_.
 
-#. Install PostgreSQL. Make sure that you can log in with psql.
-
-#. Choose a database in which to install uta. The schema name ``uta`` is
-   assumed in these instructions.
-
-   If you don't have an existing database, create one with ``createdb
-   uta``.
-
-#. Download a database dump:
-   
-   **uta_2015827**
-     | Contains NCBI updates through August 2015 and Ensembl-79.
-     | `schema only (5KB) <http://dl.biocommons.org/uta-dumps/uta_20150827-schema.pgd.gz>`__ | `schema+data (571MB) <http://dl.biocommons.org/uta-dumps/uta_20150827.pgd.gz>`__ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20150827.pgd.gz.sha1>`__]
-
-   **uta_20140210**
-     | Original production release w/data from manuscript
-     | `schema only (5KB) <http://dl.biocommons.org/uta-dumps/uta_20140210-schema.pgd.gz>`__ | `schema+data (358MB) <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz>`__ [`sha1 <http://dl.biocommons.org/uta-dumps/uta_20140210.pgd.gz.sha1>`__]
-
-
-#. Install database
+#. Fetch the uta docker image from docker hub.
 
    ::
 
-   $ gzip -cdq uta_20150827.pgd.gz | psql -1aeE -d uta -v ON_ERROR_STOP=1
+      $ docker pull biocommons/uta:uta_20150827
 
-   *Optional*: Installing an empty schema is a good way to find and
-   debug loading issues quickly. See above for schema-only dumps.
-  
-#. Manually refresh materialized views.
+   This process will likely take 1-3 minutes.
+   
+#. Run the image 
 
-   UTA uses materialized views to speed up some queries. You probably want
-   to refresh those with ``refresh materialized view <viewname>``.  At
-   this time, there is no automated way to do this.  ``\dm`` lists
-   materialized views.
+   ::
+      
+      $ docker run -dit --name uta_20150827 -p 15032:5432 biocommons/uta:uta_20150827
+      
+   The first time you run this image, it will initialize a postgresql
+   database cluster, then download a database dump and install it.  -d
+   starts the container in daemon (background) mode. To see progress::
 
+      $ docker logs -f uta_20150827
+
+   You will see messages from several processes running in
+   parallel. Near the end, you'll see::
+
+     == You may now connect to uta.  No password is required.
+
+   Hit Ctrl-C to stop watching logs. (The container will still be running.)
+
+#. Test your installation
+
+   ::
+
+      $ psql -h localhost -p 15032 -U anonymous -d uta -c 'select * from uta_20150827.meta'
 
 
 
 Development and Testing
------------------------
+@@@@@@@@@@@@@@@@@@@@@@@
 
 To develop UTA, follow these steps.
 
