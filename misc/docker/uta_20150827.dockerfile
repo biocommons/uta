@@ -8,9 +8,10 @@
 
 FROM postgres:9.4.4
 
-ENV UTA_RELEASE=uta_20150827
-ENV UTA_PGD_URL=http://dl.biocommons.org/uta-dumps/${UTA_RELEASE}.pgd.gz
-LABEL description="PostgreSQL 9.4.4 image with uta_20150827 installed; https://bitbucket.org/biocommons/uta/"
+ENV UTA_VERSION=uta_20150827
+ENV UTA_PGD_URL=http://dl.biocommons.org/uta-dumps/${UTA_VERSION}-schema.pgd.gz
+
+LABEL description="PostgreSQL 9.4.4 image with $UTA_VERSION installed; https://bitbucket.org/biocommons/uta/"
 MAINTAINER reecehart@gmail.com
 
 RUN apt-get update && apt-get install -y \
