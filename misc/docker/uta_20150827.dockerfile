@@ -5,6 +5,7 @@
 # Use like this:
 # docker build -f uta_20150827.dockerfile --rm=true -t biocommons/uta:uta_20150827 .
 # docker run --name uta_20150827 -p 15032:5432 biocommons/uta:uta_20150827 
+# add -e UTA_SCHEMA_ONLY=1 to test by installing the schema only
 
 FROM postgres:9.4.4
 
@@ -15,7 +16,6 @@ ENV POSTGRES_PASSWORD=password-login-is-disabled
 
 MAINTAINER reecehart@gmail.com
 ENV UTA_VERSION=uta_20150827
-ENV UTA_PGD_URL=http://dl.biocommons.org/uta-dumps/${UTA_VERSION}-schema.pgd.gz
 LABEL description="PostgreSQL 9.4.4 image with $UTA_VERSION installed; https://bitbucket.org/biocommons/uta/"
 
 ADD load-uta.sh /docker-entrypoint-initdb.d/

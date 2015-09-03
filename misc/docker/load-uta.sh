@@ -21,6 +21,8 @@ createuser --username "$POSTGRES_USER" PUBLIC
 createdb   --username "$POSTGRES_USER" -O uta_admin uta
 
 
+UTA_PGD_URL=http://dl.biocommons.org/uta-dumps/${UTA_VERSION}${UTA_SCHEMA_ONLY:+-schema}.pgd.gz
+
 curl "$UTA_PGD_URL" \
     | gzip -cdq \
     | psql -1e -U uta_admin -d uta -v ON_ERROR_STOP=1
@@ -29,7 +31,8 @@ cat <<EOF
 =======================================================================
 =======================================================================
 == 
-== $UTA_VERSION installed
+== $UTA_VERSION installed from
+== $UTA_PGD_URL
 == 
 == You may now connect to uta.  No password is required.
 == 
