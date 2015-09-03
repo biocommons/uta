@@ -1,22 +1,23 @@
 #!/bin/bash -x
 
-# postgres is already started for running entry point scripts,
-# so this won't take effect until restart
+# The uta docker image is intended to be a public, read-only appliance
+# Therefore, overwrite pg_hba.conf, including whatever edits might
+# have been made by the postgres image
 
-cat <<EOF >/tmp/trust-block
-
+cat <<EOF >"$PGDATA/pg_hba.conf" 
 # allow the anonymous user to access uta without password
 # These lines must occur before more stringent authentication methods
-local  all   anonymous                trust
-host   all   anonymous   0.0.0.0/0    trust
+host   all   anonymous     0.0.0.0/0      trust
+host   all   PUBLIC        0.0.0.0/0      trust
+local  all   all                          trust
+host   all   all         127.0.0.1/32     trust
+host   all   all               ::1/128    trust
 EOF
-
-cp "$PGDATA/pg_hba.conf"  "$PGDATA/pg_hba.conf.orig" 
-sed '/^# TYPE/ r /tmp/trust-block' "$PGDATA/pg_hba.conf.orig" > "$PGDATA/pg_hba.conf" 
 
 
 createuser --username "$POSTGRES_USER" uta_admin
 createuser --username "$POSTGRES_USER" anonymous
+createuser --username "$POSTGRES_USER" PUBLIC
 createdb   --username "$POSTGRES_USER" -O uta_admin uta
 
 
@@ -30,16 +31,10 @@ cat <<EOF
 == 
 == $UTA_VERSION installed
 == 
-== You may now connect to uta. 
-== 
-== Reminder: Your password is '$POSTGRES_PASSWORD'. If you didn't set it,
-== consider doing so with 
-==    docker run ... -e POSTGRES_PASSWORD=your_password
+== You may now connect to uta.  No password is required.
 == 
 =======================================================================
 =======================================================================
 
 EOF
 
-
-cat $PGDATA/pg_hba.conf
