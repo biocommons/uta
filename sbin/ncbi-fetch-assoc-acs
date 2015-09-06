@@ -7,6 +7,7 @@ import os
 import sys
 
 import eutils.client
+from eutils.exceptions import EutilsRequestError
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -22,9 +23,20 @@ if __name__ == "__main__":
     nerrors = 0
 
     for ac in fileinput.input():
+        if nerrors > 100:
+            raise Exception("Too many errors. You're hosed, man. Bailing.")
+
         ac = ac.strip()
-        esr = ec.esearch(db='nuccore', term=ac)
+        try:
+            esr = ec.esearch(db='nuccore', term=ac)
+        except EutilsRequestError:
+            nerrors += 1
+            logger.error(ac + " is a bad dude, and raised this:")
+            logger.exception(e)
+            continue
+            
         assert esr.count == 1, "expected exactly 1 reply for "+ac
+
         for id in esr.ids:
             try:
                 gbset = ec.efetch(db='nuccore', id=id)
@@ -39,7 +51,5 @@ if __name__ == "__main__":
                     })
             except Exception as e:
                 nerrors += 1
-                if nerrors > 100:
-                    raise Exception("You're hosed, man")
                 logger.error(ac + " is a bad dude, and raised this:")
                 logger.exception(e)
