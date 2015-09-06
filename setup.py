@@ -1,5 +1,3 @@
-import sys
-
 from setuptools import setup, find_packages
 
 with open("doc/description.txt") as f:
@@ -7,10 +5,10 @@ with open("doc/description.txt") as f:
 
 
 setup(
-    license="Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
-    long_description=long_description,
-    use_scm_version=True,
-    zip_safe=True,
+    license = 'Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
+    long_description = long_description,
+    use_scm_version = True,
+    zip_safe = True,
 
     author="UTA Contributors",
     author_email="reecehart+uta@gmail.com",
@@ -19,7 +17,7 @@ setup(
     packages=find_packages(),
     url="https://bitbucket.org/biocommons/uta",
 
-    classifiers=[
+    classifiers = [
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Healthcare Industry",
@@ -33,15 +31,15 @@ setup(
         "Topic :: Scientific/Engineering :: Medical Science Apps.",
     ],
 
-    keywords=[
-        "bioinformatics",
-        "computational biology",
-        "genome variants",
-        "genome variation",
-        "genomic variants",
-        "genomic variation",
-        "genomics",
-        "hgvs",
+    keywords = [
+        'bioinformatics',
+        'computational biology',
+        'genome variants',
+        'genome variation',
+        'genomic variants',
+        'genomic variation',
+        'genomics',
+        'hgvs',
     ],
 
     install_requires=[
@@ -61,11 +59,12 @@ setup(
         "uta-align",
     ],
 
-    setup_requires=[
-        "nose",
-        "setuptools_scm",
-        "sphinx",
-        "sphinxcontrib-fulltoc",
+    setup_requires = [
+        'setuptools_scm',
+        'nose',
+        'sphinx',
+        'sphinxcontrib-fulltoc',
+        'wheel',
     ],
 
     tests_require=[

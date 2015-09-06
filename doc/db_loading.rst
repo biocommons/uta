@@ -58,8 +58,8 @@ pg_hba.conf for local connections.
 Then, create users and a uta database::
 
     createuser uta_admin
-    createuser uta_public
-    createdb -O uta_admin uta_dev
+    createuser anonymous
+    createdb -O uta_admin uta
 
 
 Install UTA
