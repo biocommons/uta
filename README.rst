@@ -5,7 +5,8 @@ uta -- Universal Transcript Archive
 
 .. `Docs <http://pythonhosted.org/uta/>`_ | 
 
-|build_status|
+| |build_status|
+| (N.B. Build failures appear to be related to drone.io VM configuration during pip install. Testing in naive VMs on development machines work as expected. A workaround is under investigation.)
 
 
 Overview
