@@ -7,8 +7,6 @@ uta -- Universal Transcript Archive
 
 |build_status|
 
-    *(N.B. Build failures occur on 3rd party continuous testing services only during the installation of prerequisites. Testing in naive VMs on development machines works as expected. A workaround is under investigation.)*
-
 Overview
 @@@@@@@@
 
