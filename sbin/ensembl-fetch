@@ -27,7 +27,7 @@ use Bio::EnsEMBL::Registry;
 
 use FindBin;
 
-sub process1($$$$);
+sub process1($$$$$);
 sub process_subgenes($$);
 sub process_genes($@);
 sub fetch_Gene_by_name($$);
@@ -287,19 +287,22 @@ sub process_subgenes($$) {
     my $tiw_fn = "$prefix/txinfo.gz";
     my $esw_fn = "$prefix/exonset.gz";
     my $faw_fn = "$prefix/fasta.gz";
+    my $aaw_fn = "$prefix/assocacs.gz";
 
     my $tiw = IO::Zlib->new("$tiw_fn.tmp", "wb");
     (defined $tiw)
 	|| die("$tiw_fn.tmp: $!");
     my $esw = IO::Zlib->new("$esw_fn.tmp", "wb");
     my $faw = IO::Zlib->new("$faw_fn.tmp", "wb");
+    my $aaw = IO::Zlib->new("$aaw_fn.tmp", "wb");
 
     $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
     $esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
-    
+    $aaw->print( join("\t",qw(hgnc tx_ac pro_ac origin)), "\n" );
+
     for(my $i=0; $i<=$#$subgenes; $i++) {
 	my $g = $subgenes->[$i];
-	process1($g,$tiw,$esw,$faw);
+	process1($g,$tiw,$esw,$faw,$aaw);
 	$logger->info(sprintf("%d/%d (%.1f%%): gene %s\n",
 			      ($i+1), ($#$subgenes+1), ($i+1)/($#$subgenes+1)*100,
 			      $g->external_name()));
@@ -308,17 +311,19 @@ sub process_subgenes($$) {
     $tiw->close();
     $esw->close();
     $faw->close();
+    $aaw->close();
 
     rename("$tiw_fn.tmp",$tiw_fn);
     rename("$esw_fn.tmp",$esw_fn);
     rename("$faw_fn.tmp",$faw_fn);
+    rename("$aaw_fn.tmp",$aaw_fn);
 }
 
 
 
 my %tx_seen;
-sub process1($$$$) {
-    my ($g,$tiw,$esw,$faw) = @_;
+sub process1($$$$$) {
+    my ($g,$tiw,$esw,$faw,$aaw) = @_;
     my $hgnc = $g->external_name();
 
     my @tx = @{ $g->get_all_Transcripts };
@@ -358,11 +363,20 @@ sub process1($$$$) {
 	    next;
 	}
 	my $seq = $tx->seq->seq;
+	my $pseq = $tx->translate();
 
-	$logger->info(sprintf("%s (%s; %s); %d nt\n",$tx->display_id,$hgnc,$tx->strand,length($seq)));
+	$logger->info(sprintf("%s: %s (%s; %d nt); %s\n",
+			      $hgnc, $tx->display_id, 
+			      $tx->strand, length($seq),
+			      defined($pseq) ? $pseq->display_id : $tx->biotype,
+			      ));
 
 	# write sequence and seqinfo
 	$faw->print(">",$tx->display_id,"\n",$seq,"\n");
+	if (defined $pseq) {
+	    $faw->print(">",$pseq->display_id,"\n",$pseq->seq,"\n");
+	    $aaw->print(join("\t", $hgnc, $tx->display_id, $pseq->display_id, $origin), "\n");
+	}
 
 	# write exonset
 	my @g_exons = @{ $tx->get_all_Exons() };
