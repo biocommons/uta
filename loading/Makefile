@@ -258,7 +258,7 @@ $(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
 #= Loading sets
 
 load-bic:        $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
-load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log)
+load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log) ensp.seqinfo.log
 load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
 load-ucsc-hg19:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
 load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
@@ -280,11 +280,12 @@ ${LOG_DIR}/origin.log: data/origin.tsv
 	uta ${CONF_OPTS} load-origin $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
-#=> load-sequences
-load-sequences: ${LOG_DIR}/load-sequences.log
-${LOG_DIR}/load-sequences.log:
-	uta ${CONF_OPTS} load-sequences >$@.tmp 2>&1
-	mv $@.tmp $@
+## Pretty sure this rule is unused. 2015-09-15
+# #=> load-sequences
+# load-sequences: ${LOG_DIR}/load-sequences.log
+# ${LOG_DIR}/load-sequences.log:
+# 	uta ${CONF_OPTS} load-sequences >$@.tmp 2>&1
+# 	mv $@.tmp $@
 
 #=> ${LOG_DIR}/%seqinfo.log -- 
 ${LOG_DIR}/%seqinfo.log: data/%seqinfo.gz
@@ -402,7 +403,6 @@ dumps/%-schema.pgd.gz:
 	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* -s | gzip) >$@.tmp 2>$@.log
 	mv "$@.tmp" "$@"
 
-
 #=> push-% -- push schemas to dev (you're on your own for stg and prd)
 push-dev-%: logs/uta.biocommons.org/uta_dev/load-%.log;
 
@@ -411,6 +411,16 @@ logs/uta.biocommons.org/uta_dev/load-%.log: dumps/%.pgd.gz
 	# expect ~1.5h
 	@mkdir -pv ${@D}
 	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
+	mv "$@.tmp" "$@"
+
+
+#=> dev-from-% -- reconstitute uta_1_1 from dump
+dev-from-%: logs/uta_dev@localhost/dev-from-%.log;
+logs/uta_dev@localhost/dev-from-%.log: dumps/%.pgd.gz
+	@mkdir -pv ${@D}
+	(gzip -cdq $< | pg-dump-schema-rename $* uta_1_1 | time psql -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
+	mv "$@.tmp" "$@"
+
 
 
 ############################################################################

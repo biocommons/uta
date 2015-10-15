@@ -1,3 +1,11 @@
+create or replace function alphabet(s text) returns text
+strict immutable
+language plperl as $_$
+my %ltrs = map {$_=>1} split("", $_[0]);
+return join("",sort(keys(%ltrs)));
+$_$;
+comment on function alphabet(text) is 'return sorted string of unique letters in s';
+
 create or replace function seq_md5(in seq text, out seq_md5 text)
 strict immutable as
 $$select md5(upper(seq))$$

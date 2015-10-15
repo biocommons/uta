@@ -3,22 +3,39 @@
 
 import hashlib
 import itertools
+import os
 import pprint
-from multifastadb import MultiFastaDB; import uta_align.align.algorithms as utaaa
+
+from multifastadb import MultiFastaDB
 from prettytable import PrettyTable
+import uta_align.align.algorithms as utaaa
 
-path = '/local/home/reece/data/ftp.ensembl.org/pub/'
 
-try:
-    _ = mfdb
-except NameError:
-    mfdb = MultiFastaDB(sources=[path])
-
-hashed_seqs = dict()
-def hashseq(s):
+_seq_md5s = dict()
+def seq_md5(s):
+    """cached seq -> md5 hex hash"""
     h = hashlib.md5(s).hexdigest()
-    hashed_seqs[h] = s
+    _seq_md5s[h] = s
     return h
+
+def build_ac_hash_map(mfdb):
+    return {ac: seq_md5(str(mfdb[ac]).upper()) for ac in mfdb.references}
+
+def build_hash_acs_map(ahm):
+    ha_pairs = sorted((h, ac) for ac, h in ahm.iteritems())
+    ha_map = {h: sorted(list(e[1] for e in hai))
+              for h, hai in itertools.groupby(ha_pairs, key=lambda ha: ha[0])}
+    return ha_map 
+
+def build_wac_map(mfdb):
+    """return {ac: {md5: [faf]}}"""
+    for ac in mfdb.references:
+        ffs = [loc[1] for loc in mfdb.where_is(ac)]
+        for ff in ffs:
+            md5 = seq_md5(ff[ac])
+            
+
+    return {ac: (ff,) 
 
 def summary(ac):
     def _srec(s):
@@ -32,7 +49,7 @@ def summary(ac):
             'assy': assy,
             'faf': s[1],
             'len': len(seq),
-            'md5': hashseq(seq),
+            'md5': seq_md5(seq),
             'rls': rls,
             'rpath': rpath,
             'type': type_,
@@ -57,3 +74,37 @@ def align(s1, s2):
 def multiplicity(acs):
     return {ac:[hashlib.md5(s).hexdigest() for s in set(str(w[1][ac]).upper() for w in mfdb.where_is(ac))] for ac in acs} 
 
+def multiplicity2(mfdb, acs, all=False):
+    acw = {ac: mfdb.where_is(ac) for ac in acs}
+    if not all:
+        acw = {ac: w for ac, w in acw.iteritems() if len(w)>1}
+
+    return {
+        ac: [hashlib.md5(s).hexdigest()
+             for s in set(str(w[1]).upper() )]
+        for ac, w in acw.iteritems()
+        } 
+
+
+
+
+if __name__ == "__main__":
+    path = '/local/home/reece/data/ftp.ensembl.org/pub/'
+    all = sorted([os.path.join(dir, f)
+                  for dir, _, files in os.walk(path)
+                  for f in files if f.endswith('.fa.bgz') and 'abinitio' not in f])
+
+    grch37 = [f for f in all if '.GRCh37.' in f]
+    grch38 = [f for f in all if '.GRCh38.' in f]
+    pep = [f for f in all if '/pep/' in f]
+    ncrna = [f for f in all if '/ncrna/' in f]
+    cds = [f for f in all if '/cds/' in f]
+    cdna = [f for f in all if '/cdna/' in f]
+    v = {v: [f for f in all if 'release-' + v in f] for v in "70 71 72 73 74 75 79 81".split()}
+
+    sources = v['79']
+    mfdb = MultiFastaDB(sources=sources)
+
+    ham = build_ac_hash_map(mfdb)
+    ahm = build_hash_acs_map(ham)
+    
