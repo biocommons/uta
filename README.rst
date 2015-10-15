@@ -131,18 +131,23 @@ as a local postgresql process. The only requirement is docker itself
 Installing from database dumps
 ##############################
 
-Users should prefer the docker installation wherever possible.  When
-docker is not available, users may wish to install from database
-dumps.  
+Users should prefer the public UTA instance (uta.biocommons.org) or
+the docker installation wherever possible.  When those options are not
+available, users may wish to create a local postgresql database from
+database dumps.  Users choosing this method of installation should be
+experienced with PostgreSQL administration.
 
-Due to the heterogeneity of operating systems and PostgreSQL
-installations, **installing from database dumps is unsupported**.
-Users choosing this method of installation should be experienced with
-PostgreSQL administration.
+The public site and docker images are built from exactly the same
+dumps as provided below.  Building a database from these should result
+in a local database that is essentially identical to those options.
+
+.. warning:: Due to the heterogeneity of operating systems and
+	     PostgreSQL installations, **installing from database
+	     dumps is unsupported**.
+
 
 *The following commands will likely need modification appropriate for
 the installation environment.*
-
 
 #. Download an appropriate database dump from `dl.biocommons.org
    <http://dl.biocommons.org/index.html>`_.
