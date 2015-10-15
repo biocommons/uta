@@ -79,10 +79,14 @@ Or, in Python::
 Installing UTA Locally
 @@@@@@@@@@@@@@@@@@@@@@
 
+Installing with Docker (preferred)
+##################################
+
 `docker <http://docker.com>`_ enables the distribution of lightweight,
-isolated packages that run on essentially many platforms.  When you
-use this approach, you will end up with a local UTA installation that
-runs as a local postgresql process.
+isolated packages that run on essentially any platform.  When you use
+this approach, you will end up with a local UTA installation that runs
+as a local postgresql process. The only requirement is docker itself
+-- you will not need to install postgresql or any of its dependencies.
 
 #. `Install docker <https://docs.docker.com/installation/>`_.
 
@@ -119,6 +123,53 @@ runs as a local postgresql process.
 
       $ psql -h localhost -p 15032 -U anonymous -d uta -c 'select * from uta_20150827.meta'
 
+   You should see a table dump with at least 4 lines showing
+   schema_version, create date, license, and uta (code) version used
+   to build the instance.
+
+
+Installing from database dumps
+##############################
+
+Users should prefer the docker installation wherever possible.  When
+docker is not available, users may wish to install from database
+dumps.  
+
+Due to the heterogeneity of operating systems and PostgreSQL
+installations, **installing from database dumps is unsupported**.
+Users choosing this method of installation should be experienced with
+PostgreSQL administration.
+
+*The following commands will likely need modification appropriate for
+the installation environment.*
+
+
+#. Download an appropriate database dump from `dl.biocommons.org
+   <http://dl.biocommons.org/index.html>`_.
+
+#. Create a user and database.
+
+   You may choose any username and database name you like.  uta and
+   uta_admin are likely to ease installation.
+
+   ::
+
+      $ createuser -U postgres uta_admin
+      $ createdb -U postgres -O uta_admin uta 
+
+
+#. Restore the database.
+
+   ::
+
+      $ gzip -cdq uta_20150827.pgd.gz | psql -U uta_admin -1 -v ON_ERROR_STOP=1 -d uta -Eae
+
+----
+
+.. note:: See the hgvs docs for information `how to configure hgvs
+   <http://hgvs.readthedocs.org/en/latest/installation.html#local-uta-docker-instance>`_
+   to use this instance.
+
 
 
 Development and Testing
@@ -145,10 +196,10 @@ To develop UTA, follow these steps.
 
 3. Restore a database or load a new one
 
-  UTA currently expects to have an existing database available. When the
-  loaders are available, instructions will appear here.  For now, creating
-  an instance of TranscriptDB without arguments will cause it to connect
-  to a populated Invitae database.
+   UTA currently expects to have an existing database available. When the
+   loaders are available, instructions will appear here.  For now, creating
+   an instance of TranscriptDB without arguments will cause it to connect
+   to a populated Invitae database.
 
 
 .. _hgvs: https://bitbucket.org/invitae/hgvs
