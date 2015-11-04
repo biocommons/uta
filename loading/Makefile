@@ -403,15 +403,23 @@ dumps/%-schema.pgd.gz:
 	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* -s | gzip) >$@.tmp 2>$@.log
 	mv "$@.tmp" "$@"
 
-#=> push-% -- push schemas to dev (you're on your own for stg and prd)
+#=> push-% -- push schemas to AWS RDS
 push-dev-%: logs/uta.biocommons.org/uta_dev/load-%.log;
+push-prd-%: logs/uta.biocommons.org/uta/load-%.log;
 
 .PRECIOUS: logs/uta.biocommons.org/uta_dev/load-%.log
 logs/uta.biocommons.org/uta_dev/load-%.log: dumps/%.pgd.gz
-	# expect ~1.5h
+	# expect 15-90 minutes dep on network
 	@mkdir -pv ${@D}
 	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
 	mv "$@.tmp" "$@"
+.PRECIOUS: logs/uta.biocommons.org/uta/load-%.log
+logs/uta.biocommons.org/uta/load-%.log: dumps/%.pgd.gz
+	# expect 15-90 minutes dep on network
+	@mkdir -pv ${@D}
+	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
+	mv "$@.tmp" "$@"
+
 
 
 #=> dev-from-% -- reconstitute uta_1_1 from dump

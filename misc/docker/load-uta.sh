@@ -1,9 +1,11 @@
 #!/bin/bash -x
+# This file creates a password-less read-only instance of UTA
+# (https://bitbucket.org/biocommons/uta/) based on the postgres docker
+# image.
 
-# The uta docker image is intended to be a public, read-only appliance
-# Therefore, overwrite pg_hba.conf, including whatever edits might
-# have been made by the postgres image
 
+# Overwrite pg_hba.conf, including whatever edits might have been made
+# by the postgres image
 cat <<EOF >"$PGDATA/pg_hba.conf" 
 # allow the anonymous user to access uta without password
 # These lines must occur before more stringent authentication methods
@@ -15,11 +17,16 @@ host   all   all               ::1/128    trust
 EOF
 
 
+# Create required users
 createuser --username "$POSTGRES_USER" uta_admin
 createuser --username "$POSTGRES_USER" anonymous
 createuser --username "$POSTGRES_USER" PUBLIC
 createdb   --username "$POSTGRES_USER" -O uta_admin uta
 
+# Stream db dump into psql
+# When the image is first run, the output from curl and psql are
+# comingled.  This is intentional so that the user can see curl
+# progress and pg restore progress.
 
 UTA_PGD_URL=http://dl.biocommons.org/uta-dumps/${UTA_VERSION}${UTA_SCHEMA_ONLY:+-schema}.pgd.gz
 

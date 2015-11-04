@@ -7,6 +7,17 @@ uta -- Universal Transcript Archive
 
 |build_status|
 
+.. note:: uta_20150903 is available. It adds NM_000314.5, which is the
+          transcript preferred by HGMD for PTEN.  The importance of
+          this gene and the prevalence of HGMD justified this minor
+          release.  Otherwise, this release is identical to
+          uta_20150827.  The release is available via the postgresql
+          database at uta.biocommons.org, the `uta docker image
+          <https://hub.docker.com/r/biocommons/uta/>`_, and
+          `dl.biocommons.org postgresql dump
+          <http://dl.biocommons.org/index.html>`_.
+	  
+
 Overview
 @@@@@@@@
 
