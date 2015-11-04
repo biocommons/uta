@@ -388,7 +388,7 @@ the-whole-kielbasa:
 
 
 #=> dump-% -- dump named schema (e.g., uta_20140210) in dumps/ and compute sha1
-dump-%: dumps/%.pgd.gz dumps/%.pgd.gz.sha1;
+dump-%: dumps/%.pgd.gz dumps/%-schema.pgd.gz dumps/%.pgd.gz.sha1;
 
 #=> dumps/%.pgd.gz -- create dump of named schema (e.g., uta_20140210)
 .PRECIOUS: dumps/%.pgd.gz
@@ -398,7 +398,7 @@ dumps/%.pgd.gz:
 	mv "$@.tmp" "$@"
 
 #=> dumps/%-schema.pgd.gz -- create dump of named schema wo/data (e.g., uta_20140210)
-.PRECIOUS: dumps/%.pgd.gz
+.PRECIOUS: dumps/%-schema.pgd.gz
 dumps/%-schema.pgd.gz:
 	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* -s | gzip) >$@.tmp 2>$@.log
 	mv "$@.tmp" "$@"
@@ -447,6 +447,6 @@ cleanest: cleaner
 
 .PRECIOUS: %.sha1
 %.sha1: %
-	sha1sum "$*" >"$@.tmp"
+	(cd "${<D}"; sha1sum "${<F}") >"$@.tmp"
 	/bin/mv "$@.tmp" "$@"
 
