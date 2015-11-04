@@ -1,0 +1,26 @@
+Problem: UTA is missing NM_000314.5, which is the preferred transcript
+in HGMD. Because historical alignments are not available, we need to
+infer it. Fortunately, in this case, doing so seems relatively
+straightforward. These notes describe what was done.
+
+NM_000314.4 and .6 transcript and genomic exons structures are in UTA.
+The CDS md5s are identical. + strand
+
+NM_000314.4 │ NM_000314.4  │ 0,1110;1110,1195;1195,1240;1240,1284;1284,1523;1523,1665;1665,1832;1832,2057;2057,5546
+NM_000314.6 │ NM_000314.6  │ 0,1110;1110,1195;1195,1240;1240,1284;1284,1523;1523,1665;1665,1832;1832,2057;2057,8701
+
+NM_000314.4 │ NC_000010.10 | 89623194,89624305;89653781,89653866;89685269,89685314;89690802,89690846;89692769,89693008;89711874,89712016;89717609,89717776;89720650,89720875;89725043,89728532
+NM_000314.6 │ NC_000010.10 │ 89623194,89624305;89653781,89653866;89685269,89685314;89690802,89690846;89692769,89693008;89711874,89712016;89717609,89717776;89720650,89720875;89725043,89731687
+
+revhist for NM_000314:
+.6~.5: http://www.ncbi.nlm.nih.gov/sviewer/girevhist2.cgi?tool=portal&cmd=diff&db=nuccore&frst=783137733_21_8888446_Mar%2025,%202015%2012:42%20PM_6_1&scnd=754502060_21_7912757_Mar%2015,%202015%2004:01%20PM_5_1&history_fmt=gb
+.5~.4: http://www.ncbi.nlm.nih.gov/sviewer/girevhist2.cgi?tool=portal&cmd=diff&db=nuccore&frst=754502060_21_4818998_Feb%207,%202015%2012:34%20AM_5_1&scnd=110224474_21_1322972_Sep%206,%202014%2004:34%20AM_4_1&history_fmt=gb
+
+The net difference between .5 and .6 is the removal of 1 A of the poly A tail, which is outside the exon definition.
+
+That means that there are no changes to the transcript exon structure. Presumably, then, there are no changes to the genomic exon structure.
+
+So, I will copy .6 as .5 for both the transcript and genomic exon structures.
+
+Phew. That was a whole lotta nada.
+
