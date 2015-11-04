@@ -3,11 +3,11 @@
 # launch ensembl-fetch jobs
 # necessary because we were having sporadic disconnection failures
 
-ev=79
-d=4
+ev=82
+d=5
 dir=ensembl-$ev
-launch_sleep=30
-crash_sleep=180
+launch_sleep=60
+crash_sleep=1800
 
 source ~/opt/ensembl/$ev/setup.sh
 PATH=~/projects/biocommons/uta/sbin:$PATH

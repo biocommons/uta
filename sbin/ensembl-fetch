@@ -2,10 +2,10 @@
 #
 # ensembl-fetch -- fetch fasta, txinfo, and seqinfo from ensembl
 # You'll need to install the ensembl core api (at least) to use this
-# code. You'll also need Log::Log4perl installed. 
+# code. You'll also need Config::IniFiles and Log::Log4perl installed.
 #
 # Tips: 
-# * rsync --exclude=.git -HRavz opt/ensembl/setup.sh opt/ensembl/80/{ensembl,bioperl-live}/ projects/biocommons/uta/{etc,sbin,loading/Makefile,loading/etc}/  ens:
+# * rsync --delete-excluded --exclude=.git -HRavz opt/ensembl/82 projects/biocommons/uta/{sbin,loading/Makefile,loading/etc}/ minion:
 # * See http://uswest.ensembl.org/info/docs/api/api_git.html
 # for ensembl api installation instructions.
 # * sudo apt-get install libconfig-inifiles-perl liblog-log4perl-perl libdbi-perl libdbd-mysql-perl
@@ -186,7 +186,7 @@ GetOptions($opts,
 
 my $eversion = software_version();
 my $origin = "ensembl-$eversion";
-my $prefix = $opts->{prefix} || $origin;
+my $prefix = $opts->{prefix} || "$origin-$opts->{port}";
 mkdir($prefix);
 
 
