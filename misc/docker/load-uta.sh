@@ -3,6 +3,9 @@
 # (https://bitbucket.org/biocommons/uta/) based on the postgres docker
 # image.
 
+# TODO:
+# * consider how/whether to cache downloaded dump
+# * fetch sha1 and check before loading
 
 # Overwrite pg_hba.conf, including whatever edits might have been made
 # by the postgres image
