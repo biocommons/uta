@@ -57,19 +57,19 @@ Invitae provides a public instance of UTA.  The connection parameters are:
 **host**      ``uta.invitae.com``
 **port**      ``5432`` (default)
 **database**  ``uta``
-**login**     ``uta_public``
-**password**  ``uta_public``
+**login**     ``anonymous``
+**password**  ``anonymous``
 ============  ===================
 
 
 For example::
 
-  $ PGPASSWORD=uta_public psql -h uta.invitae.com -U uta_public -d uta
+  $ PGPASSWORD=anonymous psql -h uta.invitae.com -U anonymous -d uta
 
 Or, in Python::
 
   > import psycopg2, psycopg2.extras
-  > conn = psycopg2.connect("host=uta.invitae.com dbname=uta user=uta_public password=uta_public")
+  > conn = psycopg2.connect("host=uta.invitae.com dbname=uta user=anonymous password=anonymous")
   > cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
   > cur.execute("select * from uta_20140210.tx_def_summary_v where hgnc='BRCA1'")
   > row = cur.fetchone()
@@ -127,6 +127,22 @@ as a local postgresql process. The only requirement is docker itself
      == You may now connect to uta.  No password is required.
 
    Hit Ctrl-C to stop watching logs. (The container will still be running.)
+
+#. *Mac and Windows Only*: Identify the docker VM IP address.
+
+   On Linux, where docker runs natively, the host port 15032 is
+   forwarded to the container port 5432 (the default postgresql port).
+
+   On Mac and Windows, docker runs in a virtual machine using
+   `DockerToolbox <https://www.docker.com/docker-toolbox>`__. On those
+   platforms, you must connect to the VM ip address rather than
+   localhost. You can identify the VM ip address with::
+
+     $ docker-machine ip default
+     192.168.99.100
+
+   `default` is the name of the virtual machine.  192.168.99.100
+   should be used in place of `localhost` in the next step.
 
 #. Test your installation
 
