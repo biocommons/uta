@@ -113,7 +113,7 @@ as a local postgresql process. The only requirement is docker itself
 
    ::
       
-      $ docker run -dit --name uta_20150827 -p 15032:5432 biocommons/uta:uta_20150827
+      $ docker run -dit --name uta_20150827 -p 50827:5432 biocommons/uta:uta_20150827
       
    The first time you run this image, it will initialize a postgresql
    database cluster, then download a database dump and install it.  -d
@@ -128,31 +128,31 @@ as a local postgresql process. The only requirement is docker itself
 
    Hit Ctrl-C to stop watching logs. (The container will still be running.)
 
-#. *Mac and Windows Only*: Identify the docker VM IP address.
-
-   On Linux, where docker runs natively, the host port 15032 is
-   forwarded to the container port 5432 (the default postgresql port).
-
-   On Mac and Windows, docker runs in a virtual machine using
-   `DockerToolbox <https://www.docker.com/docker-toolbox>`__. On those
-   platforms, you must connect to the VM ip address rather than
-   localhost. You can identify the VM ip address with::
-
-     $ docker-machine ip default
-     192.168.99.100
-
-   `default` is the name of the virtual machine.  192.168.99.100
-   should be used in place of `localhost` in the next step.
-
 #. Test your installation
 
-   ::
+   With the test commands below, you should see a table dump with at
+   least 4 lines showing schema_version, create date, license, and uta
+   (code) version used to build the instance.
 
-      $ psql -h localhost -p 15032 -U anonymous -d uta -c 'select * from uta_20150827.meta'
+   **Linux**
 
-   You should see a table dump with at least 4 lines showing
-   schema_version, create date, license, and uta (code) version used
-   to build the instance.
+   On Linux, where docker runs natively, ``-p 50827:5432`` option to
+   the ``docker run`` command causes localhost:50827 to be mapped to
+   the container port 5432.  The following command connects to the UTA
+   instance::
+
+      $ psql -h localhost -p 50827 -U anonymous -d uta -c 'select * from uta_20150827.meta'
+
+   **With DockerToolbox (Mac and Windows)**
+
+   On Mac and Windows, docker runs in a virtual machine using
+   `DockerToolbox <https://www.docker.com/docker-toolbox>`__.  The
+   ``-p 50827:5432`` option to the ``docker run`` maps VM port 50827
+   (not that of the host OS).  In order to connect to UTA, you must
+   use the IP address of the VM, like this::
+
+      $ psql -h $(docker-machine ip default) -p 50827 -U anonymous -d uta -c 'select * from uta_20150827.meta'
+
 
 
 Installing from database dumps
