@@ -76,14 +76,16 @@ def read_transcript_data(fn):
 
     def _read_lines(fn):
         # NC_000007.13	RefSeq	cDNA_match	50344265	50344518	254	+	.	ID=aln58042;Target=NM_001220765.2 1 254 +;gap_count=0;identity=0.0691326;idty=1;num_ident=428;num_mismatch=0;pct_coverage=6.91326;pct_identity_gap=100;pct_identity_ungap=100;score=254
+        # NC_000002.11  RefSeq  cDNA_match  179671939   179672150             212 -   .               ID=ed951d46-194c-477a-a480-4bc64530c5ba;Target=NM_001267550.2 1 212 +;gap_count=0;identity=0.999991;idty=1;num_ident=109223;num_mismatch=1;pct_coverage=100;pct_identity_gap=99.9991;pct_identity_ungap=99.9991
         line_re = re.compile(
-            "(?P<ref_ac>\S+)\t(?P<origin>\S+)\t(?P<match_type>\S+)\t"
-            "(?P<g_start>\d+)\t(?P<g_end>\d+)\t(?P<score>\S+)\t"
-            "(?P<strand>[-+])\t\.\tID=(?P<aln>aln\d+);Target=(?P<tx_ac>\S+)"
+            "(?P<ref_ac>\S+)\s+(?P<origin>\S+)\s+(?P<match_type>\S+)\s+"
+            "(?P<g_start>\d+)\s+(?P<g_end>\d+)\s+(?P<score>\S+)\s+"
+            "(?P<strand>[-+])\s+\.\s+ID=(?P<aln>[^;]+);Target=(?P<tx_ac>\S+)"
             "\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+).+?"
             "pct_coverage=(?P<pct_coverage>[^;]+);"
             "pct_identity_gap=(?P<pct_identity_gap>[^;]+);"
-            "pct_identity_ungap=(?P<pct_identity_ungap>[^;]+)")
+            "pct_identity_ungap=(?P<pct_identity_ungap>[^;]+)"
+        )
         fh = io.open(fn, "rb")
         while fh.peek(1)[0] == "#":
             fh.readline()

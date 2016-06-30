@@ -39,6 +39,8 @@ bdist
 build
 cover
 dist
+data/ncbi/*/src/
+data/**/*.gz
 doc/build
 examples/*_files
 examples/.ipynb_checkpoints
