@@ -635,7 +635,7 @@ def load_txinfo(session, opts, cf):
                 try:
                     cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
                 except KeyError:
-                    raise Exception("{ac}: not in sequence database; skipping".format(ac=ac))
+                    raise Exception("{ac}: not in sequence database; skipping".format(ac=ti.ac))
                 cds_md5 = seq_md5(cds_seq)
             else:
                 cds_md5 = None

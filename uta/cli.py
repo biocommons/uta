@@ -1,8 +1,4 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-############################################################################
-
-__doc__ = """uta -- Universal Transcript Archive command line tool
+"""uta -- Universal Transcript Archive command line tool
 
 Usage:
   uta ( -h | --help )
@@ -46,8 +42,12 @@ Examples:
 
 ############################################################################
 
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import configparser
 import logging
+import logging.config
+import pkg_resources
 import time
 
 import docopt
@@ -62,7 +62,7 @@ def shell(session, opts, cf):
     IPython.embed()
 
 
-def run(argv=None):
+def main():
     dispatch_table = [
         ("align-exons",         ul.align_exons),
         ("analyze",             ul.analyze),
@@ -81,10 +81,15 @@ def run(argv=None):
         ("shell",               shell),
     ]
 
-    opts = docopt.docopt(__doc__, argv=argv, version=uta.__version__)
+    opts = docopt.docopt(__doc__, version=uta.__version__)
 
-    logging.basicConfig(level=logging.INFO)
+    logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
+    logging.config.fileConfig(logging_conf_fn)
     logger = logging.getLogger(__name__)
+
+    verbose_log_level = logging.WARN # if opts.verbose == 0 else logging.INFO if opts.verbose == 1 else logging.DEBUG
+    logger.setLevel(level=verbose_log_level)
+
 
     # cf_loaded: deal with docopt issue
     # https://github.com/docopt/docopt/issues/134
@@ -110,6 +115,13 @@ def run(argv=None):
     sub(session, opts, cf)
     logger.info("{cmd}: {elapsed:.1f}s elapsed".format(
         cmd=cmd, elapsed=time.time() - t0))
+
+
+
+if __name__ == "__main__":
+    main()
+
+
 
 
 # <LICENSE>
