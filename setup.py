@@ -42,6 +42,12 @@ setup(
         'hgvs',
     ],
 
+    entry_points = {
+        "console_scripts": [
+            "uta = uta.cli:main",
+        ],
+    },
+
     install_requires=[
         "biopython",
         "bioutils",
