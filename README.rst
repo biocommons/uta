@@ -177,7 +177,7 @@ in a local database that is essentially identical to those options.
 the installation environment.*
 
 #. Download an appropriate database dump from `dl.biocommons.org
-   <http://dl.biocommons.org/index.html>`_.
+   <http://dl.biocommons.org/uta/>`_.
 
 #. Create a user and database.
 
