@@ -83,13 +83,13 @@ def main():
 
     opts = docopt.docopt(__doc__, version=uta.__version__)
 
-    logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
-    logging.config.fileConfig(logging_conf_fn)
+    #logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
+    #logging.config.fileConfig(logging_conf_fn)
+    #verbose_log_level = logging.INFO # if opts.verbose == 0 else logging.INFO if opts.verbose == 1 else logging.DEBUG
+    #logger.setLevel(level=verbose_log_level)
+
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-
-    verbose_log_level = logging.WARN # if opts.verbose == 0 else logging.INFO if opts.verbose == 1 else logging.DEBUG
-    logger.setLevel(level=verbose_log_level)
-
 
     # cf_loaded: deal with docopt issue
     # https://github.com/docopt/docopt/issues/134

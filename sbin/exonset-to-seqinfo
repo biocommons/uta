@@ -13,7 +13,8 @@ import re
 import sys
 
 from bioutils.digests import seq_md5
-from multifastadb import MultiFastaDB
+from biocommons.seqrepo import SeqRepo
+# from multifastadb import MultiFastaDB
 
 from uta.formats.exonset import ExonSet, ExonSetReader
 from uta.formats.seqinfo import SeqInfo, SeqInfoWriter
@@ -59,9 +60,11 @@ if __name__ == "__main__":
     esr = ExonSetReader(in_fh)
     logger.info("opened " + in_fn)
 
-    fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
-    mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
-    logger.info("Opened sequence directories: " + ",".join(fa_dirs))
+    #fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
+    #mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
+    sr_dir = cf.get("sequences", "seqrepo")
+    sr = SeqRepo(root_dir=sr_dir)
+    logger.info("Opened sequence directories: " + sr_dir)
 
     siw = SeqInfoWriter(sys.stdout)
     logger.info("Writing seqinfo to stdout")
@@ -73,7 +76,7 @@ if __name__ == "__main__":
     acs_not_found = set()
     for ac in acs:
         try:
-            seq = str(mfdb[ac])
+            seq = str(sr[ac])
         except KeyError:
             logging.warning("Sequence not found: " + ac)
             acs_not_found.update([ac])
@@ -90,5 +93,4 @@ if __name__ == "__main__":
         siw.write(si)
 
     if acs_not_found:
-        logging.warning(
-            "sequences for {} accessions not found".format(len(acs_not_found)))
+        raise RuntimeError("Sequences for {} accessions not found".format(len(acs_not_found)))
