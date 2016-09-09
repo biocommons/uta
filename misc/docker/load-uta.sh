@@ -31,7 +31,7 @@ createdb   --username "$POSTGRES_USER" -O uta_admin uta
 # comingled.  This is intentional so that the user can see curl
 # progress and pg restore progress.
 
-UTA_PGD_URL=http://dl.biocommons.org/uta-dumps/${UTA_VERSION}${UTA_SCHEMA_ONLY:+-schema}.pgd.gz
+UTA_PGD_URL=http://dl.biocommons.org/uta/${UTA_VERSION}${UTA_SCHEMA_ONLY:+-schema}.pgd.gz
 
 curl "$UTA_PGD_URL" \
     | gzip -cdq \

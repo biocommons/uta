@@ -1,0 +1,52 @@
+The goal is to build a docker data image that corresponds to
+snapshots.  I anticipate that there will be two tricks necessary to
+achieve this.
+
+1) Each new release needs to add the incremental sequence files to a
+new layer.
+
+2) The sqlite databases need to be a separate layer "above" the
+sequence layers.  
+
+
+
+Conceptually, this will lead to a flow like the following:
+
+                                                      + t2     
+                                      + t1            + t2s    
+                      + t0            + t1s    ---->  t1s    
+                      + t0s    ---->  t0s      ---->  t0s    
+      scratch  ---->  scratch  ---->  scratch  ---->  scratch
+
+Where s indicates a sequence layer, and the undecorated tag includes
+the database layer.  Another way to visualize this is:
+
+                           t0              t1              t2
+                         ↗              ↗              ↗
+      scratch  ---->  t0s      ---->  t1s      ---->  t2s
+                                      t0s             t1s
+				                      t0s
+
+So, that means each build t<i> is based on t<i>s, which in turn is
+based on t<i-1>s.
+
+
+Naming: Users won't care about the sequences without the
+databases. So, I'll create two repos: biocommons/seqs (s tier above)
+and biocommons/seqrepo. Each of these will be tagged with identical
+tags.
+
+
+* biocommons/seqs
+
+This will be a data only image.
+In order to build t<i>, we'll build from t<i-1>
+
+Since this image is based on scratch, it will have no executables at
+all. And, since our update method will require 
+
+The only way to add data will be to attach it to a container that
+has an os.
+
+We'll assume that the source data on the local host and mount that
+directory into the container.

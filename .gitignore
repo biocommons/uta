@@ -46,7 +46,6 @@ examples/*_files
 examples/.ipynb_checkpoints
 lib/python/cover
 lib/python/uta/_release.py
-misc
 nosetests.xml
 sdist
 tmp
