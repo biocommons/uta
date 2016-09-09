@@ -173,6 +173,7 @@ if __name__ == "__main__":
         if (   (float(er0["pct_coverage"      ]) < 95)
             or (float(er0["pct_identity_gap"  ]) < 99.5)):
             ac_failed.add(er0["tx_ac"])
+            logger.warn("{tx_ac} failed criteria; skipping".format(tx_ac=er0["tx_ac"]))
             continue
             
         ti, es = convert_exon_data(opts, exon_recs)

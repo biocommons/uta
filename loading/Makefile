@@ -40,6 +40,14 @@
 # $ make cleanest drop create
 # $ make load-<dataset> # repeat for all desired sets
 # $ make refresh-matviews
+#
+# Update flow:
+# $ make dev-from-uta_20150903
+# $ 
+
+# By default, load test data (i.e., test-{seqinfo,geneinfo,txinfo,exonset})
+# into db specified via CONF (which specifies config files in ../etc)
+
 
 
 .SUFFIXES:
@@ -52,17 +60,22 @@ PATH:=../sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
 unexport GZIP
 
-# By default, load test data (i.e., test-{seqinfo,geneinfo,txinfo,exonset})
-# into db specified via CONF (which specifies config files in ../etc)
-DATA=test
 CONF=uta_dev@localhost
 
-DATA_DIR:=${DATA}
+SRC_NAME:=ncbi/2016-09-08
 LOG_DIR:=logs/${CONF}
 CONF_FN=../etc/${CONF}.conf
 GLOBAL_CONF_FN:=../etc/global.conf
 CONF_OPTS:=--conf=${GLOBAL_CONF_FN} --conf=${CONF_FN}
-PSQL_ARGS:=-d uta_dev -U uta_admin
+PSQL_ARGS:=-d uta_dev -U uta_admin -h /tmp
+
+############################################################################
+
+SRC_DIR:=data/${SRC_NAME}
+LOG_PATHS:=
+LOG_PATHS+=$(addsuffix .log,$(subst data/,${LOG_DIR}/,$(wildcard ${SRC_DIR}/*.seqinfo.gz)))
+LOG_PATHS+=$(addsuffix .log,$(subst data/,${LOG_DIR}/,$(wildcard ${SRC_DIR}/*.txinfo.gz)))
+LOG_PATHS+=$(addsuffix .log,$(subst data/,${LOG_DIR}/,$(wildcard ${SRC_DIR}/*.exonset.gz)))
 
 _:=$(shell mkdir -p ${LOG_DIR})
 
@@ -72,232 +85,68 @@ include .${CONF}.conf.mk
 
 schema=$(shell python -c 'import uta.models; print uta.models.schema_name')
 
+
 ############################################################################
 #= BASIC USAGE
 default: help
 
 #=> config -- show variable definitions
 config:
+	#@echo " = ${}"
 	@echo "CONF = ${CONF}"
 	@echo "CONF_FN = ${CONF_FN}"
 	@echo "CONF_OPTS = ${CONF_OPTS}"
-	@echo "DATA = ${DATA}"
-	@echo "DATA_DIR = ${DATA_DIR}"
 	@echo "GLOBAL_CONF_FN = ${GLOBAL_CONF_FN}"
+
+	@echo "SRC_NAME = ${SRC_NAME}"
+	@echo "SRC_DIR = ${SRC_DIR}"
 	@echo "LOG_DIR = ${LOG_DIR}"
+	@echo "LOG_PATHS = ${LOG_PATHS}"
+
 	@echo "PSQL_ARGS = ${PSQL_ARGS}"
-	@echo "ncbi_mirrors_data_dir = ${ncbi_mirrors_data_dir}"
 
 #=> help -- 
 help: config
 	@../dev/makefile-extract-documentation "${SELF}"
 
 
-############################################################################
-## Source-Specific Extraction and Translation
-
-## --- NCBI ---
-## Using NCBI data structures is a bit like playing Thimblerig with
-## Romulans at an archaeological dig.  The current flow is:
-## gene/DATA/gene_info.gz     --> geneinfo.gz
-## gene/DATA/gene2refseq.gz   --> assocacs.gz --------+
-## refseq/mRNA_protein/(gbff) --> gbff.txinfo.gz  --v v
-## refseq/assembly/(gff)      ---------------------------> txinfo, exonset
-##
-## NOTES:
-## 1) In this process, the gbff files provide only the cds start and
-## end. To my knowledge, gbff and eutils are the only sources of cds
-## s,e.
-## 2) In principle, geneinfo and assocacs could be built from gbff
-## instead, and probably should be for more likely consistency.
-## 3) I've learned the hard way that none of the above files are
-## guaranteed to be synchronized. For example, on 2015-05-18, 4190
-## accessions in refseq/alignments are not in in gbff files, and
-## another 583 that are common have different exon structures. (A
-## small minority of these are likely transcripts with misc_feature
-## features.)
-
-
-#=> data/ncbi/geneinfo.gz -- 
-data/ncbi/geneinfo.gz: ${ncbi_mirrors_data_dir}/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
-	@mkdir -pv ${@D}
-	(ncbi-parse-geneinfo $< | gzip -c >$@.tmp) 2>$@.log
-	mv -bfv $@.tmp $@
-
-#=> data/ncbi/assocacs.gz -- 
-# filtering records in python is slow; prefilter humans (tax_id=9606)
-.PRECIOUS: /tmp/gene2refseq_9606.gz
-data/ncbi/tmp/gene2refseq_9606.gz: ${ncbi_mirrors_data_dir}/gene/DATA/gene2refseq.gz
-	@mkdir -pv ${@D}
-	gzip -cdq <$< | perl -ne 'print if m/^#|^9606\t/' | gzip -c >$@.tmp
-	mv -bfv $@.tmp $@
-data/ncbi/assocacs.gz: data/ncbi/tmp/gene2refseq_9606.gz
-	@mkdir -pv ${@D}
-	ncbi-parse-gene2refseq $< | gzip -c >$@.tmp 2>$@.log
-	mv -bfv $@.tmp $@
-
-#=> data/ncbi/gbff.txinfo.gz -- build transcript definitions from gbff files
-# N.B. the main use of these is to build a map of ac->hgnc for the ncbi/txinfo files
-# Since we only care about NM and NR, prefilter those files to save parse time
-GBFF_DIR:=${ncbi_mirrors_data_dir}/refseq/H_sapiens/mRNA_Prot
-GBFF_FILES:=$(wildcard ${GBFF_DIR}/human.*.rna.gbff.gz)
-GBFF_BASES:=$(sort $(subst ${GBFF_DIR}/,,${GBFF_FILES}))
-.PRECIOUS: data/ncbi/tmp/%.gbff.gz
-data/ncbi/tmp/%.gbff.gz: ${GBFF_DIR}/%.gbff.gz
-	@mkdir -p ${@D}
-	gzip -cdq $< | perl -ne 'BEGIN {$$/="//\n"} while (<>) {print if m/^LOCUS\s+N[RM]/}' | gzip -c >$@.tmp
-	mv -bfv $@.tmp $@
-data/ncbi/gbff.txinfo.gz: $(addprefix data/ncbi/tmp/,${GBFF_BASES})
-	@mkdir -pv ${@D}
-	((zgrep -El 'LOCUS\s+N[MR]' $^ || true) | xargs -r ncbi-parse-gbff | gzip -c >$@.tmp) 2>$@.log.tmp
-	mv -bfv $@.tmp $@; mv -bfv $@.log.tmp $@.log
-
-#=> data/ncbi/exonset.gz data/ncbi/txinfo.gz -- build exonset definitions from gff files
-data/ncbi/exonset.gz data/ncbi/txinfo.gz: ${ncbi_mirrors_data_dir}/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 data/ncbi/assocacs.gz data/ncbi/gbff.txinfo.gz
-	@mkdir -pv ${@D}
-	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
-
-#=> data/ncbi/seqinfo.gz -- 
-data/ncbi/seqinfo.gz: data/ncbi/exonset.gz
-	@mkdir -pv ${@D}
-	(exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
-	mv -bfv $@.tmp $@
-
-
-## --- UCSC ---
-
-## You gotta love how easy ucsc makes it to get data. Thanks guys and gals!
-
-#=> data/ucsc-{hg19,hg38}/exonset.gz -- 
-data/ucsc-%/exonset.gz: data/ucsc-%/log;
-data/ucsc-%/log:
-	@mkdir -pv ${@D}
-	ucsc-fetch -D $* -p ${@D}/ >$@.tmp 2>&1
-	mv -bfv $@.tmp $@
-
-
-## --- Ensembl ---
-
-#=> data/ensembl-%seqinfo.gz data/ensembl-%txinfo.gz data/ensembl-%exonset.gz
-data/ensembl-%/seqinfo.gz data/ensembl-%/txinfo.gz data/ensembl-%/exonset.gz: data/ensembl-%/log
-
-#=> data/ensembl-%log --
-data/ensembl-%/log:
-	@if ! mkdir ${@D}; then echo "${@D} exists: move it out of the way in order to update" 1>&2; exit 1; fi
-	ENSEMBL_VERSION=$* source ../etc/ensembl.sh; ensembl-fetch --prefix ${@D}/ >$@.tmp 2>&1
-	mv -bfv $@.tmp $@
-
-
-## --- Generic rules ---
-##X:%seqinfo.gz 
-#=> data/%/seqinfo.gz -- 
-data/%/seqinfo.gz: data/%/fasta.gz
-	fasta-to-seqinfo -o $*  $< | gzip -cq >$@.tmp
-	mv -bfv $@.tmp $@
-
-
-############################################################################
-## Data Subsets
-
-## These rules build a subset of the database loading files for a set
-## of genes (in aux/gene-sets/).
-
-## This set of rules involves some esoteric Makefile magic.  First,
-## define subset_block section defines a template block of rules, with
-## the parameter $(1) as the subset name. Then, subset_block is
-## instantiated by the $(eval $(call ... )) section that follows, once
-## per gene set discovered in aux/gene-sets/. 
-
-
-define subset_block
-$(notice subset-%/$(1))
-
-.PHONY: subset-ensembl-79/$(1)
-subset-ensembl-79/$(1): $$(foreach f,txinfo seqinfo exonset,data/ensembl-79/$(1)/$$f.gz);
-
-.PHONY: subset-%/$(1)
-subset-%/$(1): $$(foreach f,txinfo seqinfo geneinfo exonset,data/%/$(1)/$$f.gz);
-
-.PRECIOUS: data/%/$(1)/txinfo.gz
-data/%/$(1)/txinfo.gz: data/%/txinfo.gz aux/gene-sets/$(1).hgnc
-	@mkdir -pv $${@D}
-	gzip -cdq <$$< | ../sbin/txinfo-filter -G $$(word 2,$$^) - | gzip -c >$$@.tmp
-	mv -bfv $$@.tmp $$@
-
-.PRECIOUS: data/%/$(1)/acs
-data/%/$(1)/acs: data/%/$(1)/txinfo.gz
-	@mkdir -pv $${@D}
-	gzip -cdq <$$< | tail -n +2 | cut -f2 | sort -u >$$@.tmp
-	mv -bfv $$@.tmp $$@
-
-.PRECIOUS: data/%/$(1)/seqinfo.gz
-data/%/$(1)/seqinfo.gz: data/%/seqinfo.gz data/%/$(1)/acs
-	@mkdir -pv $${@D}
-	gzip -cdq <$$< | seqinfo-filter -T $$(word 2,$$^) -R '^[NA]C_' - | gzip -cq >$$@
-
-.PRECIOUS: data/%/$(1)/geneinfo.gz
-data/%/$(1)/geneinfo.gz: data/%/geneinfo.gz aux/gene-sets/$(1).hgnc
-	@mkdir -pv $${@D}
-	gzip -cdq <$$< | geneinfo-filter -G $$(word 2,$$^) - | gzip -cq >$$@
-
-.PRECIOUS: data/%/$(1)/exonset.gz
-$(notice data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs)
-data/%/$(1)/exonset.gz: data/%/exonset.gz data/%/$(1)/acs
-	gzip -cdq <$$< | exonset-filter -T $$(word 2,$$^) - | gzip -cq >$$@
-endef
-
-data/ucsc-hg19/%/acs data/ucsc-hg38/%/acs: data/ncbi/%/acs
-	@mkdir -pv ${@D}
-	ln -rs $< $@
-
-GENESETS=$(subst .hgnc,,$(notdir $(wildcard aux/gene-sets/*.hgnc)))
-$(foreach gs,${GENESETS},$(eval $(call subset_block,${gs})))
-
-
-############################################################################
-#= Loading sets
-
-load-bic:        $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/bic/$f.log)
-load-ensembl-79: $(foreach f,         seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/$f.log) ensp.seqinfo.log
-load-ncbi:       $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/$f.log)
-load-ucsc-hg19:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg19/$f.log)
-load-ucsc-hg38:  $(foreach f,                        exonset,${LOG_DIR}/ucsc-hg38/$f.log)
-
-load-ncbi/refmismatch: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/refmismatch/$f.log)  
-load-ensembl-79/refmismatch: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/refmismatch/$f.log)
-
-load-ncbi/acmg-mr: $(foreach f,geneinfo seqinfo txinfo exonset,${LOG_DIR}/ncbi/acmg-mr/$f.log)  
-load-ensembl-79/acmg-mr: $(foreach f,seqinfo txinfo exonset,${LOG_DIR}/ensembl-79/acmg-mr/$f.log)
-
 
 ############################################################################
 #= Loading rules
 
+load-ncbi-dev:	logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.seqinfo.log	\
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.seqinfo.log	\
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.txinfo.log  \
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.txinfo.log  \
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.exonset.log	\
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.exonset.log \
+		${LOG_DIR}/align-exons.log \
+		${LOG_DIR}/merged.assocacs.log
+	uta ${CONF_OPTS} analyze
+	uta ${CONF_OPTS} refresh-matviews
+	uta ${CONF_OPTS} grant-permissions
+
 #=> ${LOG_DIR}/origin.log -- 
 load-origin: ${LOG_DIR}/origin.log
-${LOG_DIR}/origin.log: data/origin.tsv
+${LOG_DIR}/origin.log: data/origin.tsv.gz
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-origin $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
-## Pretty sure this rule is unused. 2015-09-15
-# #=> load-sequences
-# load-sequences: ${LOG_DIR}/load-sequences.log
-# ${LOG_DIR}/load-sequences.log:
-# 	uta ${CONF_OPTS} load-sequences >$@.tmp 2>&1
-# 	mv $@.tmp $@
 
 #=> ${LOG_DIR}/%seqinfo.log -- 
-${LOG_DIR}/%seqinfo.log: data/%seqinfo.gz
+${LOG_DIR}/%.seqinfo.log: data/%.seqinfo.gz
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-seqinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
+
 #=> ${LOG_DIR}/%geneinfo.log -- 
-${LOG_DIR}/%geneinfo.log: data/%geneinfo.gz
+${LOG_DIR}/%.geneinfo.log: data/%.geneinfo.gz
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-geneinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
+
 
 #=> ${LOG_DIR}/%txinfo.log -- 
 ${LOG_DIR}/%txinfo.log: data/%txinfo.gz
@@ -305,11 +154,13 @@ ${LOG_DIR}/%txinfo.log: data/%txinfo.gz
 	uta ${CONF_OPTS} load-txinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@
 
+
 #=> ${LOG_DIR}/%exonset.log -- 
 ${LOG_DIR}/%exonset.log: data/%exonset.gz
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-exonset $< >$@.tmp 2>&1
 	mv $@.tmp $@
+
 
 #=> align-exons -- 
 #=> ${LOG_DIR}/align-exons.log -- 
@@ -319,17 +170,20 @@ ${LOG_DIR}/align-exons.log: FORCE
 	uta ${CONF_OPTS} align-exons >$@.tmp 2>&1
 	mv $@.tmp $@
 
+
 #=> ${LOG_DIR}/associated-accessions --
 load-assocacs: ${LOG_DIR}/merged.assocacs.log
-${LOG_DIR}/merged.assocacs.log: data/merged.assocacs.gz
+${LOG_DIR}/merged.assocacs.log: data/merged.assocacs.gz FORCE
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
 	| psql ${PSQL_ARGS} -c "truncate ${schema}.associated_accessions; copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
 
-data/merged.assocacs.gz: data/ncbi/assocacs.gz $(wildcard aux/assocacs.d/*.gz)
+
+data/merged.assocacs.gz: data/${SRC_NAME}/assocacs.gz $(wildcard aux/assocacs.d/*.gz)
 	(zcat $< | head -n1 || true; for f in $^; do zcat $$f | tail -n +2; done | sort -u) | gzip -c >$@.tmp
 	mv $@.tmp $@
+
 
 #=> ${LOG_DIR}/migrate --
 migrate-%: ${LOG_DIR}/migrate-%.log;
@@ -339,114 +193,9 @@ ${LOG_DIR}/migrate-%.log: migrate/%.sql
 	mv $@.tmp $@
 
 
-############################################################################
-#= DB Building and Administration
-# a 
-
-#=> drop -- 
-drop:
-	uta ${CONF_OPTS} drop-schema
-
-#=> create -- 
-create:
-	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql \
-		../sql/internal-views.sql \
-		../sql/views.sql \
-		../sql/associated_accessions.sql
-	uta ${CONF_OPTS} grant-permissions
-
 
 #=> analyze -- analyze tables to update statistics
 #=> grant-permissions -- so that you can update grants on existing databases
 #=> refresh-matviews --
 analyze refresh-matviews grant-permissions: %:
 	uta ${CONF_OPTS} $*
-
-
-
-_mega:
-	if [ "${_UTA_MK_ANEW}" = "1" ]; then make drop create migrate-${schema}; fi
-	make cleanest 
-	make load-origin
-	make load-ncbi-associated-accessions
-	make ${_UTA_MK_DATASETS}
-	make align-exons
-	make refresh-matviews
-
-happy-meal:
-	make _mega _UTA_MK_ANEW=0 _UTA_MK_DATASETS="load-ncbi/{refmismatch,acmg-mr} load-ensembl-79/{refmismatch,acmg-mr} load-ucsc-hg19"
-
-# full data load, layered on whatever's already in uta_1_1
-cheeseburger-royale:
-	make _mega _UTA_MK_ANEW=0 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
-
-the-whole-kielbasa:
-	make _mega _UTA_MK_ANEW=1 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
-
-
-
-
-#=> dump-% -- dump named schema (e.g., uta_20140210) in dumps/ and compute sha1
-dump-%: dumps/%.pgd.gz dumps/%-schema.pgd.gz dumps/%.pgd.gz.sha1;
-
-#=> dumps/%.pgd.gz -- create dump of named schema (e.g., uta_20140210)
-.PRECIOUS: dumps/%.pgd.gz
-dumps/%.pgd.gz:
-	# expect ~5 minutes
-	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* | gzip) >$@.tmp 2>$@.log
-	mv "$@.tmp" "$@"
-
-#=> dumps/%-schema.pgd.gz -- create dump of named schema wo/data (e.g., uta_20140210)
-.PRECIOUS: dumps/%-schema.pgd.gz
-dumps/%-schema.pgd.gz:
-	(time pg_dump -U uta_admin -h localhost -d uta_dev -n $* -s | gzip) >$@.tmp 2>$@.log
-	mv "$@.tmp" "$@"
-
-#=> push-% -- push schemas to AWS RDS
-push-dev-%: logs/uta.biocommons.org/uta_dev/load-%.log;
-push-prd-%: logs/uta.biocommons.org/uta/load-%.log;
-
-.PRECIOUS: logs/uta.biocommons.org/uta_dev/load-%.log
-logs/uta.biocommons.org/uta_dev/load-%.log: dumps/%.pgd.gz
-	# expect 15-90 minutes dep on network
-	@mkdir -pv ${@D}
-	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
-	mv "$@.tmp" "$@"
-.PRECIOUS: logs/uta.biocommons.org/uta/load-%.log
-logs/uta.biocommons.org/uta/load-%.log: dumps/%.pgd.gz
-	# expect 15-90 minutes dep on network
-	@mkdir -pv ${@D}
-	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
-	mv "$@.tmp" "$@"
-
-
-
-#=> dev-from-% -- reconstitute uta_1_1 from dump
-dev-from-%: logs/uta_dev@localhost/dev-from-%.log;
-logs/uta_dev@localhost/dev-from-%.log: dumps/%.pgd.gz
-	@mkdir -pv ${@D}
-	(gzip -cdq $< | pg-dump-schema-rename $* uta_1_1 | time psql -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
-	mv "$@.tmp" "$@"
-
-
-
-############################################################################
-#= CLEANUP
-.PHONY: clean cleaner cleanest pristine
-#=> clean: clean up editor backups, etc.
-clean:
-	/bin/rm -f *~ *.bak *.tmp
-#=> cleaner: above, and remove generated files
-cleaner: clean
-	/bin/rm -f .*.mk
-#=> cleanest: above, and remove the virtualenv, .orig, and .bak files
-cleanest: cleaner
-	/bin/rm -fr logs
-
-
-.PRECIOUS: %.sha1
-%.sha1: %
-	(cd "${<D}"; sha1sum "${<F}") >"$@.tmp"
-	/bin/mv "$@.tmp" "$@"
-

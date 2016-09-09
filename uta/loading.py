@@ -8,16 +8,17 @@ import itertools
 import logging
 import time
 
+from biocommons.seqrepo import SeqRepo
 from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
 from bioutils.digests import seq_md5
 from bioutils.sequences import reverse_complement
-from multifastadb import MultiFastaDB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 import psycopg2.extras
+import six
 import uta_align.align.algorithms as utaaa
 
-from .lru_cache import lru_cache
+from uta.lru_cache import lru_cache
 
 import uta
 import uta.formats.exonset as ufes
@@ -71,12 +72,17 @@ def align_exons(session, opts, cf):
     if n_rows == 0:
         return
 
-    mfdb = _get_mfdb(cf)
+    logger.info("{} exon pairs to align".format(n_rows))
+
+    sf = _get_seqfetcher(cf)
 
     def _fetch_seq(ac, s, e):
         logger.debug("fetching sequence {ac}[{s}:{e}]".format(ac=ac,s=s,e=e))
-        seq = mfdb.fetch(ac,s,e)
+        seq = sf.fetch(ac,s,e)
         assert seq is not None, "sequence {ac}[{s}:{e}] should never be None (coordinates bogus?)".format(ac=ac,s=s,e=e)
+        if isinstance(seq, six.binary_type):
+            seq = seq.decode("ascii")  # force into unicode
+        assert isinstance(seq, six.text_type)
         return seq
 
     rows = cur.fetchall()
@@ -439,7 +445,7 @@ def load_seqinfo(session, opts, cf):
     sir = ufsi.SeqInfoReader(gzip.open(opts["FILE"]))
     logger.info("opened " + opts["FILE"])
 
-    mfdb = _get_mfdb(cf)
+    sf = _get_seqfetcher(cf)
 
     _md5_seq_cache = {}
     def _upsert_seq(si):
@@ -448,7 +454,7 @@ def load_seqinfo(session, opts, cf):
 
         u_seq = session.query(usam.Seq).filter(usam.Seq.seq_id == md5).first()
         if u_seq is None:
-            seq = str(mfdb[si.ac]).upper()
+            seq = str(sf[si.ac]).upper()
             if int(si.len) != len(seq):
                 raise RuntimeError("Expected a sequence of length {si.len} for {si.md5}; got length {len2} for {si.ac}; skipping".format(
                     si=si, len2=len(seq)))
@@ -514,7 +520,7 @@ def load_sequences(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    mfdb = _get_mfdb(cf)
+    sf = _get_seqfetcher(cf)
 
     # fetch accessions for given sequences
     sql = """
@@ -530,7 +536,7 @@ def load_sequences(session, opts, cf):
         # sequence
         for ac in row["acs"]:
             try:
-                return mfdb.fetch(ac)
+                return sf.fetch(ac)
             except KeyError:
                 pass
         return None
@@ -569,7 +575,7 @@ def load_sql(session, opts, cf):
 def load_txinfo(session, opts, cf):
     self_aln_method = "transcript"
     update_period = 250
-    mfdb = None                 # established on first use, below
+    sf = None                 # established on first use, below
 
     @lru_cache(maxsize=100)
     def _fetch_origin_by_name(name):
@@ -630,12 +636,12 @@ def load_txinfo(session, opts, cf):
             ori = _fetch_origin_by_name(ti.origin)
 
             if ti.cds_se_i:
-                if mfdb is None:
-                    mfdb = _get_mfdb(cf)
+                if sf is None:
+                    sf = _get_seqfetcher(cf)
                 try:
-                    cds_seq = mfdb.fetch(ti.ac, cds_start_i, cds_end_i)
+                    cds_seq = sf.fetch(ti.ac, cds_start_i, cds_end_i)
                 except KeyError:
-                    raise Exception("{ac}: not in sequence database; skipping".format(ac=ti.ac))
+                    raise Exception("{ac}: not in sequence database".format(ac=ti.ac))
                 cds_md5 = seq_md5(cds_seq)
             else:
                 cds_md5 = None
@@ -711,10 +717,20 @@ def refresh_matviews(session, opts, cf):
 
 
 def _get_mfdb(cf):
+    from multifastadb import MultiFastaDB
     fa_dirs = cf.get("sequences", "fasta_directories").strip().splitlines()
     mfdb = MultiFastaDB(fa_dirs, use_meta_index=True)
     logger.info("Opened sequence directories: " + ",".join(fa_dirs))
     return mfdb
+
+def _get_seqrepo(cf):
+    sr_dir = cf.get("sequences", "seqrepo")
+    sr = SeqRepo(root_dir=sr_dir)
+    logger.info("Opened sequence directory " + sr_dir)
+    return sr
+
+_get_seqfetcher = _get_seqrepo
+
 
 
 def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
@@ -740,14 +756,27 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
 
     if existing.count() == 1:
         es = existing[0]
-        if es.exons_as_str(transcript_order=True) == ess:
+        es_ess = es.exons_as_str(transcript_order=True)
+        esh = hashlib.sha1(es_ess).hexdigest()[:8]
+        alt_aln_method_with_hash = method + "/" + esh
+
+        if es_ess == ess:
+            # same as existing w/alt_aln_method=='transcript'
             return (None, es)
 
         # state: 1 exon set exists, and it differs from incoming
 
+        # It's possible that we've seen this alternative before, so look again with hash
+        existing = session.query(usam.ExonSet).filter(
+            usam.ExonSet.tx_ac == tx_ac,
+            usam.ExonSet.alt_ac == alt_ac,
+            usam.ExonSet.alt_aln_method == alt_aln_method_with_hash,
+            )
+        if existing.count() == 1:
+            return (None, existing[0])
+
         # update aln_method to add a unique exon set hash based on the *existing* exon set string
-        esh = hashlib.sha1(es.exons_as_str()).hexdigest()[:8]
-        es.alt_aln_method = method + "/" + esh
+        es.alt_aln_method = alt_aln_method_with_hash
         session.flush()
         old_es = es
     else:

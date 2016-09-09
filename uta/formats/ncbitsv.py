@@ -22,10 +22,10 @@ class NCBITSVReader(object):
 
     def __init__(self, fd, squash_case=True):
         line1 = fd.readline()
-        if not line1.startswith("#Format: "):
-            raise RuntimeError("File stream does not begin with '#Format: '")
+        if not line1.startswith("#"):
+            raise RuntimeError("File stream does not begin with '#'")
 
-        hdr = line1.replace("#Format: ", "").replace(
+        hdr = line1.replace("#", "").replace(
             " (tab is used as a separator, pound sign - start of a comment)", "")
         if squash_case:
             hdr = hdr.lower()

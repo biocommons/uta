@@ -26,8 +26,9 @@
 .PHONY: FORCE
 .DELETE_ON_ERROR:
 
+UTA_ROOT:=../../../..
 SHELL:=/bin/bash -o pipefail -e
-PATH:=../../../sbin:${PATH}
+PATH:=${UTA_ROOT}/sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
 unexport GZIP
 
@@ -42,11 +43,11 @@ src: FORCE
 	rsync --no-motd -HRavP ftp.ncbi.nlm.nih.gov::refseq/H_sapiens/alignments/*{knownrefseq,refseqgene}*.gff3 src/refseq
 
 
-all: geneinfo.gz assocacs.gz gbff.txinfo.gz exonset.gz seqinfo.gz
+all: genes.geneinfo.gz assocacs.gz gbff.txinfo.gz GCF_000001405.25.exonset.gz GCF_000001405.33.exonset.gz GCF_000001405.25.seqinfo.gz GCF_000001405.33.seqinfo.gz
 
 
 #=> geneinfo.gz -- 
-geneinfo.gz: src/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+genes.geneinfo.gz: src/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
 	(ncbi-parse-geneinfo $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
@@ -65,21 +66,19 @@ assocacs.gz: gene2refseq_9606.gz
 # Since we only care about NM and NR, prefilter those files to save parse time
 GBFF_DIR:=src/refseq/H_sapiens/mRNA_Prot
 GBFF_FILES:=$(wildcard ${GBFF_DIR}/human.*.rna.gbff.gz)
-GBFF_BASES:=$(sort $(subst ${GBFF_DIR}/,,${GBFF_FILES}))
-.PRECIOUS: tmp/%.gbff.gz
-tmp/%.gbff.gz: ${GBFF_DIR}/%.gbff.gz
-	gzip -cdq $< | perl -ne 'BEGIN {$$/="//\n"} while (<>) {print if m/^LOCUS\s+N[RM]/}' | gzip -c >$@.tmp
+gbff.gz: ${GBFF_FILES}
+	cat $^ | gzip -cdq | perl -ne 'BEGIN {$$/="//\n"} while (<>) {print if m/^LOCUS\s+N[RM]/}' | pv -s 5200000000 | gzip -c >$@.tmp
 	mv -bfv $@.tmp $@
-gbff.txinfo.gz: $(addprefix tmp/,${GBFF_BASES})
-	((zgrep -El 'LOCUS\s+N[MR]' $^ || true) | xargs -r ncbi-parse-gbff | gzip -c >$@.tmp) 2>$@.log.tmp
+gbff.txinfo.gz: gbff.gz
+	(ncbi-parse-gbff $< | gzip -c >$@.tmp) 2>$@.log.tmp
 	mv -bfv $@.tmp $@; mv -bfv $@.log.tmp $@.log
 
 #=> exonset.gz txinfo.gz -- build exonset definitions from gff files
-exonset.gz txinfo.gz: src/refseq/H_sapiens/alignments/GCF_000001405.25_knownrefseq_alignments.gff3 assocacs.gz gbff.txinfo.gz
-	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ${@D}/ $< >${@D}/ncbi-parse-gff.log 2>&1
+%.exonset.gz %.txinfo.gz: src/refseq/H_sapiens/alignments/%_knownrefseq_alignments.gff3 assocacs.gz gbff.txinfo.gz
+	ncbi-parse-gff -G $(word 2,$^) -T $(word 3,$^) -p ./$*. $< >$*.ncbi-parse-gff.log 2>&1
 
 #=> seqinfo.gz -- 
-seqinfo.gz: exonset.gz
+%.seqinfo.gz: %.exonset.gz
 	(exonset-to-seqinfo -o NCBI $< | gzip -c >$@.tmp) 2>$@.log
 	mv -bfv $@.tmp $@
 
