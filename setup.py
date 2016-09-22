@@ -49,6 +49,7 @@ setup(
     },
 
     install_requires=[
+        "biocommons.seqrepo",
         "biopython",
         "bioutils",
         "colorlog",
