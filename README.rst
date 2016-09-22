@@ -5,7 +5,7 @@ uta -- Universal Transcript Archive
 
 .. `Docs <http://pythonhosted.org/uta/>`_
 
-|build_status|
+|build_status| |docker_badge|
 
 .. note:: uta_20150903 is available. It adds NM_000314.5, which is the
           transcript preferred by HGMD for PTEN.  The importance of
@@ -241,4 +241,8 @@ To develop UTA, follow these steps.
 
 .. |build_status| image:: https://drone.io/bitbucket.org/biocommons/uta/status.png
   :target: https://drone.io/bitbucket.org/biocommons/uta
+  :align: middle
+
+.. |docker_badge| image:: https://img.shields.io/docker/pulls/biocommons/uta.svg?maxAge=2592000
+  :target: https://hub.docker.com/r/biocommons/uta/
   :align: middle
