@@ -64,6 +64,8 @@ setup(
         "recordtype",
         "sqlalchemy",
         "uta-align",
+        
+        "testing.postgresql",
     ],
 
     setup_requires = [
