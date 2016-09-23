@@ -5,7 +5,7 @@ with open("doc/description.txt") as f:
 
 
 setup(
-    license = 'Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)',
+    license = "Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
     long_description = long_description,
     use_scm_version = True,
     zip_safe = True,
@@ -32,14 +32,14 @@ setup(
     ],
 
     keywords = [
-        'bioinformatics',
-        'computational biology',
-        'genome variants',
-        'genome variation',
-        'genomic variants',
-        'genomic variation',
-        'genomics',
-        'hgvs',
+        "bioinformatics",
+        "computational biology",
+        "genome variants",
+        "genome variation",
+        "genomic variants",
+        "genomic variation",
+        "genomics",
+        "hgvs",
     ],
 
     entry_points = {
@@ -49,6 +49,7 @@ setup(
     },
 
     install_requires=[
+        "MySQL-python",
         "biocommons.seqrepo",
         "biopython",
         "bioutils",
@@ -59,7 +60,6 @@ setup(
         "multifastadb",
         "nose",
         "psycopg2",
-        "MySQL-python",
         "pytz",
         "recordtype",
         "sqlalchemy",
@@ -67,11 +67,12 @@ setup(
     ],
 
     setup_requires = [
-        'setuptools_scm',
-        'nose',
-        'sphinx',
-        'sphinxcontrib-fulltoc',
-        'wheel',
+        "cython > 0.20",
+        "nose",
+        "setuptools_scm",
+        "sphinx",
+        "sphinxcontrib-fulltoc",
+        "wheel",
     ],
 
     tests_require=[
