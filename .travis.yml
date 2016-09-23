@@ -8,4 +8,6 @@ python:
 before_install:
 - pip install -U setuptools
 - pip install -U pysam
+- pip install -U cython
+- pip install -U uta_align
 script: make test

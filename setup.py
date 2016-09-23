@@ -57,7 +57,6 @@ setup(
         "configparser",
         "docopt",
         "eutils",
-        "multifastadb",
         "nose",
         "psycopg2",
         "pytz",
@@ -67,7 +66,6 @@ setup(
     ],
 
     setup_requires = [
-        "cython > 0.20",
         "nose",
         "setuptools_scm",
         "sphinx",
