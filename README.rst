@@ -241,7 +241,7 @@ To develop UTA, follow these steps.
 
 .. |build_status| image:: https://travis-ci.org/biocommons/uta.svg?branch=master
   :target: https://travis-ci.org/biocommons/uta
-  :var: align: middle
+  :align: middle
 
 .. |docker_badge| image:: https://img.shields.io/docker/pulls/biocommons/uta.svg?maxAge=2592000
   :target: https://hub.docker.com/r/biocommons/uta/

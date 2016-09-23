@@ -3,8 +3,8 @@ dist: trusty
 services:
 - postgresql
 before_install:
-- wget https://launchpad.net/ubuntu/+source/htslib/1.2.1-2ubuntu1/+build/8443430/+files/tabix_1.2.1-2ubuntu1_am
-d64.deb
+- pip install -U setuptools
+- wget https://launchpad.net/ubuntu/+source/htslib/1.2.1-2ubuntu1/+build/8443430/+files/tabix_1.2.1-2ubuntu1_amd64.deb
 - pip install testing.postgresql
 language: python
 python:
