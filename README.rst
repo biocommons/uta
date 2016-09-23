@@ -239,10 +239,13 @@ To develop UTA, follow these steps.
 .. _virtualenvwrapper: http://virtualenvwrapper.readthedocs.org/en/latest/install.html
 
 
-.. |build_status| image:: https://drone.io/bitbucket.org/biocommons/uta/status.png
-  :target: https://drone.io/bitbucket.org/biocommons/uta
-  :align: middle
+.. |build_status| image:: https://travis-ci.org/biocommons/uta.svg?branch=master
+  :target: https://travis-ci.org/biocommons/uta
+  :var: align: middle
 
 .. |docker_badge| image:: https://img.shields.io/docker/pulls/biocommons/uta.svg?maxAge=2592000
   :target: https://hub.docker.com/r/biocommons/uta/
   :align: middle
+
+
+	  
