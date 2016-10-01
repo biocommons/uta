@@ -176,12 +176,12 @@ load-assocacs: ${LOG_DIR}/merged.assocacs.log
 ${LOG_DIR}/merged.assocacs.log: data/merged.assocacs.gz FORCE
 	@mkdir -pv ${@D}
 	gzip -cd <$< \
-	| psql ${PSQL_ARGS} -c "truncate ${schema}.associated_accessions; copy ${schema}.associated_accessions(hgnc,tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
+	| psql ${PSQL_ARGS} -c "truncate ${schema}.associated_accessions; copy ${schema}.associated_accessions(tx_ac,pro_ac,origin) from STDIN csv header delimiter '	' null '-'" >$@.tmp 2>&1
 	mv $@.tmp $@
 
 
-data/merged.assocacs.gz: data/${SRC_NAME}/assocacs.gz $(wildcard aux/assocacs.d/*.gz)
-	(zcat $< | head -n1 || true; for f in $^; do zcat $$f | tail -n +2; done | sort -u) | gzip -c >$@.tmp
+data/merged.assocacs.gz: data/${SRC_NAME}/assocacs.gz $(wildcard data/aux/assocacs.d/*.gz)
+	(zcat $< | head -n1 | cut -f2-4 || true; for f in $^; do zcat $$f | tail -n +2; done | cut -f2-4 | sort -u) | gzip -c >$@.tmp
 	mv $@.tmp $@
 
 
