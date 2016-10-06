@@ -1,45 +1,13 @@
 ############################################################################
 #= DB Building and Administration
 
+# dump and push:
+# make -f admin.mk push-dl-uta_20161006
+
+
+
 SHELL:=/bin/bash -e -o pipefail
 PATH:=../sbin:${PATH}
-
-#=> drop -- 
-drop:
-	uta ${CONF_OPTS} drop-schema
-
-#=> create -- 
-create:
-	uta ${CONF_OPTS} create-schema
-	uta ${CONF_OPTS} load-sql \
-		../sql/internal-views.sql \
-		../sql/views.sql \
-		../sql/associated_accessions.sql
-	uta ${CONF_OPTS} grant-permissions
-
-
-
-
-
-_mega:
-	if [ "${_UTA_MK_ANEW}" = "1" ]; then make drop create migrate-${schema}; fi
-	make cleanest 
-	make load-origin
-	make load-ncbi-associated-accessions
-	make ${_UTA_MK_DATASETS}
-	make align-exons
-	make refresh-matviews
-
-happy-meal:
-	make _mega _UTA_MK_ANEW=0 _UTA_MK_DATASETS="load-ncbi/{refmismatch,acmg-mr} load-ensembl-79/{refmismatch,acmg-mr} load-ucsc-hg19"
-
-# full data load, layered on whatever's already in uta_1_1
-cheeseburger-royale:
-	make _mega _UTA_MK_ANEW=0 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
-
-the-whole-kielbasa:
-	make _mega _UTA_MK_ANEW=1 _UTA_MK_DATASETS="load-ncbi load-ensembl-79 load-ucsc-hg19"
-
 
 
 
@@ -83,13 +51,18 @@ logs/uta.biocommons.org/uta/load-%.log: dumps/%.pgd.gz
 	mv "$@.tmp" "$@"
 
 
-
 #=> dev-from-% -- reconstitute uta_1_1 from dump
 dev-from-%: logs/uta_dev@localhost/dev-from-%.log;
 logs/uta_dev@localhost/dev-from-%.log: dumps/%.pgd.gz
 	@mkdir -pv ${@D}
 	(gzip -cdq $< | pg-dump-schema-rename $* uta_1_1 | time psql -h /tmp -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
 	mv "$@.tmp" "$@"
+
+
+.PRECIOUS: %.sha1
+%.sha1: %
+	(cd "${<D}"; sha1sum "${<F}") >"$@.tmp"
+	/bin/mv "$@.tmp" "$@"
 
 
 
@@ -105,10 +78,4 @@ cleaner: clean
 #=> cleanest: above, and remove the virtualenv, .orig, and .bak files
 cleanest: cleaner
 	/bin/rm -fr logs
-
-
-.PRECIOUS: %.sha1
-%.sha1: %
-	(cd "${<D}"; sha1sum "${<F}") >"$@.tmp"
-	/bin/mv "$@.tmp" "$@"
 

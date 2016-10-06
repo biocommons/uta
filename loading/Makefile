@@ -55,7 +55,7 @@
 .PHONY: FORCE
 .DELETE_ON_ERROR:
 
-SHELL:=/bin/bash -o pipefail -e
+SHELL:=/bin/bash -e -o pipefail
 PATH:=../sbin:${PATH}
 SELF:=$(firstword $(MAKEFILE_LIST))
 unexport GZIP
@@ -181,7 +181,10 @@ ${LOG_DIR}/merged.assocacs.log: data/merged.assocacs.gz FORCE
 
 
 data/merged.assocacs.gz: data/${SRC_NAME}/assocacs.gz $(wildcard data/aux/assocacs.d/*.gz)
-	(zcat $< | head -n1 | cut -f2-4 || true; for f in $^; do zcat $$f | tail -n +2; done | cut -f2-4 | sort -u) | gzip -c >$@.tmp
+	(zcat $< | head -n1 | cut -f2-4 || true; \
+	(for f in $^; do zcat $$f | tail -n +2; done) | cut -f2-4 | sort -k1,1 -k2,2r \
+	| perl -ane 'print unless ($$F[0] eq "-" or $$seen{$$F[0]}++)') \
+	| gzip -c >$@.tmp
 	mv $@.tmp $@
 
 
