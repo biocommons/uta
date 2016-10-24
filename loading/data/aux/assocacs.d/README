@@ -1,0 +1,10 @@
+This directory contains tables of transcript-protein accession pairs
+determined or downloaded manually, often for historical transcripts.
+
+These files are used primarily during loading; see the
+merged.assocacs.gz rule in uta/loading/Makefile.
+
+On 2016-10-24, several files were consolidated into 20161024.tsv.gz.
+Prior versions of these files were removed from the repo but still
+exist in historical commits.
+

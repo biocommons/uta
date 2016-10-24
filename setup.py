@@ -50,6 +50,7 @@ setup(
 
     install_requires=[
         "MySQL-python",
+        "attrs",
         "biocommons.seqrepo",
         "biopython",
         "bioutils",

@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+"""concatenate multiple .assocacs files into one, removing
+duplicates"""
+
+# "associated accessions" refers to the pairing of transcript and
+# protein accessions.  For example, that NM_006060.5 is translated to
+# NP_006051.1.  In RefSeq, there are many instances of protein
+# sequences that are associated with multiple NPs.  That means that
+# translating an NM to a protein sequence is not sufficient to infer
+# the proper NP accession in the context of that NM.  Associated
+# accessions makes this pairing explicit.
+
+
+import csv
+import gzip
+import io
+import os
+import sys
+
+import attr
+
+
+out_header = "tx_ac pro_ac origin".split()
+
+
+@attr.s(slots=True)
+class AssAccRec(object):
+    tx_ac = attr.ib()
+    pro_ac = attr.ib()
+    origin = attr.ib()
+
+
+def anyopen(fn):
+    """returns a csv.DictReader for the given fn"""
+    return sys.stdin if fn == "-" \
+      else gzip.open(fn) if fn.endswith(".gz") \
+      else io.open(fn)
+
+
+if __name__ == "__main__":
+    ofh = None
+    aars = dict()
+    for fn in sys.argv[1:]:
+        ifh = csv.DictReader(anyopen(fn), delimiter=b"\t")
+        
+        if ofh is None:
+            ofh = csv.DictWriter(sys.stdout, fieldnames=out_header, delimiter=b"\t")
+            ofh.writeheader()
+        
+        for r in ifh:
+            if r["tx_ac"] in ("","-") or r["pro_ac"] in ("","-"):
+                continue
+            
+            aar = AssAccRec(tx_ac=r["tx_ac"], pro_ac=r["pro_ac"], origin=r["origin"])
+            k = (aar.tx_ac, aar.origin)
+            if k in aars:
+                ex = aars[k].pro_ac.split(".")
+                new = aar.pro_ac.split(".")
+                if ex[0] != new[0]:
+                    raise Exception("pro_ac base changed for {}!".format(aar))
+                if int(ex[1]) >= int(new[1]):
+                    continue
+            aars[k] = aar
+
+    for r in sorted(aars.values(), key = lambda r: (r.pro_ac, r.origin)):
+        ofh.writerow(attr.asdict(r))
