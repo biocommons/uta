@@ -2,7 +2,10 @@
 #= DB Building and Administration
 
 # dump and push:
-# make -f admin.mk push-dl-uta_20161006
+
+# T=uta_20161024
+# make -f admin.mk dump-$T
+# make -f admin.mk push-dl-$T
 
 
 

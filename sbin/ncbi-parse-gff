@@ -33,7 +33,7 @@ vaguely about this problem
 from __future__ import division
 
 import argparse
-from collections import defaultdict
+import collections
 import gzip
 import io
 import itertools
@@ -45,6 +45,9 @@ import pkg_resources
 import re
 import sys
 
+import attr
+import prettytable
+
 import Bio.SeqIO
 from bioutils.digests import seq_md5
 
@@ -53,6 +56,90 @@ from uta.formats.txinfo import TxInfo, TxInfoWriter, TxInfoReader
 from uta.formats.geneaccessions import GeneAccessionsReader
 
 origin = "NCBI"
+
+
+@attr.s(slots=True)
+class ExonAlignment(object):
+    """alignment of a single exon"""
+    ref_ac = attr.ib()
+    origin = attr.ib()
+    match_type = attr.ib()
+    g_start = attr.ib(convert=int)
+    g_end = attr.ib(convert=int)
+    score = attr.ib(convert=float)
+    strand = attr.ib()
+    aln_id = attr.ib()
+    tx_ac = attr.ib()
+    tx_start = attr.ib(convert=int)
+    tx_end = attr.ib(convert=int)
+    pct_coverage = attr.ib(convert=float)
+    pct_identity_gap = attr.ib(convert=float)
+    pct_identity_ungap = attr.ib(convert=float)
+
+
+@attr.s(slots=True)
+class TranscriptAlignment(object):
+    """Represents a set of ExonAlignments for a single alignment id in tx exon start order"""
+
+    exon_alignments = attr.ib()
+
+    def __getitem__(self, sl):
+        return self.exon_alignments.__getitem__(sl)
+
+    def __len__(self):
+        return len(self.exon_alignments)
+
+    @property
+    def tx_exons_se_i(self):
+        return ";".join("{s},{e}".format(s=ea.tx_start-1, e=ea.tx_end) for ea in self.exon_alignments)
+
+    @property
+    def ref_exons_se_i(self):
+        return ";".join("{s},{e}".format(s=ea.g_start-1, e=ea.g_end) for ea in self.exon_alignments)
+
+    @property
+    def tx_lens(self):
+        return [(ea.tx_end-ea.tx_start+1) for ea in self.exon_alignments]
+
+    @property
+    def ref_lens(self):
+        return [(ea.g_end-ea.g_start+1) for ea in self.exon_alignments]
+
+    @property
+    def ref_ac(self):
+        return self.exon_alignments[0].ref_ac
+
+    @property
+    def origin(self):
+        return self.exon_alignments[0].origin
+
+    @property
+    def score(self):
+        return self.exon_alignments[0].score
+
+    @property
+    def strand(self):
+        return self.exon_alignments[0].strand
+
+    @property
+    def aln_id(self):
+        return self.exon_alignments[0].aln_id
+
+    @property
+    def tx_ac(self):
+        return self.exon_alignments[0].tx_ac
+
+    @property
+    def pct_coverage(self):
+        return self.exon_alignments[0].pct_coverage
+
+    @property
+    def pct_identity_gap(self):
+        return self.exon_alignments[0].pct_identity_gap
+
+    @property
+    def pct_identity_ungap(self):
+        return self.exon_alignments[0].pct_identity_ungap
 
 
 def parse_args(argv):
@@ -65,59 +152,92 @@ def parse_args(argv):
     ap.add_argument("--prefix", "-p",
                     default="ncbi-gff")
     ap.add_argument("--geneacs", "-G")
-    ap.add_argument("--txinfo", "-T")
+    ap.add_argument("--txinfo", "-T", required=True)
+    ap.add_argument("--strict-coverage",         "-C", type=float, default=95.0)
+    ap.add_argument("--min-coverage",            "-c", type=float, default=85.0)
+    ap.add_argument("--strict-pct-identity-gap", "-I", type=float, default=95.0)
+    ap.add_argument("--min-pct-identity-gap",    "-i", type=float, default=85.0)
+
     opts = ap.parse_args(argv)
+
+    assert opts.strict_coverage > opts.min_coverage
+    assert opts.strict_pct_identity_gap > opts.min_pct_identity_gap
+
     return opts
 
 
-def read_transcript_data(fn):
-    """yield dictionaries of transcript alignment data; each yield
-    corresponds to one full transcript record across lines"""
+def read_exon_alignments(fn):
+    """read lines of NCBI's alignment gff file, fn, returning ExonAlignment records"""
 
-    def _read_lines(fn):
-        # NC_000007.13	RefSeq	cDNA_match	50344265	50344518	254	+	.	ID=aln58042;Target=NM_001220765.2 1 254 +;gap_count=0;identity=0.0691326;idty=1;num_ident=428;num_mismatch=0;pct_coverage=6.91326;pct_identity_gap=100;pct_identity_ungap=100;score=254
-        # NC_000002.11  RefSeq  cDNA_match  179671939   179672150             212 -   .               ID=ed951d46-194c-477a-a480-4bc64530c5ba;Target=NM_001267550.2 1 212 +;gap_count=0;identity=0.999991;idty=1;num_ident=109223;num_mismatch=1;pct_coverage=100;pct_identity_gap=99.9991;pct_identity_ungap=99.9991
-        line_re = re.compile(
-            "(?P<ref_ac>\S+)\s+(?P<origin>\S+)\s+(?P<match_type>\S+)\s+"
-            "(?P<g_start>\d+)\s+(?P<g_end>\d+)\s+(?P<score>\S+)\s+"
-            "(?P<strand>[-+])\s+\.\s+ID=(?P<aln>[^;]+);Target=(?P<tx_ac>\S+)"
-            "\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+).+?"
-            "pct_coverage=(?P<pct_coverage>[^;]+);"
-            "pct_identity_gap=(?P<pct_identity_gap>[^;]+);"
-            "pct_identity_ungap=(?P<pct_identity_ungap>[^;]+)"
-        )
-        fh = io.open(fn, "rb")
-        while fh.peek(1)[0] == "#":
-            fh.readline()
-        while fh.peek(3)[0:3] != "###":
-            line = fh.readline()
-            try:
-                yield line_re.match(line).groupdict()
-            except AttributeError:
-                raise Exception("Failed at", line)
-        raise StopIteration
+    # NC_000007.13	RefSeq	cDNA_match	50344265	50344518	254	+	.	ID=aln58042;Target=NM_001220765.2 1 254 +;gap_count=0;identity=0.0691326;idty=1;num_ident=428;num_mismatch=0;pct_coverage=6.91326;pct_identity_gap=100;pct_identity_ungap=100;score=254
+    # NC_000002.11  RefSeq  cDNA_match  179671939   179672150             212 -   .               ID=ed951d46-194c-477a-a480-4bc64530c5ba;Target=NM_001267550.2 1 212 +;gap_count=0;identity=0.999991;idty=1;num_ident=109223;num_mismatch=1;pct_coverage=100;pct_identity_gap=99.9991;pct_identity_ungap=99.9991
+    line_re = re.compile(
+        "(?P<ref_ac>\S+)\s+(?P<origin>\S+)\s+(?P<match_type>\S+)\s+"
+        "(?P<g_start>\d+)\s+(?P<g_end>\d+)\s+(?P<score>\S+)\s+"
+        "(?P<strand>[-+])\s+\.\s+ID=(?P<aln_id>[^;]+);Target=(?P<tx_ac>\S+)"
+        "\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+).+?"
+        "pct_coverage=(?P<pct_coverage>[^;]+);"
+        "pct_identity_gap=(?P<pct_identity_gap>[^;]+);"
+        "pct_identity_ungap=(?P<pct_identity_ungap>[^;]+)"
+    )
+    fh = io.open(fn, "rb")
+    while fh.peek(1)[0] == "#":
+        fh.readline()
+    while fh.peek(3)[0:3] != "###":
+        line = fh.readline()
+        try:
+            yield ExonAlignment(**line_re.match(line).groupdict())
+        except AttributeError:
+            raise Exception("Failed at", line)
+    raise StopIteration
+
+
+def read_transcript_alignments(fn):
+    """read an NCBI alignment gff, returning a generator of TranscriptAlignments
+    that contains alignments grouped on id and sorted by tx_start
+
+    This code assumes that alignments with the same alignment id occur
+    in contiguous blocks in the file.
+
+    """
+
+    exon_alignments = read_exon_alignments(fn)
+    return [TranscriptAlignment(exon_alignments=sorted(exons_i, key=lambda e: e.tx_start))
+            for _, exons_i in itertools.groupby(exon_alignments, key=lambda e: e.aln_id)]
+
+
+def group_transcript_alignments(transcript_alignments):
+    """group transcript_alignments by tx_ac and ref_ac
+
+    IMPORTANT: The gff file may contain multiple alignments for a
+    <tx_ac, ref_ac> pair.  These pairs are not necessarily adjacent in
+    the file. Therefore, the source must be materialized in order to
+    sort and group transcript_alignments.
+
+    """
+
     def _key(e):
-        return (e["tx_ac"], not e["ref_ac"].startswith("NC_"), e["ref_ac"], e["aln"])
-    return itertools.groupby(sorted(_read_lines(fn), key=_key), key=_key)
+        return (e.tx_ac, e.ref_ac)
+    transcript_alignments = list(transcript_alignments)
+    transcript_alignments.sort(key=_key)
+    return ((key, list(alns_i))
+            for key, alns_i in itertools.groupby(transcript_alignments, key=_key))
 
 
-def convert_exon_data(opts, exon_recs):
+def convert_exon_data(opts, transcript_alignment):
     """return (TxInfo,ExonSet) tuple for given exon record data"""
-    er0 = exon_recs[0]
-    ti = TxInfo(ac=er0["tx_ac"],
+    ti = TxInfo(ac=transcript_alignment.tx_ac,
                 origin=opts.origin,
                 hgnc=None,
                 cds_se_i=None,
-                exons_se_i=";".join(
-                    ["{},{}".format(int(ex["tx_start"]) - 1, ex["tx_end"]) for ex in exon_recs])
+                exons_se_i=transcript_alignment.tx_exons_se_i
                 )
     es = ExonSet(
-        tx_ac=er0["tx_ac"],
-        alt_ac=er0["ref_ac"],
+        tx_ac=transcript_alignment.tx_ac,
+        alt_ac=transcript_alignment.ref_ac,
         method="splign",
-        strand=-1 if er0["strand"] == "-" else 1,
-        exons_se_i=";".join(
-            ["{},{}".format(int(ex["g_start"]) - 1, ex["g_end"]) for ex in exon_recs])
+        strand=-1 if transcript_alignment.strand == "-" else 1,
+        exons_se_i=transcript_alignment.ref_exons_se_i
     )
     return (ti, es)
 
@@ -156,81 +276,115 @@ if __name__ == "__main__":
     tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "w"))
 
     ties = {}
-    ti_written = defaultdict(lambda: False)
+    ti_written = collections.defaultdict(lambda: False)
     ac_not_in_gbff = set()
     ac_exons_differ = set()
     ac_in_source = set()
     ac_failed = set()
 
-    for _, eri in read_transcript_data(opts.in_fn):
-        exon_recs = list(eri)
-        er0 = exon_recs[0]
+    bins = "nogbff esdiffer unique multiple minimum none".split()
+    sets = collections.defaultdict(lambda: {k: list() for k in bins})
 
+    transcript_alignments = read_transcript_alignments(opts.in_fn)
+    logger.info(
+        "read {} transcript alignments from {}".format(len(transcript_alignments), opts.in_fn))
+
+    for _, txalns in group_transcript_alignments(transcript_alignments):
+        assert len(txalns) > 0
+
+        ta0 = txalns[0]
+        tx_ac, ref_ac = ta0.tx_ac, ta0.ref_ac
+        skey = "{:.2s} {:.2s}".format(tx_ac, ref_ac)
+        bin = None
+        
+        # ############################################################
+        # Compare exon structure from gbff with input gff
+        if tx_ac not in tx2ti:
+            logger.warn("{ta.tx_ac}~{ta.ref_ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
+                ta=ta0, opts=opts))
+            ac_not_in_gbff.add(tx_ac)
+            bin = "nogbff"
+            sets[skey][bin] += [txalns]
+            continue
+
+        gbff_ti = tx2ti[tx_ac]
+        txalns_esm = [ta for ta in txalns if ta.tx_exons_se_i == gbff_ti.exons_se_i]
+        n_rm = len(txalns) - len(txalns_esm)
+        if n_rm > 0:
+            logger.warn("{ta.tx_ac}~{ta.ref_ac}: Removed {n_rm}/{n_tot} exon structures that differ from gbff definition".format(
+                n_rm=n_rm, n_tot=len(txalns), ta=ta, opts=opts))
+        if len(txalns_esm) == 0:
+            logger.warn("{ta.tx_ac}~{ta.ref_ac}: All {n} exon structures differ from gbff definition; skipping alignment".format(
+                ta=ta, opts=opts, n=len(txalns)))
+            ac_exons_differ.add(tx_ac)
+            bin = "esdiffer"
+            sets[skey][bin] += [txalns]
+            continue
+
+        cds_se_i = gbff_ti.cds_se_i  # possibly None
+
+        
+        # ############################################################
+        # Filter alignments by coverage and pct_identity_gap
         # From Terence Murphy, NCBI:
         # "For remapping variation, we typically only use transcript
         # and RefSeqGene alignments that meet the filter:
         # 'pct_identity_gap >= 99.5 and pct_coverage >= 95'"
-        if (   (float(er0["pct_coverage"      ]) < 95)
-            or (float(er0["pct_identity_gap"  ]) < 99.5)):
-            ac_failed.add(er0["tx_ac"])
-            logger.warn("{tx_ac} failed criteria; skipping".format(tx_ac=er0["tx_ac"]))
-            continue
-            
-        ti, es = convert_exon_data(opts, exon_recs)
-        ac_in_source.add(ti.ac)
+        txalns_strict = [txaln
+                         for txaln in txalns_esm
+                         if (txaln.pct_coverage > opts.strict_coverage
+                             and txaln.pct_identity_gap > opts.strict_pct_identity_gap)]
 
-        # A core assumption in UTA is that an accession has a single
-        # exon structure. When the exon structure for a NM (or NR)
-        # differ when aligned to (say) an NC and NW, it means that the
-        # the genome-based annotation is questionable, probably due to
-        # assembly issues.
-        if ti.ac in ties:
-            prev_ti, prev_es = ties[ti.ac]
-            if ti.exons_se_i != prev_ti.exons_se_i:
-                logger.warn("{ti.ac}~{es.alt_ac}: transcript already "
-                    "defined with a different transcript exon "
-                    "structure against {prev_es.alt_ac}; skipping".format(
-                        ti=ti, es=es, prev_ti=prev_ti, prev_es=prev_es))
-                logger.info("  {ti.ac}~{es.alt_ac}: {ti.exons_se_i}".format(ti=ti, es=es))
-                logger.info("  {ti.ac}~{es.alt_ac}: {ti.exons_se_i}".format(ti=prev_ti, es=prev_es))
-                continue
-        else:
-            ties[ti.ac] = (ti,es)
+        if len(txalns_strict) == 1:
 
-        # gene info isn't in gff; pull gene info for transcripts from
-        # geneacs file (if -G provided)
-        try:
-            if tx2gene:
-                ti.hgnc = tx2gene.get(ti.ac, None)
-        except KeyError:
-            logger.warn("{ti.ac}: no gene info in {opts.geneinfo}; skipping transcript".format(
-                ti=ti, opts=opts))
-            continue
+            txalns_load = txalns_strict
+            bin = "unique"
 
-        # Compare exon structure from gbff with input gff
-        # If gff tx is in gbff, compare exon structure and liftover CDS start and end
-        # If not, add to ac_not_in_gbff warning list
-        if tx2ti:
-            try:
-                gbff_ti = tx2ti[ti.ac]
-                ti.cds_se_i = gbff_ti.cds_se_i  # possibly None
-                if ti.exons_se_i != gbff_ti.exons_se_i:
-                    logger.warn("{ac}: gff and gbff exon structures disagree".format(ac=ti.ac))
-                    logger.info("{ac}  (gff): {exons}".format(ac=ti.ac, exons=ti.exons_se_i))
-                    logger.info("{ac} (gbff): {exons}".format(ac=gbff_ti.ac, exons=gbff_ti.exons_se_i))
-                    ac_exons_differ.add(ti.ac)
-            except KeyError:
-                logger.warn("{ti.ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
-                    ti=ti, opts=opts))
-                ac_not_in_gbff.add(ti.ac)
-                continue
+        elif len(txalns_strict) > 1:
 
-        if not ti_written[ti.ac]:
-            # write a single txinfo line once; multiple may occur for multiple alignments of e.g., one NM to NC, NW, NT
-            tiw.write(ti)
-            ti_written[ti] = True
-        esw.write(es)
+            logger.warn("{ta.tx_ac}~{ta.ref_ac}: Multiple ({n}) strict alignments; cov/pig: {stats}".format(
+                ta=txalns_strict[0], n=len(txalns_strict), opts=opts,
+                stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_strict),
+                ))
+            txalns_load = txalns_strict
+            bin = "multiple"
 
+        if len(txalns_strict) == 0:
+
+            txalns_min = [txaln
+                          for txaln in txalns_esm
+                          if (txaln.pct_coverage > opts.min_coverage
+                              and txaln.pct_identity_gap > opts.min_pct_identity_gap)]
+            if len(txalns_min) == 0:
+                logger.warn("{ta.tx_ac}~{ta.ref_ac}: No usable alignments; cov/pig: {stats}".format(
+                    ta=txalns[0],
+                    stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_esm),
+                    ))
+                bin = "none"
+            else:
+                logger.warn("{ta.tx_ac}~{ta.ref_ac}: Resorting to minimum criteria; loading {n} alignments; cov/pig: {stats}".format(
+                    ta=txalns_min[0], n=len(txalns_min),
+                    stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_min),
+                    ))
+                bin = "minimum"
+            txalns_load = txalns_min
+
+        sets[skey][bin] += [txalns_esm]
+
+        for ta in txalns_load:
+            ti, es = convert_exon_data(opts, ta)
+            ti.cds_se_i = cds_se_i
+            ac_in_source.add(tx_ac)
+            ti.hgnc = tx2gene.get(ti.ac, None)
+
+            if not ti_written[ti.ac]:
+                # write a single txinfo line once; multiple may occur for multiple alignments of e.g., one NM to NC, NW, NT
+                tiw.write(ti)
+                ti_written[ti] = True
+
+            esw.write(es)
+
+    # END HEINOUS LOOP
 
     for fn in [ti_fn, es_fn]:
         os.rename(fn + ".tmp", fn)
@@ -243,9 +397,37 @@ if __name__ == "__main__":
     if ac_not_in_gbff:
         s_not_g_b = set(k.partition(".")[
                         0] for k in ac_in_source) - set(k.partition(".")[0] for k in tx2gene.keys())
-        logger.warn("{n_acv} acvs ({n_ac} base acs))  in source not in geneacs file: {acs}".format(
+        logger.warn("{n_acv} acvs ({n_ac} base acs) in source not in geneacs file: {acs}".format(
             n_acv=len(ac_not_in_gbff), n_ac=len(s_not_g_b), opts=opts, acs=",".join(sorted(ac_not_in_gbff))))
 
     if ac_exons_differ:
         logger.warn("{n} accessions in gbff-derived txinfo have different exon coordinates: {acs}".format(
             n=len(ac_exons_differ), opts=opts, acs=",".join(sorted(ac_exons_differ))))
+
+    pprint.pprint(opts)
+    pt = prettytable.PrettyTable(field_names=["ac_pair"]
+                                 + bins
+                                 + "max_coverage max_pct_identity_gap nobgffs nogbff_noup esdiffers nones".split()
+                                 )
+    for ack in sorted(sets.keys()):
+        n = 5
+        nogbff_acs = sorted(set(ta.tx_ac for ta in itertools.chain.from_iterable(sets[ack]["nogbff"])))[:n]
+        esdiffer_acs = sorted(set(ta.tx_ac for ta in itertools.chain.from_iterable(sets[ack]["esdiffer"])))[:n]
+        nones = list(itertools.chain.from_iterable(sets[ack]["none"]))
+        nones_acs = sorted(set(ta.tx_ac for ta in nones))[:n]
+        max_pct_identity_gap = "{:.2f}".format(max(ta.pct_identity_gap for ta in nones)) if nones else "n/a"
+        max_pct_coverage = "{:.2f}".format(max(ta.pct_coverage for ta in nones)) if nones else "n/a"
+
+        nogbff_noup = sorted(
+            set(ta.tx_ac.split('.')[0] for ta in itertools.chain.from_iterable(sets[ack]["nogbff"]))
+            - set(ta.tx_ac.split('.')[0] for ta in itertools.chain.from_iterable(sets[ack]["unique"]))
+            - set(ta.tx_ac.split('.')[0] for ta in itertools.chain.from_iterable(sets[ack]["multiple"]))
+            )
+
+        pt.add_row([ack] + [len(sets[ack][bk]) for bk in bins] +
+                   [max_pct_coverage, max_pct_identity_gap,
+                    " ".join(nogbff_acs),
+                    str(len(nogbff_noup)) + ": " + " ".join(nogbff_noup[:n]),
+                    " ".join(esdiffer_acs),
+                    " ".join(nones_acs) ])
+    print(pt)

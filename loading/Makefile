@@ -62,7 +62,7 @@ unexport GZIP
 
 CONF=uta_dev@localhost
 
-SRC_NAME:=ncbi/2016-09-08
+SRC_NAME:=ncbi/2016-10-24
 LOG_DIR:=logs/${CONF}
 CONF_FN=../etc/${CONF}.conf
 GLOBAL_CONF_FN:=../etc/global.conf
