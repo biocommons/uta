@@ -657,7 +657,10 @@ def load_txinfo(session, opts, cf):
             )
             session.add(u_tx)
 
-
+        if u_tx.hgnc != ti.hgnc:
+            logger.warn("{ti.ac}: HGNC symbol changed from {u_tx.hgnc} to {ti.hgnc}".format(
+                u_tx=u_tx, ti=ti))
+            u_tx.hgnc = ti.hgnc
 
         # state: transcript now exists, either existing or freshly-created
 
@@ -681,6 +684,7 @@ def load_txinfo(session, opts, cf):
                 i_ti=i_ti, n_rows=n_rows,
                 n_new=n_new, n_unchanged=n_unchanged, n_cds_changed=n_cds_changed, n_exons_changed=n_exons_changed,
                 p=(i_ti + 1) / n_rows * 100))
+            
 
 
 
