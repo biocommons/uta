@@ -114,7 +114,8 @@ help: config
 ############################################################################
 #= Loading rules
 
-load-ncbi-dev:	logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.seqinfo.log	\
+load-ncbi-dev:	logs/uta_dev@localhost/${SRC_NAME}/genes.geneinfo.log \
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.seqinfo.log	\
 		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.seqinfo.log	\
 		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.txinfo.log  \
 		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.txinfo.log  \
@@ -135,7 +136,7 @@ ${LOG_DIR}/origin.log: data/origin.tsv.gz
 
 
 #=> ${LOG_DIR}/%seqinfo.log -- 
-${LOG_DIR}/%.seqinfo.log: data/%.seqinfo.gz
+${LOG_DIR}/%seqinfo.log: data/%seqinfo.gz
 	@mkdir -pv ${@D}
 	uta ${CONF_OPTS} load-seqinfo $< >$@.tmp 2>&1
 	mv $@.tmp $@

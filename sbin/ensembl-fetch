@@ -4,11 +4,17 @@
 # You'll need to install the ensembl core api (at least) to use this
 # code. You'll also need Config::IniFiles and Log::Log4perl installed.
 #
+# The ensembl api uses deprecated perl features. I think 5.16 is the
+# most recent that can be used.
+#
+# $ perlbrew use perl-5.16.3
+# $ perlbrew install-cpanm
+# $ cpanm Config::IniFiles Log::Log4perl DBI DBD::mysql
+#
 # Tips: 
 # * rsync --delete-excluded --exclude=.git -HRavz opt/ensembl/82 projects/biocommons/uta/{sbin,loading/Makefile,loading/etc}/ minion:
 # * See http://uswest.ensembl.org/info/docs/api/api_git.html
 # for ensembl api installation instructions.
-# * sudo apt-get install libconfig-inifiles-perl liblog-log4perl-perl libdbi-perl libdbd-mysql-perl
 
 use strict;
 use warnings;
