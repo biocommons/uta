@@ -50,3 +50,6 @@ nosetests.xml
 sdist
 tmp
 ve
+loading/data/ncbi
+loading/invitae_transcripts.txt
+misc/docker/fig.yml

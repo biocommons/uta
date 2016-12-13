@@ -3,7 +3,7 @@
 # Build like this:
 # docker build -f uta_20161024.dockerfile --rm=true -t biocommons/uta:uta_20161024 .
 # docker tag biocommons/uta:uta_20161024 biocommons/uta
-# docker push biocommons/uta:uta_20161024;
+# docker push biocommons/uta:uta_20161024
 # docker push biocommons/uta:latest 
 
 # Then use it:
