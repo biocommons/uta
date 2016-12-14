@@ -56,7 +56,7 @@ def align_exons(session, opts, cf):
     aln_sel_sql = """
     SELECT * FROM tx_alt_exon_pairs_v TAEP
     WHERE exon_aln_id is NULL
-    ORDER BY hgnc
+    ORDER BY tx_ac, alt_ac
     """
 
     aln_ins_sql = """
@@ -93,6 +93,9 @@ def align_exons(session, opts, cf):
     n0, t0 = 0, time.time()
 
     for i_r, r in enumerate(rows):
+        if i_r > 0 and (i_r % update_period == 0 or (i_r + 1) == n_rows):
+            con.commit()
+
         if r.tx_ac in ac_warning or r.alt_ac in ac_warning:
             continue
 
@@ -142,6 +145,7 @@ def align_exons(session, opts, cf):
 
     cur.close()
     con.close()
+    logger.info("{} distinct sequence accessions not found".format(len(ac_warning)))
 
 
 def analyze(session, opts, cf):
