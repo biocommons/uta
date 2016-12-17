@@ -35,16 +35,7 @@
 # CONFIGURATION
 # The environment/Makefile variable CONF is used to specify which conf
 # file (in ../etc/) to use. By default, CONF=test. 
-# 
-# Typical flow:
-# $ make cleanest drop create
-# $ make load-<dataset> # repeat for all desired sets
-# $ make refresh-matviews
 #
-# Update flow:
-# $ make dev-from-uta_20150903
-# $ 
-
 # By default, load test data (i.e., test-{seqinfo,geneinfo,txinfo,exonset})
 # into db specified via CONF (which specifies config files in ../etc)
 

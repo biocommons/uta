@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+"""summarize differences between two version of UTA"""
+
+import collections
+import logging
+import sys
+import time
+
+import prettytable
+import psycopg2
+import psycopg2.extras
+
+cmp_cols = collections.defaultdict(lambda: ['*'])
+cmp_cols["exon_aln"] = "exon_aln_id tx_exon_id alt_exon_id cigar added".split()
+
+
+def cmp1(con, tbl, s1, s2):
+    def getcount(r):
+        cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute("select count(*) from {r} r".format(r=r))
+        return cur.fetchone()[0]
+
+    n1_r = "{s}.{tbl}".format(s=s1, tbl=tbl)
+    n2_r = "{s}.{tbl}".format(s=s2, tbl=tbl)
+    u1_r = "(select {cols} from {s1}.{tbl} except select {cols} from {s2}.{tbl})".format(s1=s1, s2=s2, tbl=tbl, cols=",".join(cmp_cols[tbl]))
+    u2_r = "(select {cols} from {s2}.{tbl} except select {cols} from {s1}.{tbl})".format(s1=s1, s2=s2, tbl=tbl, cols=",".join(cmp_cols[tbl]))
+    c_r  = "(select {cols} from {s1}.{tbl} intersect select {cols} from {s2}.{tbl})".format(s1=s1, s2=s2, tbl=tbl, cols=",".join(cmp_cols[tbl]))
+
+    return (
+        getcount(n1_r),
+        getcount(n2_r),
+        getcount(u1_r),
+        getcount(c_r),
+        getcount(u2_r),
+        )
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger()
+
+    url = "postgresql://localhost/uta_dev"
+    tables = ["associated_accessions", "exon", "exon_aln", "exon_set",
+              "gene", "meta", "origin", "seq", "seq_anno", "transcript",]
+
+    s1, s2 = sys.argv[1:3]
+    con = psycopg2.connect(url)
+
+    pt = prettytable.PrettyTable(field_names="table t n1 n2 nu1 nc nu2 cols".split())
+    pt.aligns = "lrrrrrl".split()
+
+    for tbl in tables:
+        t0 = time.time()
+        logger.debug("{}: Fetching data".format(tbl))
+        n1, n2, nu1, c, nu2 = cmp1(con, tbl, s1, s2)
+        t1 = time.time()
+        td = t1-t0
+        pt.add_row([tbl, "{:.1f}".format(td), n1, n2, nu1, c, nu2, ",".join(cmp_cols[tbl])])
+        logger.info("{}: Fetching data in {}s".format(tbl, td))
+
+    print("""UTA comparison: url={url}, s1={s1}, s2={s2}
+t: time taken (seconds)
+n1, n2: total number of rows in schemas s1 and s2
+nu1, nu2, c: number of rows unique to s1, unique to s2, and common to both
+cols: cols used for comparison
+""".format(url=url, s1=s1, s2=s2))
+    print(pt)
+    

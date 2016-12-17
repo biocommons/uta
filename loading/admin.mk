@@ -53,8 +53,16 @@ logs/uta.biocommons.org/uta/load-%.log: dumps/%.pgd.gz
 	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
 	mv "$@.tmp" "$@"
 
+#=> restore-from-% -- reconstitute from dump
+.PRECIOUS: logs/uta_dev@localhost/restore-from-%.log
+restore-from-%: logs/uta_dev@localhost/restore-from-%.log;
+logs/uta_dev@localhost/restore-from-%.log: dumps/%.pgd.gz
+	@mkdir -pv ${@D}
+	(gzip -cdq $< | time psql -h /tmp -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
+	mv "$@.tmp" "$@"
 
 #=> dev-from-% -- reconstitute uta_1_1 from dump
+.PRECIOUS: logs/uta_dev@localhost/dev-from-%.log
 dev-from-%: logs/uta_dev@localhost/dev-from-%.log;
 logs/uta_dev@localhost/dev-from-%.log: dumps/%.pgd.gz
 	@mkdir -pv ${@D}
