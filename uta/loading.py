@@ -60,7 +60,7 @@ def align_exons(session, opts, cf):
     """
 
     aln_ins_sql = """
-    INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added,tx_aseq,alt_aseq)
+    INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added)
     VALUES (%s,%s,%s,%s,%s,%s)
     """
 
@@ -123,7 +123,7 @@ def align_exons(session, opts, cf):
         tx_aseq, alt_aseq, cigar_str = align(tx_seq, alt_seq)
 
         added = datetime.datetime.now()
-        cur.execute(aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added, tx_aseq, alt_aseq])
+        cur.execute(aln_ins_sql, [r.tx_exon_id, r.alt_exon_id, cigar_str, added])
         tx_acs.add(r.tx_ac)
 
         if i_r > 0 and (i_r % update_period == 0 or (i_r + 1) == n_rows):
