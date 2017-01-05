@@ -3,10 +3,9 @@
 
 # dump and push:
 
-# T=uta_20161024
-# make -f admin.mk dump-$T
-# make -f admin.mk push-dl-$T
-
+# V=uta_20170105; make -f admin.mk dump-$V push-dl-$V
+# then on minion (in aws):
+# V=uta_20170105; make -f admin.mk push-dev-$V push-prd-$V push-int-$V
 
 
 SHELL:=/bin/bash -e -o pipefail
@@ -34,6 +33,7 @@ dumps/%-schema.pgd.gz:
 push-dl-%: logs/push-dl-%.log;
 push-dev-%: logs/uta.biocommons.org/uta_dev/load-%.log;
 push-prd-%: logs/uta.biocommons.org/uta/load-%.log;
+push-int-%: logs/uta.locusdev.net/uta/load-%.log;
 
 .PRECIOUS: logs/push-dl-%.log
 logs/push-dl-%.log: dumps/%.pgd.gz dumps/%.pgd.gz.sha1 dumps/%-schema.pgd.gz dumps/%-schema.pgd.gz.sha1
@@ -51,6 +51,12 @@ logs/uta.biocommons.org/uta/load-%.log: dumps/%.pgd.gz
 	# expect 15-90 minutes dep on network
 	@mkdir -pv ${@D}
 	(gzip -cdq $< | time psql -h uta.biocommons.org -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
+	mv "$@.tmp" "$@"
+.PRECIOUS: logs/uta.locusdev.net/uta/load-%.log
+logs/uta.locusdev.net/uta/load-%.log: dumps/%.pgd.gz
+	# expect 15-90 minutes dep on network
+	@mkdir -pv ${@D}
+	(gzip -cdq $< | time psql -h uta.locusdev.net -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
 	mv "$@.tmp" "$@"
 
 #=> restore-from-% -- reconstitute from dump
