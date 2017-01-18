@@ -4,9 +4,14 @@
 # dump and push:
 
 # V=uta_20170105; make -f admin.mk dump-$V push-dl-$V
+
 # then on minion (in aws):
 # V=uta_20170105; make -f admin.mk push-dev-$V push-prd-$V push-int-$V
 
+# then on clvr (aws):
+# cd projects/biocommons/uta/loading
+# wget -Pdumps -nd http://dl.biocommons.org/uta/uta_20170105.pgd.gz
+# 
 
 SHELL:=/bin/bash -e -o pipefail
 PATH:=../sbin:${PATH}

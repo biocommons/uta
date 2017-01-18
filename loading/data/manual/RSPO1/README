@@ -1,0 +1,9 @@
+../../../../sbin/ncbi-parse-gff -G assocacs.gz -p ./GCF_000001405.25. GCF_000001405.25_knownrefseq_alignments.gff3
+gzip -cdq GCF_000001405.25.exonset.gz | perl -ne 'print if m/^tx_ac|^NM_001038633.3/' | gzip -c >|exonset.gz
+manually edit exonset.gz
+
+cd ../../../
+make logs/uta_dev@localhost/manual/RSPO1/exonset.log
+
+make align-exons
+make refresh-matviews

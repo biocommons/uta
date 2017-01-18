@@ -61,7 +61,7 @@ def align_exons(session, opts, cf):
 
     aln_ins_sql = """
     INSERT INTO exon_aln (tx_exon_id,alt_exon_id,cigar,added)
-    VALUES (%s,%s,%s,%s,%s,%s)
+    VALUES (%s,%s,%s,%s)
     """
 
     con = session.bind.pool.connect()

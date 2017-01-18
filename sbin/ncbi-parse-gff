@@ -152,7 +152,7 @@ def parse_args(argv):
     ap.add_argument("--prefix", "-p",
                     default="ncbi-gff")
     ap.add_argument("--geneacs", "-G")
-    ap.add_argument("--txinfo", "-T", required=True)
+    ap.add_argument("--txinfo", "-T", required=False)
     ap.add_argument("--strict-coverage",         "-C", type=float, default=95.0)
     ap.add_argument("--min-coverage",            "-c", type=float, default=85.0)
     ap.add_argument("--strict-pct-identity-gap", "-I", type=float, default=95.0)
@@ -267,7 +267,7 @@ if __name__ == "__main__":
             "read {} CDS data from {}".format(len(tx2ti), opts.txinfo))
     else:
         tx2ti = None
-        logger.info("No gbff txinfo provided (-T); CDS start,end will be undefined for all transcripts")
+        logger.info("No gbff txinfo provided (-T); CDS start,end will be undefined for all transcripts and transcript-genome exon structures will not be verified")
 
     es_fn = opts.prefix + "exonset.gz"
     ti_fn = opts.prefix + "txinfo.gz"
@@ -298,30 +298,35 @@ if __name__ == "__main__":
         bin = None
         
         # ############################################################
-        # Compare exon structure from gbff with input gff
-        if tx_ac not in tx2ti:
-            logger.warn("{ta.tx_ac}~{ta.ref_ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
-                ta=ta0, opts=opts))
-            ac_not_in_gbff.add(tx_ac)
-            bin = "nogbff"
-            sets[skey][bin] += [txalns]
-            continue
+        # Optionally compare exon structure from gbff with input gff
+        # And get cds s,e from gbff (sigh)
+        if tx2ti is None:
+            cds_se_i = None
+            txalns_esm = txalns
+        else:
+            if tx_ac not in tx2ti:
+                logger.warn("{ta.tx_ac}~{ta.ref_ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
+                    ta=ta0, opts=opts))
+                ac_not_in_gbff.add(tx_ac)
+                bin = "nogbff"
+                sets[skey][bin] += [txalns]
+                continue
 
-        gbff_ti = tx2ti[tx_ac]
-        txalns_esm = [ta for ta in txalns if ta.tx_exons_se_i == gbff_ti.exons_se_i]
-        n_rm = len(txalns) - len(txalns_esm)
-        if n_rm > 0:
-            logger.warn("{ta.tx_ac}~{ta.ref_ac}: Removed {n_rm}/{n_tot} exon structures that differ from gbff definition".format(
-                n_rm=n_rm, n_tot=len(txalns), ta=ta, opts=opts))
-        if len(txalns_esm) == 0:
-            logger.warn("{ta.tx_ac}~{ta.ref_ac}: All {n} exon structures differ from gbff definition; skipping alignment".format(
-                ta=ta, opts=opts, n=len(txalns)))
-            ac_exons_differ.add(tx_ac)
-            bin = "esdiffer"
-            sets[skey][bin] += [txalns]
-            continue
+            gbff_ti = tx2ti[tx_ac]
+            txalns_esm = [ta for ta in txalns if ta.tx_exons_se_i == gbff_ti.exons_se_i]
+            n_rm = len(txalns) - len(txalns_esm)
+            if n_rm > 0:
+                logger.warn("{ta.tx_ac}~{ta.ref_ac}: Removed {n_rm}/{n_tot} exon structures that differ from gbff definition".format(
+                    n_rm=n_rm, n_tot=len(txalns), ta=ta, opts=opts))
+            if len(txalns_esm) == 0:
+                logger.warn("{ta.tx_ac}~{ta.ref_ac}: All {n} exon structures differ from gbff definition; skipping alignment".format(
+                    ta=ta, opts=opts, n=len(txalns)))
+                ac_exons_differ.add(tx_ac)
+                bin = "esdiffer"
+                sets[skey][bin] += [txalns]
+                continue
 
-        cds_se_i = gbff_ti.cds_se_i  # possibly None
+            cds_se_i = gbff_ti.cds_se_i  # possibly None
 
         
         # ############################################################
