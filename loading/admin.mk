@@ -6,12 +6,15 @@
 # V=uta_20170105; make -f admin.mk dump-$V push-dl-$V
 
 # then on minion (in aws):
-# V=uta_20170105; make -f admin.mk push-dev-$V push-prd-$V push-int-$V
+# cd projects/biocommons/uta/loading
+# V=uta_20170105
+# make -f admin.mk push-dev-$V push-prd-$V
 
 # then on clvr (aws):
+# V=uta_20170105
 # cd projects/biocommons/uta/loading
-# wget -Pdumps -nd http://dl.biocommons.org/uta/uta_20170105.pgd.gz
-# 
+# wget -Pdumps -nd http://dl.biocommons.org/uta/$V.pgd.gz
+# PGPASSWORD=... make -f admin.mk push-int-$V
 
 SHELL:=/bin/bash -e -o pipefail
 PATH:=../sbin:${PATH}
