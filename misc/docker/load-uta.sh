@@ -44,7 +44,11 @@ cat <<EOF
 == $UTA_VERSION installed from
 == $UTA_PGD_URL
 == 
-== You may now connect to uta.  No password is required.
+== You may now connect to uta like this:
+== 
+== $  psql -h localhost -p <port> -U anonymous -d uta
+== 
+== No password is required.
 == 
 =======================================================================
 =======================================================================

@@ -6,14 +6,14 @@
 # 2. build docker image
 # docker build -f uta_20170117.dockerfile --rm=true -t biocommons/uta:uta_20170117 .
 # 3. test it
-# docker run --name uta_20170117 -p 61216:5432 biocommons/uta:uta_20170117
+# docker run --name uta_20170117 -p 10117:5432 biocommons/uta:uta_20170117
 # 4. if successful, tag and push
 # docker tag biocommons/uta:uta_20170117 biocommons/uta
 # docker push biocommons/uta:uta_20170117
 # docker push biocommons/uta:latest 
 
 # Then use it:
-# docker run --name uta_20170117 -p 61216:5432 biocommons/uta:uta_20170117
+# docker run --name uta_20170117 -p 10117:5432 biocommons/uta:uta_20170117
 
 # add -e UTA_SCHEMA_ONLY=1 to test by installing the schema only
 
