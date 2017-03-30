@@ -15,7 +15,7 @@ uta -- Universal Transcript Archive
           database at uta.biocommons.org, the `uta docker image
           <https://hub.docker.com/r/biocommons/uta/>`_, and
           `dl.biocommons.org postgresql dump
-          <http://dl.biocommons.org/index.html>`_.
+          <http://dl.biocommons.org/uta/>`_.
 	  
 
 Overview
