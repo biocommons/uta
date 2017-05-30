@@ -3,6 +3,7 @@ syntax: regexp
 ^examples/.+\.rst
 
 syntax: glob
+
 *.bak
 *.cache
 *.egg
@@ -30,7 +31,6 @@ syntax: glob
 .eggs
 .idea
 .installed.cfg
-
 archive
 aux/mirrors-ncbi
 aux/sequences
@@ -38,18 +38,18 @@ aux/sequences2
 bdist
 build
 cover
-dist
-data/ncbi/*/src/
 data/**/*.gz
+data/ncbi/*/src/
+dist
 doc/build
 examples/*_files
 examples/.ipynb_checkpoints
 lib/python/cover
 lib/python/uta/_release.py
-nosetests.xml
-sdist
-tmp
-ve
 loading/data/ncbi
 loading/invitae_transcripts.txt
 misc/docker/fig.yml
+nosetests.xml
+sdist
+tmp
+venv

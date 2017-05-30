@@ -5,17 +5,7 @@ uta -- Universal Transcript Archive
 
 .. `Docs <http://pythonhosted.org/uta/>`_
 
-|build_status| |docker_badge|
-
-.. note:: uta_20150903 is available. It adds NM_000314.5, which is the
-          transcript preferred by HGMD for PTEN.  The importance of
-          this gene and the prevalence of HGMD justified this minor
-          release.  Otherwise, this release is identical to
-          uta_20150827.  The release is available via the postgresql
-          database at uta.biocommons.org, the `uta docker image
-          <https://hub.docker.com/r/biocommons/uta/>`_, and
-          `dl.biocommons.org postgresql dump
-          <http://dl.biocommons.org/uta/>`_.
+|build_status| |docker_badge| `Health Check`_
 	  
 
 Overview
@@ -234,10 +224,10 @@ To develop UTA, follow these steps.
    to a populated Invitae database.
 
 
+.. _`health check`: https://updown.io/a7i5
 .. _hgvs: https://bitbucket.org/invitae/hgvs
 .. _virtualenv: https://pypi.python.org/pypi/virtualenv
 .. _virtualenvwrapper: http://virtualenvwrapper.readthedocs.org/en/latest/install.html
-
 
 .. |build_status| image:: https://travis-ci.org/biocommons/uta.svg?branch=master
   :target: https://travis-ci.org/biocommons/uta
