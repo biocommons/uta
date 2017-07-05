@@ -734,7 +734,7 @@ def _get_mfdb(cf):
 def _get_seqrepo(cf):
     sr_dir = cf.get("sequences", "seqrepo")
     sr = SeqRepo(root_dir=sr_dir)
-    logger.info("Opened sequence directory " + sr_dir)
+    logger.info("Opened {sr}".format(sr=sr))
     return sr
 
 _get_seqfetcher = _get_seqrepo
