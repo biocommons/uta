@@ -49,7 +49,7 @@ setup(
     },
 
     install_requires=[
-        "MySQL-python",
+        # "MySQL-python",
         "attrs",
         "biocommons.seqrepo",
         "biopython",
