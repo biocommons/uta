@@ -58,7 +58,7 @@ LOG_DIR:=logs/${CONF}
 CONF_FN=../etc/${CONF}.conf
 GLOBAL_CONF_FN:=../etc/global.conf
 CONF_OPTS:=--conf=${GLOBAL_CONF_FN} --conf=${CONF_FN}
-PSQL_ARGS:=-d uta_dev -U uta_admin -h /tmp
+PSQL_ARGS:=-d uta_dev -U uta_admin -h localhost
 
 ############################################################################
 

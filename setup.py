@@ -59,6 +59,7 @@ setup(
         "docopt",
         "eutils",
         "nose",
+        "prettytable",
         "psycopg2",
         "pytz",
         "recordtype",
@@ -68,7 +69,7 @@ setup(
 
     setup_requires = [
         "nose",
-        "setuptools_scm",
+        "setuptools_scm==1.11.1",
         "sphinx",
         "sphinxcontrib-fulltoc",
         "wheel",

@@ -102,6 +102,7 @@ def main():
             logger.info("loaded " + conf_fn)
 
     db_url = cf.get("uta", "db_url")
+    logger.info("connecting to " + db_url)
     session = uta.connect(db_url)
 
     sub = None

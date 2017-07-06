@@ -2,8 +2,8 @@ syntax: regexp
 (.*/)?\#[^/]*\#$
 ^examples/.+\.rst
 
-syntax: glob
 
+syntax: glob
 *.bak
 *.cache
 *.egg
@@ -14,6 +14,7 @@ syntax: glob
 *.log
 *.orig
 *.pgd.gz
+*.pyc
 *.pyc
 *.pylint
 *.pyo
@@ -46,8 +47,11 @@ examples/*_files
 examples/.ipynb_checkpoints
 lib/python/cover
 lib/python/uta/_release.py
+loading/data
 loading/data/ncbi
+loading/dumps
 loading/invitae_transcripts.txt
+loading/logs
 misc/docker/fig.yml
 nosetests.xml
 sdist
