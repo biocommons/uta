@@ -1,3 +1,4 @@
+
 ############################################################################
 #= DB Building and Administration
 
@@ -20,7 +21,7 @@ SHELL:=/bin/bash -e -o pipefail
 PATH:=../sbin:${PATH}
 PSQL:=psql -v ON_ERROR_STOP=1
 PSQL_LOCAL:=${PSQL} -h localhost
-
+PGD_FILTER:=egrep -v 'row_security|idle_in_transaction_session_timeout'
 
 #=> dump-% -- dump named schema (e.g., uta_20140210) in dumps/ and compute sha1
 dump-%: dumps/%.pgd.gz dumps/%.pgd.gz.sha1 dumps/%-schema.pgd.gz dumps/%-schema.pgd.gz.sha1 ;
@@ -53,19 +54,19 @@ logs/push-dl-%.log: dumps/%.pgd.gz dumps/%.pgd.gz.sha1 dumps/%-schema.pgd.gz dum
 logs/uta.biocommons.org/uta_dev/load-%.log: dumps/%.pgd.gz
 	# expect 15-90 minutes dep on network
 	@mkdir -pv ${@D}
-	(gzip -cdq $< | fgrep -v row_security | time ${PSQL} -h uta.biocommons.org -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
+	(gzip -cdq $< | ${PGD_FILTER} | time ${PSQL} -h uta.biocommons.org -U uta_admin -d uta_dev -aeE) >$@.tmp 2>&1 
 	mv "$@.tmp" "$@"
 .PRECIOUS: logs/uta.biocommons.org/uta/load-%.log
 logs/uta.biocommons.org/uta/load-%.log: dumps/%.pgd.gz
 	# expect 15-90 minutes dep on network
 	@mkdir -pv ${@D}
-	(gzip -cdq $< | fgrep -v row_security | time ${PSQL} -h uta.biocommons.org -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
+	(gzip -cdq $< | ${PGD_FILTER} | time ${PSQL} -h uta.biocommons.org -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
 	mv "$@.tmp" "$@"
 .PRECIOUS: logs/uta.locusdev.net/uta/load-%.log
 logs/uta.locusdev.net/uta/load-%.log: dumps/%.pgd.gz
 	# expect 15-90 minutes dep on network
 	@mkdir -pv ${@D}
-	(gzip -cdq $< | time psql -h uta.locusdev.net -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
+	(gzip -cdq $< | ${PGD_FILTER} | time psql -h uta.locusdev.net -U uta_admin -d uta -aeE) >$@.tmp 2>&1 
 	mv "$@.tmp" "$@"
 
 #=> restore-from-% -- reconstitute from dump
