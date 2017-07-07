@@ -17,7 +17,7 @@
 
 # add -e UTA_SCHEMA_ONLY=1 to test by installing the schema only
 
-FROM postgres:9.5
+FROM postgres:9.6
 
 RUN apt-get update && apt-get install -y \
     curl
