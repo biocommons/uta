@@ -32,11 +32,15 @@ if __name__ == "__main__":
     for rec in gi_in:
         if rec["symbol_from_nomenclature_authority"] == "-":
             continue
-        gi = GeneInfo(hgnc=rec["symbol_from_nomenclature_authority"],
-                      maploc=rec["map_location"],
-                      aliases=rec["synonyms"].split("|"),
-                      type=rec["type_of_gene"],
-                      summary=rec["full_name_from_nomenclature_authority"],
-                      descr=rec["description"],
-                      )
+        gi = GeneInfo(
+            tax_id=rec["tax_id"],
+            gene_id=rec["geneid"],
+            hgnc=rec["symbol_from_nomenclature_authority"],
+            maploc=rec["map_location"],
+            aliases=rec["synonyms"].split("|"),
+            type=rec["type_of_gene"],
+            summary=rec["full_name_from_nomenclature_authority"],
+            descr=rec["description"],
+            xrefs=rec["dbxrefs"].split("|"),
+            )
         giw.write(gi)

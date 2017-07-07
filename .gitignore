@@ -57,3 +57,4 @@ nosetests.xml
 sdist
 tmp
 venv
+misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz

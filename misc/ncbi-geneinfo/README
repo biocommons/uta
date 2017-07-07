@@ -1,0 +1,11 @@
+Quick loading of NCBI gene info
+
+- Download ftp://ftp.ncbi.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+
+- ../../sbin/ncbi-parse-geneinfo ~/Downloads/Homo_sapiens.gene_info.gz | gzip >ncbi.geneinfo.tsv.gz
+
+- In psql:
+\i projects/biocommons/uta/misc/ncbi-geneinfo/ncbi.geneinfo.sql 
+\copy ncbi.geneinfo from PROGRAM 'gzip -cd projects/biocommons/uta/misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz' with csv header delimiter '	'
+grant usage on SCHEMA ncbi to anonymous;
+grant select  on table ncbi.geneinfo to anonymous;
