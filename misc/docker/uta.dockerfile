@@ -1,22 +1,3 @@
-# uta dockerfile -- https://bitbucket.org/biocommons/uta/
-#
-# (Hey, Reece) build like this:
-# 1. push dump to minion
-# see uta/loading/admin.mk
-# 2. build docker image
-# docker build -f uta.dockerfile --build-arg uta_version=uta_20170629 --rm=true -t biocommons/uta:uta_20170629 .
-# 3. test it
-# docker run -v /tmp:/tmp --name uta_20170629 -p 10117:5432 biocommons/uta:uta_20170629
-# 4. if successful, tag and push
-# docker tag biocommons/uta:uta_20170629 biocommons/uta
-# docker push biocommons/uta:uta_20170629
-# docker push biocommons/uta:latest
-
-# Then use it:
-# docker run --name uta_20170629 -p 10117:5432 biocommons/uta:uta_20170629
-
-# add -e UTA_SCHEMA_ONLY=1 to test by installing the schema only
-
 FROM postgres:9.6
 
 RUN apt-get update && apt-get install -y \
@@ -24,7 +5,10 @@ RUN apt-get update && apt-get install -y \
 
 ENV POSTGRES_PASSWORD=password-login-is-disabled
 
-ARG uta_version=uta_20170629
+# by default we are using uta_20170707
+# please provide custom versions with the command line parameter
+# --build-arg uta_version=uta_MYVERSION
+ARG uta_version=uta_201700707
 
 MAINTAINER reecehart@gmail.com
 ENV UTA_VERSION=${uta_version}
