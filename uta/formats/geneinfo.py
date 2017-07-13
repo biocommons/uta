@@ -5,7 +5,7 @@ default_sep = ','
 
 
 class GeneInfo(recordtype.recordtype('GeneInfo',
-                                     ['hgnc', 'maploc', 'aliases', 'type', 'summary', 'descr'])):
+                                     ['gene_id', 'tax_id', 'hgnc', 'maploc', 'aliases', 'type', 'summary', 'descr', 'xrefs'])):
     pass
 
 
@@ -19,6 +19,7 @@ class GeneInfoWriter(csv.DictWriter):
     def write(self, si):
         d = si._asdict()
         d['aliases'] = default_sep.join(d['aliases'])
+        d['xrefs'] = default_sep.join(d['xrefs'])
         self.writerow(d)
 
 
@@ -33,6 +34,7 @@ class GeneInfoReader(csv.DictReader):
     def next(self):
         d = csv.DictReader.next(self)
         d['aliases'] = d['aliases'].split(default_sep)
+        d['xrefs'] = d['xrefs'].split(default_sep)
         return GeneInfo(**d)
 
 
