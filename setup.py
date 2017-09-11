@@ -52,7 +52,7 @@ setup(
         # "MySQL-python",
         "attrs",
         "biocommons.seqrepo",
-        "biopython",
+        "biopython==1.69",
         "bioutils",
         "colorlog",
         "configparser",
