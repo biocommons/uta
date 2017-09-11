@@ -34,3 +34,17 @@ set search_path = ncbi_20170907;
 grant usage on SCHEMA ncbi_20170907 to anonymous;
 grant select  on table ncbi_20170907.geneinfo to anonymous;
 grant select  on table ncbi_20170907.assocacs to anonymous;
+
+# now lets dump and release the database
+# change to the uta/loading directory
+
+# dump the database
+make -f admin.mk dump-ncbi_20170907
+
+# and release it on uta.invitae.com
+make -f admin.mk push-dev-ncbi_20170907
+make -f admin.mk push-prd-ncbi_20170907
+
+
+
+
