@@ -1,11 +1,39 @@
 Quick loading of NCBI gene info
 
-- Download ftp://ftp.ncbi.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+# The first few steps can get ignored, if you just built a uta update.
 
-- ../../sbin/ncbi-parse-geneinfo ~/Downloads/Homo_sapiens.gene_info.gz | gzip >ncbi.geneinfo.tsv.gz
+# Only if no recent UTA update:
+# use previous UTA setup steps
+- cd ~/uta/loading/data/ncbi/
+- mkdir 2017-06-29
+- cd 2017-06-29
+- cp ../2016-10-24/Makefile .
+- ln -s ~/mirrors-ncbi/2017/06/29 src
+
+for a UTA setup one would run `make all` however for loading the ncbi we just need the raw files:
+- make src
+
+Convert the original NCBI files into the format we use for loading
+
+- make genes.geneinfo.gz
+- make assocacs.gz
+
+
+# start here if you have a recent UTA update
+
+
+## OLD:
+##- ../../sbin/ncbi-parse-geneinfo ~/Downloads/Homo_sapiens.gene_info.gz | gzip >ncbi.geneinfo.tsv.gz
 
 - In psql:
-\i projects/biocommons/uta/misc/ncbi-geneinfo/ncbi.geneinfo.sql 
+
+create schema ncbi_20170907
+set search_path = ncbi_20170907
+
+\i /mnt/home/biocommons/uta_git/misc/ncbi-geneinfo/ncbi.assocacs.sql
+\copy assocacs from PROGRAM 'gzip -cd /mnt/home/biocommons/uta/loading/data/ncbi/2017-09-07/assocacs.gz' with csv header delimiter E'\t'
+
+\i /mnt/home/biocommons/uta_git/misc/ncbi-geneinfo/ncbi.geneinfo.sql
 \copy ncbi.geneinfo from PROGRAM 'gzip -cd projects/biocommons/uta/misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz' with csv header delimiter '	'
 grant usage on SCHEMA ncbi to anonymous;
 grant select  on table ncbi.geneinfo to anonymous;
