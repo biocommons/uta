@@ -36,8 +36,6 @@ if __name__ == "__main__":
         if rec["tax_id"] != "9606":
             continue
 
-        print rec.keys()
-
         if rec["rna_nucleotide_accession.version"] == "-" and rec["protein_accession.version"] == "-":
             continue
 
