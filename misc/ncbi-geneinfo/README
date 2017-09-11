@@ -21,17 +21,13 @@ Convert the original NCBI files into the format we use for loading
 
 # start here if you have a recent UTA update
 
-
-## OLD:
-##- ../../sbin/ncbi-parse-geneinfo ~/Downloads/Homo_sapiens.gene_info.gz | gzip >ncbi.geneinfo.tsv.gz
-
 - In psql:
 
 create schema ncbi_20170907
 set search_path = ncbi_20170907
 
 \i /mnt/home/biocommons/uta_git/misc/ncbi-geneinfo/ncbi.assocacs.sql
-\copy assocacs from PROGRAM 'gzip -cd /mnt/home/biocommons/uta/loading/data/ncbi/2017-09-07/assocacs.gz' with csv header delimiter E'\t'
+\copy assocacs from PROGRAM 'gzip -cd /mnt/home/biocommons/uta_git/loading/data/ncbi/2017-09-07/assocacs.gz' with csv header delimiter E'\t'
 
 \i /mnt/home/biocommons/uta_git/misc/ncbi-geneinfo/ncbi.geneinfo.sql
 \copy ncbi.geneinfo from PROGRAM 'gzip -cd projects/biocommons/uta/misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz' with csv header delimiter '	'
