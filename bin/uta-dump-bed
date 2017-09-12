@@ -18,12 +18,12 @@ _grch37 = get_assembly("GRCh37.p13")
 primary_assembly_accessions = {
     'GRCh37': {s['refseq_ac'] for s in _grch37['sequences'] if s['refseq_ac'].startswith('NC_')},
     }
-NC_to_chr_dict = {
+NC_to_chr = {
     s['refseq_ac']: str(s['name'])
     for s in _grch37['sequences']
     if s['refseq_ac'].startswith('NC_')
     }
-chr_to_NC_dict = {v: k for k, v in NC_to_chr_dict.iteritems()}
+chr_to_NC_dict = {v: k for k, v in NC_to_chr.iteritems()}
 chr_to_NC = chr_to_NC_dict
 
 
@@ -73,6 +73,10 @@ if __name__ == "__main__":
         opts=opts))
 
     for row in cur:
+
+        if row.alt_ac not in NC_to_chr:
+           continue
+
         chrom_starts = sorted(row.starts_i)
 
         chrom_start = chrom_starts[0]
