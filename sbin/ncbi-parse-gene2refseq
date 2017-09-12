@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
         ga = GeneAccessions(hgnc=rec["symbol"],
                             tx_ac=rec["rna_nucleotide_accession.version"],
-                            gi_ac=rec["geneid"],
+                            gene_id=rec["geneid"],
                             pro_ac=rec["protein_accession.version"],
                             origin="NCBI",
                             )

@@ -2,6 +2,7 @@ create table associated_accessions (
     associated_accession_id serial primary key,
     hgnc text,
     tx_ac text,
+    gene_id integer,
     pro_ac text,
     origin text not null,
     added timestamp with time zone not null default now()
