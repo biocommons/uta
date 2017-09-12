@@ -57,14 +57,14 @@ def find_exon(starts, c):
 if __name__ == "__main__":
     opts = parse_args(sys.argv[1:])
 
-    conn = psycopg2.connect(dbname="uta", host="localhost")
+    conn = psycopg2.connect("host=uta.invitae.com dbname=uta user=anonymous password=anonymous")
     cur = conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
 
     query = """
 	SELECT ESS.*,T.cds_start_i,T.cds_end_i
 	FROM {opts.schema}.tx_exon_set_summary_mv ESS
 	JOIN {opts.schema}.transcript T ON ESS.tx_ac=T.ac
-	WHERE tx_ac ~ "^NM_" AND alt_ac ~ "^NC_0000" AND alt_aln_method = %s
+	WHERE tx_ac ~ '^NM_' AND alt_ac ~ '^NC_0000' AND alt_aln_method = %s
 	"""
 
     cur.execute(query.format(opts=opts), [opts.method])
