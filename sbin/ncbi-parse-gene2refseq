@@ -46,7 +46,7 @@ if __name__ == "__main__":
                             origin="NCBI",
                             )
 
-        key = (ga.hgnc, ga.tx_ac, ga.gi_ac, ga.pro_ac)
+        key = (ga.hgnc, ga.tx_ac, ga.gene_id, ga.pro_ac)
         if key in seen:
            continue 
 
