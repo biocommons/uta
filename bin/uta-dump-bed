@@ -88,6 +88,7 @@ if __name__ == "__main__":
         if row.alt_strand == -1:
             block_sizes.reverse()
 
+        #TODO: it would be better to have transcription start and stop here:
         thick_start = chrom_start
         thick_end = chrom_end
 
