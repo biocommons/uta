@@ -57,7 +57,7 @@ setup(
         "colorlog",
         "configparser",
         "docopt",
-        "eutils",
+        "eutils>=0.3.2",
         "nose",
         "prettytable",
         "psycopg2",

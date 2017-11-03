@@ -1,0 +1,130 @@
+#!/usr/bin/env python
+""" After the initial load, the ncbi table will only contain information for the current NCBI
+transcripts. This updates the table to also include historic information
+
+usage:
+    update_ncbi uta_schema ncbi_schema
+
+"""
+
+import logging
+import sys
+import psycopg2
+import psycopg2.extras
+from eutils.client import Client
+
+
+def getdata(conn, sql):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute(sql)
+    return cur.fetchall()
+
+
+def get_uta_transcripts(conn, uta):
+    sql = """select
+    distinct(tx_ac)
+    from {s}.associated_accessions
+    """.format(s=uta)
+
+    rows = getdata(conn, sql)
+
+    all_uta_tx = [r['tx_ac'] for r in rows]
+
+    uta_nms = set()
+
+    for tx in all_uta_tx:
+
+        if tx.startswith('NM_'):
+            uta_nms.add(tx)
+
+    return uta_nms
+
+
+def get_ncbi_transcripts(conn, ncbi):
+    sql = """select
+    distinct(tx_ac)
+    from {s}.assocacs
+    """.format(s=ncbi)
+
+    rows = getdata(conn, sql)
+    all_ncbi_tx = [r['tx_ac'] for r in rows]
+
+    ncbi_nms = set()
+    for tx in all_ncbi_tx:
+        if tx.startswith('NM_'):
+            ncbi_nms.add(tx)
+
+    return ncbi_nms
+
+
+def get_gene_info(eg):
+    xrefs = eg.features.cds.db_xrefs
+
+    geneId = None
+    hgnc = None
+    protein_id = eg.features.cds.qualifiers['protein_id']
+
+    for ref in xrefs:
+        spl = ref.split(':')
+        if spl[0] == 'GeneID':
+            geneId = spl[1]
+        elif spl[0] == 'HGNC':
+            hgnc = spl[2]
+
+    return geneId, hgnc, protein_id
+
+
+def store_assocacs(conn, ncbi, hgnc, tx_ac, gene_id, pro_ac, origin):
+    sql = """
+          insert into {s}.assocacs (hgnc, tx_ac, gene_id, pro_ac, origin)
+          values (%s,%s,%s,%s,%s)
+        """.format(s=ncbi)
+
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute(sql, [hgnc, tx_ac, gene_id, pro_ac, origin])
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger()
+
+    url = "postgresql://uta_admin@localhost/uta_dev"
+
+    uta, ncbi = sys.argv[1:3]
+    conn = psycopg2.connect(url)
+
+    uta_tx = get_uta_transcripts(conn, uta)
+
+    print "# of transcripts in uta: %s" % len(uta_tx)
+
+    ncbi_tx = get_ncbi_transcripts(conn, ncbi)
+
+    print "# of transcripts in ncbi: %s" % len(ncbi_tx)
+
+    missing = list(uta_tx - ncbi_tx)
+
+    print "# missing in ncbi: %s" % len(missing)
+
+    client = Client()
+
+    start = 0
+    step = 500
+
+    while start < len(missing):
+
+        stop = start + step
+        if stop > len(missing):
+            stop = len(missing)
+
+        ids = missing[start:stop]
+
+        start += step
+
+        egs = client.efetch('nuccore', ",".join(ids))
+
+        for eg in egs:
+            geneId, hgnc, protein_id = get_gene_info(eg)
+            print eg.acv, eg.gene, eg.moltype, geneId, hgnc, protein_id
+            store_assocacs(conn, ncbi, eg.gene, eg.acv, geneId, protein_id, 'NCBI')
+
+        conn.commit()
