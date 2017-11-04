@@ -1,11 +1,50 @@
 Quick loading of NCBI gene info
 
-- Download ftp://ftp.ncbi.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+# The first few steps can get ignored, if you just built a uta update.
 
-- ../../sbin/ncbi-parse-geneinfo ~/Downloads/Homo_sapiens.gene_info.gz | gzip >ncbi.geneinfo.tsv.gz
+# Only if no recent UTA update:
+# use previous UTA setup steps
+- cd ~/uta/loading/data/ncbi/
+- mkdir 2017-06-29
+- cd 2017-06-29
+- cp ../2016-10-24/Makefile .
+- ln -s ~/mirrors-ncbi/2017/06/29 src
+
+for a UTA setup one would run `make all` however for loading the ncbi we just need the raw files:
+- make src
+
+Convert the original NCBI files into the format we use for loading
+
+- make genes.geneinfo.gz
+- make assocacs.gz
+
+
+# start here if you have a recent UTA update
 
 - In psql:
-\i projects/biocommons/uta/misc/ncbi-geneinfo/ncbi.geneinfo.sql 
-\copy ncbi.geneinfo from PROGRAM 'gzip -cd projects/biocommons/uta/misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz' with csv header delimiter '	'
-grant usage on SCHEMA ncbi to anonymous;
-grant select  on table ncbi.geneinfo to anonymous;
+
+create schema ncbi_20170907;
+set search_path = ncbi_20170907;
+
+\i /mnt/home/biocommons/uta_git/misc/ncbi-geneinfo/ncbi.assocacs.sql
+\copy ncbi_20170907.assocacs from PROGRAM 'gzip -cd /mnt/home/biocommons/uta_git/loading/data/ncbi/2017-09-07/assocacs.gz' with csv header delimiter E'\t'
+
+\i /mnt/home/biocommons/uta_git/misc/ncbi-geneinfo/ncbi.geneinfo.sql
+\copy ncbi_20170907.geneinfo from PROGRAM 'gzip -cd /mnt/home/biocommons/uta_git/loading/data/ncbi/2017-09-07/genes.geneinfo.gz' with csv header delimiter E'\t'
+grant usage on SCHEMA ncbi_20170907 to anonymous;
+grant select  on table ncbi_20170907.geneinfo to anonymous;
+grant select  on table ncbi_20170907.assocacs to anonymous;
+
+# now lets dump and release the database
+# change to the uta/loading directory
+
+# dump the database
+make -f admin.mk dump-ncbi_20170907
+
+# and release it on uta.invitae.com
+make -f admin.mk push-dev-ncbi_20170907
+make -f admin.mk push-prd-ncbi_20170907
+
+
+
+

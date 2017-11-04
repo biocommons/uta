@@ -1,4 +1,4 @@
-create table ncbi.geneinfo (
+create table geneinfo (
        gene_id integer primary key,
        tax_id integer not null,
        hgnc text,
