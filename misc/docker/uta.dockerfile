@@ -14,7 +14,7 @@ MAINTAINER reecehart@gmail.com
 ENV UTA_VERSION=${uta_version}
 LABEL description="PostgreSQL image with $UTA_VERSION installed (https://github.com/biocommons/uta/)"
 
-ADD load-uta.sh /docker-entrypoint-initdb.d/
+ADD misc/docker/load-uta.sh /docker-entrypoint-initdb.d/
 
 # postgres entrypoint will run load-uta.sh automatically
 
