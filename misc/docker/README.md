@@ -14,7 +14,7 @@ docker build -f misc/docker/uta.dockerfile --build-arg uta_version=uta_20170707 
 
 3. test it
 ```
-docker run -v /tmp:/tmp --name uta_201710026 -p 10629:5432 biocommons/uta:uta_20170707
+docker run -v /tmp:/tmp --name uta_20170707 -p 10629:5432 biocommons/uta:uta_20170707
 ```
 
 4. if successful, tag and push
