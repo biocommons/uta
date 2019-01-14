@@ -1,0 +1,419 @@
+#!/usr/bin/env perl
+#
+# ensembl-fetch -- fetch fasta, txinfo, and seqinfo from ensembl
+# You'll need to install the ensembl core api (at least) to use this
+# code. You'll also need Config::IniFiles and Log::Log4perl installed.
+#
+# The ensembl api uses deprecated perl features. I think 5.16 is the
+# most recent that can be used.
+#
+# $ perlbrew use perl-5.16.3
+# $ perlbrew install-cpanm
+# $ cpanm Config::IniFiles Log::Log4perl DBI DBD::mysql
+#
+# Tips: 
+# * rsync --delete-excluded --exclude=.git -HRavz opt/ensembl/82 projects/biocommons/uta/{sbin,loading/Makefile,loading/etc}/ minion:
+# * See http://uswest.ensembl.org/info/docs/api/api_git.html
+# for ensembl api installation instructions.
+
+use strict;
+use warnings;
+
+use Config::IniFiles;
+use Data::Dumper;
+use File::Path qw(remove_tree);
+use Getopt::Long qw(:config gnu_compat);
+use IO::Compress::Gzip;
+use IO::File;
+use IO::Zlib;
+use Log::Log4perl;
+
+use Bio::EnsEMBL::ApiVersion;
+use Bio::EnsEMBL::Registry;
+
+use FindBin;
+
+sub process1($$$$$);
+sub process_subgenes($$);
+sub process_genes($@);
+sub fetch_Gene_by_name($$);
+
+############################################################################
+
+my $root = "$FindBin::RealBin/..";
+
+my $opts = {
+    'primary-only' => 0,
+    'npartitions' => 1000,
+    'divisor' => undef,
+    'modulus' => undef,
+    'host' => 'ensembldb.ensembl.org',
+    'port' => 3337,		# 3337 is GRCh37; 5306 is GRCh38 (>=e76)
+    'user' => 'anonymous',
+    'pass' => undef,
+};
+
+my %ac_to_name = (
+    'NC_000001.10' => '1'  ,    'NC_000002.11' => '2'  ,    'NC_000003.11' => '3'  ,    'NC_000004.11' => '4'  ,
+    'NC_000005.9'  => '5'  ,    'NC_000006.11' => '6'  ,    'NC_000007.13' => '7'  ,    'NC_000008.10' => '8'  ,
+    'NC_000009.11' => '9'  ,    'NC_000010.10' => '10' ,    'NC_000011.9'  => '11' ,    'NC_000012.11' => '12' ,
+    'NC_000013.10' => '13' ,    'NC_000014.8'  => '14' ,    'NC_000015.9'  => '15' ,    'NC_000016.9'  => '16' ,
+    'NC_000017.10' => '17' ,    'NC_000018.9'  => '18' ,    'NC_000019.9'  => '19' ,    'NC_000020.10' => '20' ,
+    'NC_000021.8'  => '21' ,    'NC_000022.10' => '22' ,    'NC_000023.10' => 'X'  ,    'NC_000024.9'  => 'Y'  ,
+    'NC_012920.1'  => 'MT' ,
+    'NT_113878.1'  => 'HSCHR1_RANDOM_CTG5',    'NT_167207.1'  => 'HSCHR1_RANDOM_CTG12',
+    'NT_113885.1'  => 'HSCHR4_RANDOM_CTG2',    'NT_113888.1'  => 'HSCHR4_RANDOM_CTG3',
+    'NT_113901.1'  => 'HSCHR7_RANDOM_CTG1',    'NT_113909.1'  => 'HSCHR8_RANDOM_CTG1',
+    'NT_113907.1'  => 'HSCHR8_RANDOM_CTG4',    'NT_113914.1'  => 'HSCHR9_RANDOM_CTG1',
+    'NT_113916.2'  => 'HSCHR9_RANDOM_CTG2',    'NT_113915.1'  => 'HSCHR9_RANDOM_CTG4',
+    'NT_113911.1'  => 'HSCHR9_RANDOM_CTG5',    'NT_113921.2'  => 'HSCHR11_RANDOM_CTG2',
+    'NT_113941.1'  => 'HSCHR17_RANDOM_CTG1',    'NT_113943.1'  => 'HSCHR17_RANDOM_CTG2',
+    'NT_113930.1'  => 'HSCHR17_RANDOM_CTG3',    'NT_113945.1'  => 'HSCHR17_RANDOM_CTG4',
+    'NT_113947.1'  => 'HSCHR18_RANDOM_CTG1',    'NT_113948.1'  => 'HSCHR19_RANDOM_CTG1',
+    'NT_113949.1'  => 'HSCHR19_RANDOM_CTG2',    'NT_113950.2'  => 'HSCHR21_RANDOM_CTG9',
+    'NT_113961.1'  => 'HSCHRUN_RANDOM_CTG1',    'NT_113923.1'  => 'HSCHRUN_RANDOM_CTG2',
+    'NT_167208.1'  => 'HSCHRUN_RANDOM_CTG3',    'NT_167209.1'  => 'HSCHRUN_RANDOM_CTG4',
+    'NT_167210.1'  => 'HSCHRUN_RANDOM_CTG5',    'NT_167211.1'  => 'HSCHRUN_RANDOM_CTG6',
+    'NT_167212.1'  => 'HSCHRUN_RANDOM_CTG7',    'NT_113889.1'  => 'HSCHRUN_RANDOM_CTG9',
+    'NT_167213.1'  => 'HSCHRUN_RANDOM_CTG10',    'NT_167214.1'  => 'HSCHRUN_RANDOM_CTG11',
+    'NT_167215.1'  => 'HSCHRUN_RANDOM_CTG13',    'NT_167216.1'  => 'HSCHRUN_RANDOM_CTG14',
+    'NT_167217.1'  => 'HSCHRUN_RANDOM_CTG15',    'NT_167218.1'  => 'HSCHRUN_RANDOM_CTG16',
+    'NT_167219.1'  => 'HSCHRUN_RANDOM_CTG17',    'NT_167220.1'  => 'HSCHRUN_RANDOM_CTG19',
+    'NT_167221.1'  => 'HSCHRUN_RANDOM_CTG20',    'NT_167222.1'  => 'HSCHRUN_RANDOM_CTG21',
+    'NT_167223.1'  => 'HSCHRUN_RANDOM_CTG22',    'NT_167224.1'  => 'HSCHRUN_RANDOM_CTG23',
+    'NT_167225.1'  => 'HSCHRUN_RANDOM_CTG24',    'NT_167226.1'  => 'HSCHRUN_RANDOM_CTG25',
+    'NT_167227.1'  => 'HSCHRUN_RANDOM_CTG26',    'NT_167228.1'  => 'HSCHRUN_RANDOM_CTG27',
+    'NT_167229.1'  => 'HSCHRUN_RANDOM_CTG28',    'NT_167230.1'  => 'HSCHRUN_RANDOM_CTG29',
+    'NT_167231.1'  => 'HSCHRUN_RANDOM_CTG30',    'NT_167232.1'  => 'HSCHRUN_RANDOM_CTG31',
+    'NT_167233.1'  => 'HSCHRUN_RANDOM_CTG32',    'NT_167234.1'  => 'HSCHRUN_RANDOM_CTG33',
+    'NT_167235.1'  => 'HSCHRUN_RANDOM_CTG34',    'NT_167236.1'  => 'HSCHRUN_RANDOM_CTG35',
+    'NT_167237.1'  => 'HSCHRUN_RANDOM_CTG36',    'NT_167238.1'  => 'HSCHRUN_RANDOM_CTG37',
+    'NT_167239.1'  => 'HSCHRUN_RANDOM_CTG38',    'NT_167240.1'  => 'HSCHRUN_RANDOM_CTG39',
+    'NT_167241.1'  => 'HSCHRUN_RANDOM_CTG40',    'NT_167242.1'  => 'HSCHRUN_RANDOM_CTG41',
+    'NT_167243.1'  => 'HSCHRUN_RANDOM_CTG42',
+    'NW_003571030.1' => 'HG989_PATCH',    'NW_003871055.3' => 'HG1287_PATCH',    'NW_003871056.3' => 'HG1292_PATCH',
+    'NW_004070864.2' => 'HG1472_PATCH',    'NW_003315905.1' => 'HSCHR1_1_CTG31',    'NW_003315906.1' => 'HSCHR1_2_CTG31',
+    'NW_003315907.1' => 'HSCHR1_3_CTG31',    'NW_003315903.1' => 'HG999_1_PATCH',    'NW_003315904.1' => 'HG999_2_PATCH',
+    'NW_003871057.1' => 'HG1293_PATCH',    'NW_004070863.1' => 'HG1471_PATCH',    'NW_004070865.1' => 'HG1473_PATCH',
+    'NW_003315908.1' => 'HSCHR2_1_CTG1',    'NW_003571032.1' => 'HG686_PATCH',    'NW_004504299.1' => 'HG953_PATCH',
+    'NW_003315909.1' => 'HSCHR2_1_CTG12',    'NW_003571033.2' => 'HSCHR2_2_CTG12',    'NW_003571031.1' => 'HG1007_PATCH',
+    'NW_003871060.1' => 'HSCHR3_1_CTG1',    'NW_003315910.1' => 'HG186_PATCH',    'NW_003315911.1' => 'HG280_PATCH',
+    'NW_003315912.1' => 'HG991_PATCH',    'NW_003871058.1' => 'HG1091_PATCH',    'NW_003871059.1' => 'HG325_PATCH',
+    'NW_004775426.1' => 'HG957_PATCH',    'NW_003315913.1' => 'HSCHR3_1_CTG2_1',    'NW_004775427.1' => 'HG174_HG254_PATCH',
+    'NW_003315915.1' => 'HSCHR4_1_CTG6',    'NW_003315916.1' => 'HSCHR4_2_CTG9',    'NW_003571035.1' => 'HG706_PATCH',
+    'NW_003315914.1' => 'HSCHR4_1_CTG12',    'NW_003571034.1' => 'HG1032_PATCH',    'NW_003315917.2' => 'HSCHR5_1_CTG1',
+    'NW_003315918.1' => 'HSCHR5_1_CTG2',    'NW_003315920.1' => 'HSCHR5_2_CTG1',    'NW_003571036.1' => 'HSCHR5_3_CTG1',
+    'NW_003871061.1' => 'HG1063_PATCH',    'NW_004775428.1' => 'HG1082_HG167_PATCH',    'NW_003315919.1' => 'HSCHR5_1_CTG5',
+    'NW_003871063.1' => 'HG1322_PATCH',    'NW_004070866.1' => 'HG27_PATCH',    'NW_003315921.1' => 'HSCHR6_1_CTG5',
+    'NW_003871062.1' => 'HG1304_PATCH',    'NW_004504300.1' => 'HG357_PATCH',    'NW_004775429.1' => 'HG193_PATCH',
+    'NW_004166862.1' => 'HSCHR6_2_CTG5',    'NW_003571037.1' => 'HG115_PATCH',    'NW_003571038.1' => 'HG14_PATCH',
+    'NW_003571039.1' => 'HG736_PATCH',    'NW_003571041.1' => 'HG946_PATCH',    'NW_003871064.1' => 'HG1257_PATCH',
+    'NW_003871065.1' => 'HG1308_PATCH',    'NW_004775430.1' => 'HG444_PATCH',    'NW_003315922.2' => 'HSCHR7_1_CTG6',
+    'NW_003571040.1' => 'HG7_PATCH',    'NW_003315923.1' => 'HG104_HG975_PATCH',    'NW_003315924.1' => 'HG243_PATCH',
+    'NW_003571042.1' => 'HG19_PATCH',    'NW_003871066.2' => 'HG418_PATCH',    'NW_004775431.1' => 'HG1699_PATCH',
+    'NW_003315928.1' => 'HSCHR9_1_CTG1',    'NW_003871067.1' => 'HG962_PATCH',    'NW_003315929.1' => 'HSCHR9_1_CTG35',
+    'NW_003315930.1' => 'HSCHR9_2_CTG35',    'NW_003315931.1' => 'HSCHR9_3_CTG35',    'NW_003315925.1' => 'HG79_PATCH',
+    'NW_003315926.1' => 'HG998_1_PATCH',    'NW_003315927.1' => 'HG998_2_PATCH',    'NW_004070867.1' => 'HG1500_PATCH',
+    'NW_004070868.1' => 'HG1501_PATCH',    'NW_004070869.1' => 'HG1502_PATCH',    'NW_004504301.1' => 'HG50_PATCH',
+    'NW_003315932.1' => 'HG544_PATCH',    'NW_003571043.1' => 'HG905_PATCH',    'NW_003871071.1' => 'HG871_PATCH',
+    'NW_003315934.1' => 'HSCHR10_1_CTG2',    'NW_003315935.1' => 'HSCHR10_1_CTG5',    'NW_003315933.1' => 'HG995_PATCH',
+    'NW_003871068.1' => 'HG1211_PATCH',    'NW_003871069.1' => 'HG311_PATCH',    'NW_003871070.1' => 'HG339_PATCH',
+    'NW_004070870.1' => 'HG1479_PATCH',    'NW_004504302.1' => 'HG1074_PATCH',    'NW_004775432.1' => 'HG979_PATCH',
+    'NW_003871075.1' => 'HG256_PATCH',    'NW_003871082.1' => 'HG873_PATCH',    'NW_003315936.1' => 'HSCHR11_1_CTG1_1',
+    'NW_003571045.1' => 'HG281_PATCH',    'NW_003871073.1' => 'HG142_HG150_NOVEL_TEST',    'NW_003871074.1' => 'HG151_NOVEL_TEST',
+    'NW_003571046.1' => 'HG536_PATCH',    'NW_003871076.1' => 'HG299_PATCH',    'NW_003871077.1' => 'HG305_PATCH',
+    'NW_003871078.1' => 'HG306_PATCH',    'NW_003871079.1' => 'HG348_PATCH',    'NW_003871080.1' => 'HG388_HG400_PATCH',
+    'NW_003871081.1' => 'HG414_PATCH',    'NW_003871072.2' => 'HG122_PATCH',    'NW_004070871.1' => 'HG865_PATCH',
+    'NW_003571048.1' => 'HG858_PATCH',    'NW_003571049.1' => 'HSCHR12_1_CTG1',    'NW_003871083.2' => 'HG344_PATCH',
+    'NW_003315938.1' => 'HSCHR12_1_CTG2',    'NW_003315939.1' => 'HSCHR12_1_CTG2_1',    'NW_003315941.1' => 'HSCHR12_2_CTG2_1',
+    'NW_003315942.2' => 'HSCHR12_3_CTG2_1',    'NW_003571050.1' => 'HSCHR12_2_CTG2',    'NW_003571047.1' => 'HG1133_PATCH',
+    'NW_004504303.2' => 'HG1595_PATCH',    'NW_003315940.1' => 'HSCHR12_1_CTG5',    'NW_003315937.1' => 'HG996_PATCH',
+    'NW_003571051.1' => 'HG531_PATCH',    'NW_004166863.1' => 'HG1592_PATCH',    'NW_003315943.1' => 'HSCHR15_1_CTG4',
+    'NW_003315944.1' => 'HSCHR15_1_CTG8',    'NW_003871084.1' => 'HG971_PATCH',    'NW_003315945.1' => 'HSCHR16_1_CTG3_1',
+    'NW_003871085.1' => 'HG1208_PATCH',    'NW_003315946.1' => 'HSCHR16_2_CTG3_1',    'NW_004070872.2' => 'HG417_PATCH',
+    'NW_003315952.2' => 'HSCHR17_1_CTG1',    'NW_003315948.2' => 'HG745_PATCH',    'NW_003315949.1' => 'HG75_PATCH',
+    'NW_003315950.2' => 'HG987_PATCH',    'NW_003315951.1' => 'HG990_PATCH',    'NW_003871090.1' => 'HG883_PATCH',
+    'NW_004166864.2' => 'HG385_PATCH',    'NW_004775433.1' => 'HG1591_PATCH',    'NW_003315953.1' => 'HSCHR17_1_CTG4',
+    'NW_003871091.1' => 'HSCHR17_4_CTG4',    'NW_003871092.1' => 'HSCHR17_5_CTG4',    'NW_003871093.1' => 'HSCHR17_6_CTG4',
+    'NW_003315947.1' => 'HG183_PATCH',    'NW_003571052.1' => 'HG185_PATCH',    'NW_003871088.1' => 'HG747_PATCH',
+    'NW_003871086.1' => 'HG1146_PATCH',    'NW_003315954.1' => 'HSCHR17_2_CTG4',    'NW_003315955.1' => 'HSCHR17_3_CTG4',
+    'NW_003871089.1' => 'HG748_PATCH',    'NW_003871087.1' => 'HG271_PATCH',    'NW_003315956.1' => 'HSCHR18_1_CTG1_1',
+    'NW_003315957.1' => 'HSCHR18_1_CTG2',    'NW_003315958.1' => 'HSCHR18_1_CTG2_1',    'NW_003315959.1' => 'HSCHR18_2_CTG1_1',
+    'NW_003315960.1' => 'HSCHR18_2_CTG2',    'NW_003315961.1' => 'HSCHR18_2_CTG2_1',    'NW_003571053.2' => 'HG730_PATCH',
+    'NW_003871094.1' => 'HG729_PATCH',    'NW_003315962.1' => 'HSCHR19_1_CTG3',    'NW_003315963.1' => 'HSCHR19_1_CTG3_1',
+    'NW_003315964.2' => 'HSCHR19_2_CTG3',    'NW_003315965.1' => 'HSCHR19_3_CTG3',    'NW_004166865.1' => 'HG1079_PATCH',
+    'NW_004775434.1' => 'HG1350_HG959_PATCH',    'NW_003571054.1' => 'HSCHR19LRC_COX1_CTG1',    'NW_003571055.1' => 'HSCHR19LRC_COX2_CTG1',
+    'NW_003571056.1' => 'HSCHR19LRC_LRC_I_CTG1',    'NW_003571057.1' => 'HSCHR19LRC_LRC_J_CTG1',    'NW_003571058.1' => 'HSCHR19LRC_LRC_S_CTG1',
+    'NW_003571059.1' => 'HSCHR19LRC_LRC_T_CTG1',    'NW_003571060.1' => 'HSCHR19LRC_PGF1_CTG1',    'NW_003571061.1' => 'HSCHR19LRC_PGF2_CTG1',
+    'NW_003315966.1' => 'HSCHR20_1_CTG1',    'NW_003571063.2' => 'HG506_HG507_HG1000_PATCH',    'NW_003871095.1' => 'HG144_PATCH',
+    'NW_004504304.1' => 'HG944_PATCH',    'NW_003315967.1' => 'HSCHR21_1_CTG1_1',    'NW_003315968.1' => 'HSCHR21_2_CTG1_1',
+    'NW_003315969.1' => 'HSCHR21_3_CTG1_1',    'NW_003315970.1' => 'HSCHR21_4_CTG1_1',    'NW_004775435.1' => 'HG237_PATCH',
+    'NW_003871096.1' => 'HG329_PATCH',    'NW_004070873.1' => 'HG1486_PATCH',    'NW_004070874.1' => 'HG1487_PATCH',
+    'NW_004070875.1' => 'HG1488_PATCH',    'NW_003315971.2' => 'HSCHR22_1_CTG1',    'NW_003315972.1' => 'HSCHR22_1_CTG2',
+    'NW_004504305.1' => 'HSCHR22_2_CTG1',    'NW_004070876.1' => 'HG497_PATCH',    'NW_003571064.2' => 'HG480_HG481_PATCH',
+    'NW_003871103.3' => 'HG1497_PATCH',    'NW_003871098.1' => 'HG1423_PATCH',    'NW_003871099.1' => 'HG1424_PATCH',
+    'NW_003871100.1' => 'HG1425_PATCH',    'NW_003871101.3' => 'HG1426_PATCH',    'NW_003871102.1' => 'HG375_PATCH',
+    'NW_004070877.1' => 'HG1433_PATCH',    'NW_004070878.1' => 'HG1434_PATCH',    'NW_004070879.1' => 'HG1435_PATCH',
+    'NW_004070880.2' => 'HG1436_HG1432_PATCH',    'NW_004070881.1' => 'HG1437_PATCH',    'NW_004070882.1' => 'HG1438_PATCH',
+    'NW_004070883.1' => 'HG1439_PATCH',    'NW_004070884.1' => 'HG1440_PATCH',    'NW_004070885.1' => 'HG1441_PATCH',
+    'NW_004070886.1' => 'HG1442_PATCH',    'NW_004070887.1' => 'HG1443_HG1444_PATCH',    'NW_004070888.1' => 'HG1453_PATCH',
+    'NW_004070889.1' => 'HG1458_PATCH',    'NW_004070890.2' => 'HG1459_PATCH',    'NW_004070891.1' => 'HG1462_PATCH',
+    'NW_004070892.1' => 'HG1463_PATCH',    'NW_004070893.1' => 'HG1490_PATCH',    'NW_004166866.1' => 'HG29_PATCH',
+    'NT_167244.1'  => 'HSCHR6_MHC_APD_CTG1',    'NT_113891.2'  => 'HSCHR6_MHC_COX_CTG1',    'NT_167245.1'  => 'HSCHR6_MHC_DBB_CTG1',
+    'NT_167246.1'  => 'HSCHR6_MHC_MANN_CTG1',    'NT_167247.1'  => 'HSCHR6_MHC_MCF_CTG1',    'NT_167248.1'  => 'HSCHR6_MHC_QBL_CTG1',
+    'NT_167249.1'  => 'HSCHR6_MHC_SSTO_CTG1',    'NT_167250.1'  => 'HSCHR4_1_CTG9',    'NT_167251.1'  => 'HSCHR17_1_CTG5',
+    );
+my %name_to_ac = map { $ac_to_name{$_} => $_ } keys %ac_to_name;
+
+
+my $method = 'genebuild';
+
+my $accepted_biotypes = undef;	# no filtering
+#my $accepted_biotypes = { map {$_ => 1} qw(protein_coding pseudogene miRNA snRNA snoRNA processed_transcript) };
+
+############################################################################
+
+Log::Log4perl->init_once( "$root/etc/logging.conf" );
+my $logger = Log::Log4perl->get_logger();
+
+GetOptions($opts,
+	   'config|C=s',
+	   'divisor|d=i',
+	   'host|h=s',
+	   'modulus|m=i',
+	   'npartitions|n=i',
+	   'port|p=s',
+	   'prefix=s',
+	   'user|u=s',
+	   'primary-only+',
+    )
+    || die("$0: you got usage issues, homey\n");
+
+
+my $eversion = software_version();
+my $origin = "ensembl-$eversion";
+my $prefix = $opts->{prefix} || "$origin-$opts->{port}";
+mkdir($prefix);
+
+
+my $registry = 'Bio::EnsEMBL::Registry';
+$registry->load_registry_from_db(
+    -host => $opts->{host},
+    -user => $opts->{user},
+    -port => $opts->{port},
+    -pass => $opts->{pass},
+    -species => 'homo sapiens',
+    );
+
+#$registry->version_check()
+#    || die("Version check failed");
+
+my $ga = $registry->get_adaptor( 'homo sapiens', 'core', 'gene' );
+my $sa = $registry->get_adaptor( 'homo sapiens', 'core', 'slice' );
+my $ta = $registry->get_adaptor( 'homo sapiens', 'core', 'transcript' );
+
+$logger->info(sprintf("connected to %s @ %s:%s", 
+		      $ga->dbc()->dbname(), $opts->{host}, $opts->{port}));
+
+
+my @Genes;
+if (@ARGV) {
+    @Genes = map {fetch_Gene_by_name($ga,$_)} @ARGV;
+} else {
+    @Genes = @{$ga->fetch_all()};
+}
+
+my $n0 = $#Genes+1;
+@Genes = grep {$_->external_db() eq 'HGNC'} @Genes;
+my $n1 = $#Genes+1;
+$logger->info(sprintf("%d Genes fetched, %d after filtering for HGNC", $n0, $n1));
+
+process_genes($opts,@Genes);
+
+exit(0);
+
+############################################################################
+
+sub fetch_Gene_by_name($$) {
+    my ($ga, $hgnc) = @_;
+    my @Genes = @{ $ga->fetch_all_by_external_name($hgnc,'HGNC') };
+
+    # Limit replies to only those in HGNC
+    # For some reason, fetch_all_... doesn't honor the 'HGNC' arg above. Sigh.
+    @Genes = grep {$_->external_db() eq 'HGNC' and $_->external_name() eq $hgnc} @Genes;
+
+    if ($#Genes == -1) {
+	$logger->error("gene $hgnc is not in Ensembl");
+	return;
+    }
+    foreach my $g (@Genes) {
+	if ($hgnc ne $g->external_name()) {
+	    $logger->warn(sprintf("Requested gene %s; got reply for %s",
+				  $hgnc, $g->external_name()));
+	}
+    }
+    return @Genes;
+}
+
+
+sub process_genes($@) {
+    my ($opts, @genes) = @_;
+    my $ngenes = $#genes+1;
+    my $npart = $ngenes < $opts->{npartitions} ? 1 : $opts->{npartitions};
+    my $nper = $ngenes/$npart;
+    @genes = sort {$a->external_name() cmp $b->external_name()} @genes;
+    for(my $i=0; $i<$npart; $i++) {
+	next if (defined $opts->{modulus} 
+		 and defined $opts->{divisor}
+		 and $i % $opts->{divisor} != $opts->{modulus});
+	my $s = int($nper * $i);
+	my $e = int($nper * ($i+1)) - 1;
+	my $pfx = sprintf("$prefix/%04d",$i);
+	my @subgenes = @genes[$s..$e];
+	my $msg = sprintf("subset: $pfx: %d/%d (%.1f%%) [%d, %d] = [%s,%s]...",
+			  ($i+1), $npart, ($i+1)/$npart*100, $s, $e,
+			  $subgenes[0]->external_name(), $subgenes[$#subgenes]->external_name());
+	if (-d $pfx) {
+	    $logger->info($msg . "$pfx already exists; skipping");
+	} else {
+	    my $tpfx = $pfx . ".tmp";
+	    remove_tree($tpfx);
+	    mkdir($tpfx);
+	    $logger->info($msg);
+	    process_subgenes(\@subgenes, $tpfx);
+	    rename($tpfx,$pfx);
+	}
+    }
+}
+
+
+sub process_subgenes($$) {
+    my ($subgenes,$prefix) = @_;
+
+    my $tiw_fn = "$prefix/txinfo.gz";
+    my $esw_fn = "$prefix/exonset.gz";
+    my $faw_fn = "$prefix/fasta.gz";
+    my $aaw_fn = "$prefix/assocacs.gz";
+
+    my $tiw = IO::Zlib->new("$tiw_fn.tmp", "wb");
+    (defined $tiw)
+	|| die("$tiw_fn.tmp: $!");
+    my $esw = IO::Zlib->new("$esw_fn.tmp", "wb");
+    my $faw = IO::Zlib->new("$faw_fn.tmp", "wb");
+    my $aaw = IO::Zlib->new("$aaw_fn.tmp", "wb");
+
+    $tiw->print( join("\t",qw(origin ac hgnc cds_se_i exons_se_i)), "\n" );
+    $esw->print( join("\t",qw(tx_ac alt_ac method strand exons_se_i)), "\n" );
+    $aaw->print( join("\t",qw(hgnc tx_ac pro_ac origin)), "\n" );
+
+    for(my $i=0; $i<=$#$subgenes; $i++) {
+	my $g = $subgenes->[$i];
+	process1($g,$tiw,$esw,$faw,$aaw);
+	$logger->info(sprintf("%d/%d (%.1f%%): gene %s\n",
+			      ($i+1), ($#$subgenes+1), ($i+1)/($#$subgenes+1)*100,
+			      $g->external_name()));
+    }
+    
+    $tiw->close();
+    $esw->close();
+    $faw->close();
+    $aaw->close();
+
+    rename("$tiw_fn.tmp",$tiw_fn);
+    rename("$esw_fn.tmp",$esw_fn);
+    rename("$faw_fn.tmp",$faw_fn);
+    rename("$aaw_fn.tmp",$aaw_fn);
+}
+
+
+
+my %tx_seen;
+sub process1($$$$$) {
+    my ($g,$tiw,$esw,$faw,$aaw) = @_;
+    my $hgnc = $g->external_name();
+
+    my @tx = @{ $g->get_all_Transcripts };
+    $logger->info(sprintf("%d transcripts for gene %s\n",$#tx+1,$hgnc));
+
+    foreach my $tx (@tx) {
+	if (exists $tx_seen{$tx->display_id}) {
+	    my @others = sort(@{$tx_seen{$tx->display_id}});
+	    $logger->warn(sprintf("gene %s: %s already seen for %d genes (%s); skipping",
+				  $hgnc, $tx->display_id, $#others+1, join(",",@others)));
+	    push(@{$tx_seen{$tx->display_id}},$hgnc);
+	    next;
+	}
+	push(@{$tx_seen{$tx->display_id}},$hgnc);
+
+	if (defined $accepted_biotypes and not exists $accepted_biotypes->{$tx->biotype}) {
+	    $logger->info(sprintf("%s: is type %s; skipping",$tx->display_id,$tx->biotype));
+	    next;
+	}
+
+	my $hgnc = $tx->get_Gene()->external_name();
+	my $tx_c = @{$tx->project('chromosome')}[0];
+	if (not defined $tx_c) {
+	    $logger->error(sprintf("Can't project %s onto a chromosome; skipping",$tx->display_id));
+	    next;
+	}
+	my $srn = $tx_c->to_Slice()->seq_region_name;
+	if (not exists $name_to_ac{$srn}) {
+	    $logger->warn(sprintf("gene %s, tx %s (%s): on %s, no accession available; skipping",
+				  $hgnc, $tx->display_id(), $g->biotype(), $srn));
+	    next;
+	}
+	my $ac = $name_to_ac{$srn};
+	if ($opts->{primary_only} and $ac !~ m/^NC_/) {
+	    $logger->warn(sprintf("gene %s, tx %s (%s): on non-chromosomal sequence %s (%s); skipping",
+				  $hgnc, $tx->display_id(), $g->biotype(), $ac, $srn));
+	    next;
+	}
+	my $seq = $tx->seq->seq;
+	my $pseq = $tx->translate();
+
+	$logger->info(sprintf("%s: %s (%s; %d nt); %s\n",
+			      $hgnc, $tx->display_id, 
+			      $tx->strand, length($seq),
+			      defined($pseq) ? $pseq->display_id : $tx->biotype,
+			      ));
+
+	# write sequence and seqinfo
+	$faw->print(">",$tx->display_id,"\n",$seq,"\n");
+	if (defined $pseq) {
+	    $faw->print(">",$pseq->display_id,"\n",$pseq->seq,"\n");
+	    $aaw->print(join("\t", $hgnc, $tx->display_id, $pseq->display_id, $origin), "\n");
+	}
+
+	# write exonset
+	my @g_exons = @{ $tx->get_all_Exons() };
+	my $g_exons_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @g_exons ));
+	$esw->print( join("\t", $tx->display_id(), $ac, $method, $tx->strand(), $g_exons_str), "\n");
+
+	# write txinfo
+	my $tm = $tx->get_TranscriptMapper();
+	my @c_exon_coords = map( $tm->genomic2cdna($_->start(),$_->end(),$tx->strand), @g_exons );
+	my $c_exon_str = join(';', map( sprintf("%d,%d",$_->start()-1,$_->end()), @c_exon_coords ));
+	my $cds_se_i = '';
+	if ($tx->biotype eq 'protein_coding') {
+	    $cds_se_i = sprintf("%d,%d",$tx->cdna_coding_start-1,$tx->cdna_coding_end);
+	}
+	$tiw->print(join("\t", $origin, $tx->display_id(), $hgnc, $cds_se_i, $c_exon_str),"\n");
+    }
+}
+
+
+## <LICENSE>
+## Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
+## 
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+## 
+##     http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+## </LICENSE>
