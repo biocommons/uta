@@ -1,0 +1,35 @@
+<opt>
+<data name="IG_C_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="IG_C_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000478"/>
+<data name="IG_D_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="IG_D_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000458"/>
+<data name="IG_J_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="IG_J_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000470"/>
+<data name="IG_V_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="IG_V_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000466"/>
+<data name="TR_gene" biotype_group="coding" object_type="transcript" so_acc="SO:3000000"/>
+<data name="nonsense_mediated_decay" biotype_group="coding" object_type="transcript" so_acc="SO:0000234"/>
+<data name="polymorphic_pseudogene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="polymorphic_pseudogene" biotype_group="coding" object_type="transcript" so_acc="SO:0000234"/>
+<data name="protein_coding" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="protein_coding" biotype_group="coding" object_type="transcript" so_acc="SO:0000234"/>
+<data name="IG_Z_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="IG_M_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="TR_V_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="TR_C_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="TR_J_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="TR_V_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000466"/>
+<data name="TR_C_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000478"/>
+<data name="TR_J_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000470"/>
+<data name="IG_M_gene" biotype_group="coding" object_type="transcript" so_acc="SO:3000000"/>
+<data name="IG_Z_gene" biotype_group="coding" object_type="transcript" so_acc="SO:3000000"/>
+<data name="TR_D_gene" biotype_group="coding" object_type="transcript" so_acc="SO:0000458"/>
+<data name="TR_D_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="non_stop_decay" biotype_group="coding" object_type="transcript" so_acc="SO:0000234"/>
+<data name="IG_LV_gene" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="IG_LV_gene" biotype_group="coding" object_type="transcript" so_acc="SO:3000000"/>
+<data name="nontranslating_CDS" biotype_group="coding" object_type="gene" so_acc="SO:0001217"/>
+<data name="nontranslating_CDS" biotype_group="coding" object_type="transcript" so_acc="SO:0000234"/>
+<data name="unknown_likely_coding" biotype_group="coding" object_type="gene" so_acc=""/>
+<data name="unknown_likely_coding" biotype_group="coding" object_type="transcript" so_acc=""/>
+</opt>

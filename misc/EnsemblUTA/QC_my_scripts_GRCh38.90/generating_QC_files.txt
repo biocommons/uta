@@ -1,0 +1,5 @@
+# Unzip files
+find ./ -name \*.gz -exec gunzip {} \;
+
+# Concatenate files
+find /Users/pjf9/EnsemblUTA/QC_my_scripts_GRCh38.90/ensembl-90-5306 -type f -name 'exonset' -exec cat {} + >exonset
