@@ -9,7 +9,6 @@ ftp://ftp.ncbi.nih.gov/gene/DATA/gene2refseq.gz
 
 import io
 import sys
-import cStringIO
 
 from csv import DictReader
 
@@ -27,7 +26,7 @@ def opener(fs, mode="r"):
     return io.open(fs, mode)
 
 if __name__ == "__main__":
-    ga_in = NCBITSVReader(opener(sys.argv[1], "r"))
+    ga_in = NCBITSVReader(opener(sys.argv[1], "rt"))
     gaw = GeneAccessionsWriter(sys.stdout)
     seen = set()
 

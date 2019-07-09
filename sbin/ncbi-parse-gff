@@ -64,17 +64,17 @@ class ExonAlignment(object):
     ref_ac = attr.ib()
     origin = attr.ib()
     match_type = attr.ib()
-    g_start = attr.ib(convert=int)
-    g_end = attr.ib(convert=int)
-    score = attr.ib(convert=float)
+    g_start = attr.ib(converter=int)
+    g_end = attr.ib(converter=int)
+    score = attr.ib(converter=float)
     strand = attr.ib()
     aln_id = attr.ib()
     tx_ac = attr.ib()
-    tx_start = attr.ib(convert=int)
-    tx_end = attr.ib(convert=int)
-    pct_coverage = attr.ib(convert=float)
-    pct_identity_gap = attr.ib(convert=float)
-    pct_identity_ungap = attr.ib(convert=float)
+    tx_start = attr.ib(converter=int)
+    tx_end = attr.ib(converter=int)
+    pct_coverage = attr.ib(converter=float)
+    pct_identity_gap = attr.ib(converter=float)
+    pct_identity_ungap = attr.ib(converter=float)
 
 
 @attr.s(slots=True)
@@ -180,16 +180,13 @@ def read_exon_alignments(fn):
         "pct_identity_gap=(?P<pct_identity_gap>[^;]+);"
         "pct_identity_ungap=(?P<pct_identity_ungap>[^;]+)"
     )
-    fh = io.open(fn, "rb")
-    while fh.peek(1)[0] == "#":
-        fh.readline()
-    while fh.peek(3)[0:3] != "###":
-        line = fh.readline()
-        try:
-            yield ExonAlignment(**line_re.match(line).groupdict())
-        except AttributeError:
-            raise Exception("Failed at", line)
-    raise StopIteration
+    fh = io.open(fn, "rt")
+    for line in fh.readlines():
+        if not line.startswith('#'):
+            try:
+                yield ExonAlignment(**line_re.match(line).groupdict())
+            except AttributeError:
+                raise Exception("Failed at", line)
 
 
 def read_transcript_alignments(fn):
@@ -252,7 +249,7 @@ if __name__ == "__main__":
     opts = parse_args(sys.argv[1:])
 
     if opts.geneacs:
-        gar = GeneAccessionsReader(gzip.open(opts.geneacs, "r"))
+        gar = GeneAccessionsReader(gzip.open(opts.geneacs, "rt"))
         tx2gene = {ga.tx_ac: ga.hgnc for ga in gar}
         logger.info(
             "read {} gene-accession mappings from {}".format(len(tx2gene), opts.geneacs))
@@ -261,7 +258,7 @@ if __name__ == "__main__":
         logger.info("No geneacs (-G) file provided; gene info will be empty.")
         
     if opts.txinfo:
-        tir = TxInfoReader(gzip.open(opts.txinfo, "r"))
+        tir = TxInfoReader(gzip.open(opts.txinfo, "rt"))
         tx2ti = {ti.ac: ti for ti in tir}
         logger.info(
             "read {} CDS data from {}".format(len(tx2ti), opts.txinfo))
@@ -272,8 +269,8 @@ if __name__ == "__main__":
     es_fn = opts.prefix + "exonset.gz"
     ti_fn = opts.prefix + "txinfo.gz"
 
-    esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "w"))
-    tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "w"))
+    esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "wt"))
+    tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "wt"))
 
     ties = {}
     ti_written = collections.defaultdict(lambda: False)

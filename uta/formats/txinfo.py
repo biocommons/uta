@@ -11,7 +11,7 @@ class TxInfoWriter(csv.DictWriter):
 
     def __init__(self, tsvfile):
         csv.DictWriter.__init__(
-            self, tsvfile, fieldnames=TxInfo._fields, delimiter=b'\t', lineterminator="\n")
+            self, tsvfile, fieldnames=TxInfo._fields, delimiter='\t', lineterminator="\n")
         csv.DictWriter.writeheader(self)
 
     def write(self, si):
@@ -21,7 +21,7 @@ class TxInfoWriter(csv.DictWriter):
 class TxInfoReader(csv.DictReader):
 
     def __init__(self, tsvfile):
-        csv.DictReader.__init__(self, tsvfile, delimiter=b'\t')
+        csv.DictReader.__init__(self, tsvfile, delimiter='\t')
         if set(self.fieldnames) != set(TxInfo._fields):
             raise RuntimeError('Format error: expected header with these columns: '
                                + ', '.join(TxInfo._fields) + " but got: " + ', '.join(self.fieldnames))

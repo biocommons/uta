@@ -407,7 +407,7 @@ def load_origin(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    orir = csv.DictReader(open(opts["FILE"]), delimiter=b'\t')
+    orir = csv.DictReader(open(opts["FILE"]), delimiter='\t')
     for rec in orir:
         ori = usam.Origin(name=rec["name"],
                           descr=_none_if_empty(rec["descr"]),

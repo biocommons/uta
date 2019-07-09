@@ -10,7 +10,7 @@ class SeqInfoWriter(csv.DictWriter):
 
     def __init__(self, tsvfile):
         csv.DictWriter.__init__(
-            self, tsvfile, fieldnames=SeqInfo._fields, delimiter=b'\t', lineterminator="\n")
+            self, tsvfile, fieldnames=SeqInfo._fields, delimiter='\t', lineterminator="\n")
         csv.DictWriter.writeheader(self)
 
     def write(self, si):
@@ -20,17 +20,20 @@ class SeqInfoWriter(csv.DictWriter):
 class SeqInfoReader(csv.DictReader):
 
     def __init__(self, tsvfile):
-        csv.DictReader.__init__(self, tsvfile, delimiter=b'\t')
+        csv.DictReader.__init__(self, tsvfile, delimiter='\t')
         if set(self.fieldnames) != set(SeqInfo._fields):
             raise RuntimeError('Format error: expected header with these columns: ' +
                                ','.join(SeqInfo._fields) + " but got: " + ','.join(self.fieldnames))
 
-    def next(self):
-        d = csv.DictReader.next(self)
+    def __next__(self):
+        d = csv.DictReader.__next__(self)
         si = SeqInfo(**d)
         if si.seq == '':
             si.seq = None
         return si
+
+    def next(self):
+        return self.__next__()
 
 
 if __name__ == '__main__':

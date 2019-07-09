@@ -43,7 +43,7 @@ class NCBITSVReader(object):
 
 
 if __name__ == "__main__":
-    from cStringIO import StringIO
+    from io import StringIO
     from pprint import pprint
 
     data = """#Format: tax_id GeneID Symbol LocusTag Synonyms dbXrefs chromosome map_location description 
