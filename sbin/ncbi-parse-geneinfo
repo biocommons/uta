@@ -26,7 +26,7 @@ def opener(fs, mode="r"):
 
 if __name__ == "__main__":
 
-    gi_in = NCBITSVReader(opener(sys.argv[1], "r"))
+    gi_in = NCBITSVReader(opener(sys.argv[1], "rt"))
     giw = GeneInfoWriter(sys.stdout)
 
     for rec in gi_in:

@@ -13,7 +13,7 @@ class GeneInfoWriter(csv.DictWriter):
 
     def __init__(self, tsvfile):
         csv.DictWriter.__init__(
-            self, tsvfile, fieldnames=GeneInfo._fields, delimiter=b'\t', lineterminator="\n")
+            self, tsvfile, fieldnames=GeneInfo._fields, delimiter='\t', lineterminator="\n")
         csv.DictWriter.writeheader(self)
 
     def write(self, si):
@@ -26,7 +26,7 @@ class GeneInfoWriter(csv.DictWriter):
 class GeneInfoReader(csv.DictReader):
 
     def __init__(self, tsvfile):
-        csv.DictReader.__init__(self, tsvfile, delimiter=b'\t')
+        csv.DictReader.__init__(self, tsvfile, delimiter='\t')
         if set(self.fieldnames) != set(GeneInfo._fields):
             raise RuntimeError('Format error: expected header with these columns: ' +
                                ','.join(GeneInfo._fields) + " but got: " + ','.join(self.fieldnames))
