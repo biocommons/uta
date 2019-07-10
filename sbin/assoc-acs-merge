@@ -34,8 +34,8 @@ class AssAccRec(object):
 def anyopen(fn):
     """returns a csv.DictReader for the given fn"""
     return sys.stdin if fn == "-" \
-      else gzip.open(fn) if fn.endswith(".gz") \
-      else io.open(fn)
+      else gzip.open(fn, 'rt') if fn.endswith(".gz") \
+      else io.open(fn, 'rt')
 
 
 if __name__ == "__main__":
