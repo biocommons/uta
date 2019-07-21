@@ -247,8 +247,8 @@ def load_exonset(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
-    esr = ufes.ExonSetReader(gzip.open(opts["FILE"]))
+    n_rows = len(gzip.open(opts["FILE"], 'rt').readlines()) - 1
+    esr = ufes.ExonSetReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
 
     n_new = 0
@@ -285,7 +285,7 @@ def load_geneinfo(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    gir = ufgi.GeneInfoReader(gzip.open(opts["FILE"]))
+    gir = ufgi.GeneInfoReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
 
     for i_gi, gi in enumerate(gir):
@@ -311,7 +311,7 @@ def load_ncbi_geneinfo(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(opts["FILE"]))
+    gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(opts["FILE"], 'rt'))
     for gi in gip:
         if gi["tax_id"] != "9606" or gi["Symbol_from_nomenclature_authority"] == "-":
             continue
@@ -371,7 +371,7 @@ def load_ncbi_seqgene(session, opts, cf):
     sg_filter = lambda r: (r["transcript"].startswith("NM_")
                            and r["group_label"] == "GRCh37.p10-Primary Assembly"
                            and r["feature_type"] in ["CDS", "UTR"])
-    sgparser = uta.parsers.seqgene.SeqGeneParser(gzip.open(opts["FILE"]),
+    sgparser = uta.parsers.seqgene.SeqGeneParser(gzip.open(opts["FILE"], 'rt'),
                                                  filter=sg_filter)
     slurp = sorted(list(sgparser),
                    key=lambda r: (r["transcript"], r["group_label"], r["chr_start"], r["chr_stop"]))
@@ -407,7 +407,7 @@ def load_origin(session, opts, cf):
         admin_role=cf.get("uta", "admin_role")))
     session.execute("set search_path = " + usam.schema_name)
 
-    orir = csv.DictReader(open(opts["FILE"]), delimiter=b'\t')
+    orir = csv.DictReader(open(opts["FILE"]), delimiter='\t')
     for rec in orir:
         ori = usam.Origin(name=rec["name"],
                           descr=_none_if_empty(rec["descr"]),
@@ -446,7 +446,7 @@ def load_seqinfo(session, opts, cf):
 
     n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
 
-    sir = ufsi.SeqInfoReader(gzip.open(opts["FILE"]))
+    sir = ufsi.SeqInfoReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
 
     sf = _get_seqfetcher(cf)
@@ -591,9 +591,8 @@ def load_txinfo(session, opts, cf):
             raise e
         return ori
 
-
-    n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
-    tir = ufti.TxInfoReader(gzip.open(opts["FILE"]))
+    n_rows = len(gzip.open(opts["FILE"], 'rt').readlines()) - 1
+    tir = ufti.TxInfoReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
 
     session.execute("set role {admin_role};".format(

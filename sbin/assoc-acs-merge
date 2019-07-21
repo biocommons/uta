@@ -34,18 +34,18 @@ class AssAccRec(object):
 def anyopen(fn):
     """returns a csv.DictReader for the given fn"""
     return sys.stdin if fn == "-" \
-      else gzip.open(fn) if fn.endswith(".gz") \
-      else io.open(fn)
+      else gzip.open(fn, 'rt') if fn.endswith(".gz") \
+      else io.open(fn, 'rt')
 
 
 if __name__ == "__main__":
     ofh = None
     aars = dict()
     for fn in sys.argv[1:]:
-        ifh = csv.DictReader(anyopen(fn), delimiter=b"\t")
+        ifh = csv.DictReader(anyopen(fn), delimiter="\t")
         
         if ofh is None:
-            ofh = csv.DictWriter(sys.stdout, fieldnames=out_header, delimiter=b"\t")
+            ofh = csv.DictWriter(sys.stdout, fieldnames=out_header, delimiter="\t")
             ofh.writeheader()
         
         for r in ifh:

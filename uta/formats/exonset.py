@@ -11,7 +11,7 @@ class ExonSetWriter(csv.DictWriter):
 
     def __init__(self, tsvfile):
         csv.DictWriter.__init__(
-            self, tsvfile, fieldnames=ExonSet._fields, delimiter=b'\t', lineterminator="\n")
+            self, tsvfile, fieldnames=ExonSet._fields, delimiter='\t', lineterminator="\n")
         csv.DictWriter.writeheader(self)
 
     def write(self, si):
@@ -21,14 +21,18 @@ class ExonSetWriter(csv.DictWriter):
 class ExonSetReader(csv.DictReader):
 
     def __init__(self, tsvfile):
-        csv.DictReader.__init__(self, tsvfile, delimiter=b'\t')
+        csv.DictReader.__init__(self, tsvfile, delimiter='\t')
         if set(self.fieldnames) != set(ExonSet._fields):
             raise RuntimeError('Format error: expected header with these columns: ' +
                                ','.join(ExonSet._fields) + " but got: " + ','.join(self.fieldnames))
 
-    def next(self):
-        d = csv.DictReader.next(self)
+    def __next__(self):
+        d = csv.DictReader.__next__(self)
         return ExonSet(**d)
+
+    def next(self):
+        return self.__next__()
+
 
 
 if __name__ == '__main__':

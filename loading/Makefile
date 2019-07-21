@@ -74,7 +74,7 @@ include .${CONF}.conf.mk
 .${CONF}.conf.mk: ${GLOBAL_CONF_FN} ${CONF_FN}
 	../dev/conf-to-vars $^ >$@
 
-schema=$(shell python -c 'import uta.models; print uta.models.schema_name')
+schema=$(shell python -c 'import uta.models; print(uta.models.schema_name)')
 
 
 ############################################################################

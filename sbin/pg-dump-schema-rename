@@ -27,34 +27,18 @@ import re
 import sys
 
 
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARN)
     logger = logging.getLogger(__name__)
 
     old_schema = sys.argv[1]
     new_schema = sys.argv[2]
-
-    # all regexps have the capture format (pre)(old schema)(post),
-    # meaning that there's only one replacement string format
-    repl = r'\1"{ns}"\2'.format(ns=new_schema)
-    dotted_ref_re =  re.compile(r'((?:ALTER) (?:FUNCTION|TABLE) )"?{os}"?(\.)'.format(os=old_schema))
-    scoped_ref_re =  re.compile(r'((?:ALTER|CREATE|GRANT ALL ON|GRANT USAGE ON|REVOKE ALL ON) SCHEMA )"?{os}"?(\W)'.format(os=old_schema))
-    comment1_re =    re.compile(r'(Name: )"?{os}"?(; Type: (?:ACL|SCHEMA);)'.format(os=old_schema))
-    comment2_re =    re.compile(r'(Schema: )"?{os}"?(;)'.format(os=old_schema))
-    search_path_re = re.compile(r'(SET search_path = .*?)"?{os}"?(.*)'.format(os=old_schema))
-    regexps = [dotted_ref_re, scoped_ref_re, comment1_re, comment2_re, search_path_re]
-
     for line in sys.stdin:
         line = line.rstrip()
-        for regexp in regexps:
-            new_line, n_subs = regexp.subn(repl,line)
-            if n_subs > 0:
-                line = new_line
-                break
+        line = line.replace(old_schema, new_schema)
 
         if old_schema in line:
             # If this happens, it 
-            raise Exception("{os} in line after replacements\n{line}".format(os=old_schema,line=line))
+            raise Exception("{os} in line after replacements\n{line}".format(os=old_schema, line=line))
 
         print(line)

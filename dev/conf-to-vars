@@ -18,7 +18,7 @@ Multiline config breaks variables. If any are found, they're skipped
 """
 
 import argparse
-import ConfigParser
+import configparser
 import logging
 import os
 import sys
@@ -33,15 +33,15 @@ if __name__ == "__main__":
         "conf_files", nargs="+", help="Configuration files to read in")
     args = parser.parse_args()
 
-    cp = ConfigParser.SafeConfigParser()
+    cp = configparser.ConfigParser()
     for cf in args.conf_files:
-        cp.readfp(open(cf))
+        cp.read_file(open(cf))
 
     for s in cp.sections():
         for o in cp.options(s):
             v = cp.get(s, o)
             if "\n" in v:
-                logger.warn(
+                logger.warning(
                     "option {s}:{o} contains newline; skipping".format(s=s, o=o))
                 continue
             print("{s}_{k}={v}".format(

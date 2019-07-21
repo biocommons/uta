@@ -3,7 +3,7 @@
 """write SeqInfo files from fasta"""
 
 import argparse
-import ConfigParser
+import configparser as ConfigParser
 import gzip
 import itertools
 import logging
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         logger.info("loaded " + conf_fn)
 
     in_fn = opts.FILES[0]
-    in_fh = gzip.open(in_fn) if in_fn.endswith(".gz") else open(in_fn)
+    in_fh = gzip.open(in_fn, 'rt') if in_fn.endswith(".gz") else open(in_fn)
     esr = ExonSetReader(in_fh)
     logger.info("opened " + in_fn)
 
