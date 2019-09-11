@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+
+import io
+import logging
+import os
+import re
+import sys
+
+import attr
+import coloredlogs
+
+
+_logger = logging.getLogger()
+
+
+@attr.s(slots=True)
+class ExonAlignment(object):
+    """alignment of a single exon"""
+    ref_ac = attr.ib()
+    origin = attr.ib()
+    match_type = attr.ib()
+    g_start = attr.ib(converter=int)
+    g_end = attr.ib(converter=int)
+    score = attr.ib(converter=float)
+    strand = attr.ib()
+    aln_id = attr.ib()
+    tx_ac = attr.ib()
+    tx_start = attr.ib(converter=int)
+    tx_end = attr.ib(converter=int)
+    pct_coverage = attr.ib(converter=float)
+    pct_identity_gap = attr.ib(converter=float)
+    pct_identity_ungap = attr.ib(converter=float)
+
+
+
+def read_exon_alignments(fn):
+    """read lines of NCBI's alignment gff file, fn, returning ExonAlignment records"""
+
+    # NC_000007.13	RefSeq	cDNA_match	50344265	50344518	254	+	.	ID=aln58042;Target=NM_001220765.2 1 254 +;gap_count=0;identity=0.0691326;idty=1;num_ident=428;num_mismatch=0;pct_coverage=6.91326;pct_identity_gap=100;pct_identity_ungap=100;score=254
+    # NC_000002.11  RefSeq  cDNA_match  179671939   179672150             212 -   .               ID=ed951d46-194c-477a-a480-4bc64530c5ba;Target=NM_001267550.2 1 212 +;gap_count=0;identity=0.999991;idty=1;num_ident=109223;num_mismatch=1;pct_coverage=100;pct_identity_gap=99.9991;pct_identity_ungap=99.9991
+    line_re = re.compile(
+        "(?P<ref_ac>\S+)\s+(?P<origin>\S+)\s+(?P<match_type>\S+)\s+"
+        "(?P<g_start>\d+)\s+(?P<g_end>\d+)\s+(?P<score>\S+)\s+"
+        "(?P<strand>[-+])\s+\.\s+ID=(?P<aln_id>[^;]+);Target=(?P<tx_ac>\S+)"
+        "\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+).+?"
+        "pct_coverage=(?P<pct_coverage>[^;]+);"
+        "pct_identity_gap=(?P<pct_identity_gap>[^;]+);"
+        "pct_identity_ungap=(?P<pct_identity_ungap>[^;]+)"
+    )
+    fh = io.open(fn, "rt")
+    for line in fh.readlines():
+        if not line.startswith('#'):
+            try:
+                d = line_re.match(line).groupdict()
+                if d["score"] == ".":   # seems to only occur in 1405.38
+                    d["score"] = 0
+                yield ExonAlignment(**d)
+            except AttributeError:
+                raise Exception("Failed at", line)
+            except ValueError:
+                import IPython; IPython.embed()	  ### TODO: Remove IPython.embed()
+
+
+if __name__ == "__main__":
+    coloredlogs.install(level="INFO")
+
+    last_key = None
+    last_end = None
+    tx_seen = set()
+    tx_5u = set()
+    tx_iu = set()
+
+    fn = sys.argv[1]
+    for ea in read_exon_alignments(fn):
+        # Use NCs only
+        if not ea.ref_ac.startswith("NC"):
+            continue
+
+        tx_seen.add(ea.tx_ac)
+        key = ea.ref_ac + "~" + ea.tx_ac
+
+        if last_key is None:
+            pass
+
+        elif last_key == key:
+            if ea.tx_start > last_end + 1:
+                tx_iu.add(ea.tx_ac)
+                _logger.warning(f"{key}: gap between {last_end} and {ea.tx_start}")
+
+        else:
+            if ea.tx_start != 1:
+                tx_5u.add(ea.tx_ac)
+                _logger.warning(f"{key}: transcript doesn't start at 1")
+            
+        last_key = key
+        last_end = ea.tx_end
+
+    tx_clean = tx_seen - tx_5u - tx_iu
+
+    print(f"{os.path.basename(fn)}: {len(tx_seen)} tx seen; {len(tx_clean)} clean; {len(tx_5u)} 5' unaligned; {len(tx_iu)} internal unaligned")
