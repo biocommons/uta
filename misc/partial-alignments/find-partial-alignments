@@ -64,7 +64,7 @@ def read_exon_alignments(fn):
 if __name__ == "__main__":
     coloredlogs.install(level="INFO")
 
-    last_key = None
+    last_aln_id = None
     last_end = None
     tx_seen = set()
     tx_5u = set()
@@ -77,22 +77,18 @@ if __name__ == "__main__":
             continue
 
         tx_seen.add(ea.tx_ac)
-        key = ea.ref_ac + "~" + ea.tx_ac
 
-        if last_key is None:
-            pass
-
-        elif last_key == key:
+        if last_aln_id == ea.aln_id:
             if ea.tx_start > last_end + 1:
                 tx_iu.add(ea.tx_ac)
-                _logger.warning(f"{key}: gap between {last_end} and {ea.tx_start}")
+                _logger.warning(f"{ea.ref_ac}~{ea.tx_ac} ({ea.aln_id}): gap between {last_end} and {ea.tx_start}")
 
         else:
             if ea.tx_start != 1:
                 tx_5u.add(ea.tx_ac)
-                _logger.warning(f"{key}: transcript doesn't start at 1")
-            
-        last_key = key
+                _logger.warning(f"{ea.ref_ac}~{ea.tx_ac} ({ea.aln_id}): transcript starts at {ea.tx_start}")
+
+        last_aln_id = ea.aln_id
         last_end = ea.tx_end
 
     tx_clean = tx_seen - tx_5u - tx_iu
