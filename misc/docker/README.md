@@ -3,22 +3,40 @@
 
 please replace the string uta_20170707 here with the correct version for which you would like to build.
 
-1. push dump to minion
+
+1. Push dump to minion
 see uta/loading/admin.mk
 
-2. build docker image
+
+2. Build docker image
 ```
-docker build -f uta.dockerfile --build-arg uta_version=uta_20170707 --rm=true -t biocommons/uta:uta_20170707 .
+UTA_VERSION=uta_20180821
+docker build -f uta.dockerfile --build-arg uta_version=$UTA_VERSION --rm=true -t biocommons/uta:$UTA_VERSION .
 ```
 
-3. test it
+
+3. Try to build a running container with the image
 ```
-docker run -v /tmp:/tmp --name uta_20170707 -p 10629:5432 biocommons/uta:uta_20170707
+docker run -v /tmp:/tmp -v uta_data:/usr/lib/postgresql/data --name $UTA_VERSION --network=host biocommons/uta:$UTA_VERSION
 ```
 
-4. if successful, tag and push
+`-v /tmp:/tmp` ensures that you'll reuse prior data downloads, if available
+
+
+4. If successful, tag and push
 ```
-docker tag biocommons/uta:uta_20170707 biocommons/uta
-docker push biocommons/uta:uta_20170707
+docker tag biocommons/uta:$UTA_VERSION biocommons/uta
+docker push biocommons/uta:$UTA_VERSION
 docker push biocommons/uta:latest
+```
+
+
+
+5. Reset!
+To start over on the above:
+
+```
+docker kill $UTA_VERSION
+docker rm $UTA_VERSION
+docker volume rm uta_data
 ```

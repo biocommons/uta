@@ -40,8 +40,20 @@ if ! [ -e "${UTA_PGD_FN}" ]; then
     mv "${UTA_PGD_FN}.tmp" "${UTA_PGD_FN}"
 fi
 
+# Build post-processing script
+cat <<EOF >/tmp/$UTA_VERSION.psql
+
+EOF
+
 gzip -cdq < "${UTA_PGD_FN}" \
     | psql -1e -U uta_admin -d uta -v ON_ERROR_STOP=1
+
+gzip -cdq < "${UTA_PGD_FN}" \
+    | perl -n \
+	   -e 'm/CREATE SCHEMA (uta_\d+)/ && print("ALTER DATABASE :DBNAME SET search_path=$1;\n");' \
+	   -e 'print if s/CREATE MATERIALIZED VIEW (.\S+) AS/REFRESH MATERIALIZED VIEW $1;/' \
+    | psql -1e -U uta_admin -d uta -v ON_ERROR_STOP=1
+
 
 cat <<EOF
 =======================================================================
