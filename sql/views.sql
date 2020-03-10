@@ -97,7 +97,7 @@ create or replace view tx_def_summary_v as
 select * from tx_def_summary_mv;
 
 
-CREATE OR REPLACE VIEW tx_similarity_v AS
+CREATE OR REPLACE VIEW tx_similarity_dv AS
 SELECT DISTINCT
        D1.tx_ac as tx_ac1, D2.tx_ac as tx_ac2,
        D1.hgnc = D2.hgnc as hgnc_eq,
@@ -113,3 +113,13 @@ JOIN tx_def_summary_mv D2 on (D1.tx_ac != D2.tx_ac
                                    or D1.cds_es_fp=D2.cds_es_fp
                                    or D1.cds_exon_lengths_fp=D2.cds_exon_lengths_fp
                                    ));
+
+CREATE MATERIALIZED VIEW tx_similarity_mv AS
+SELECT * FROM tx_similarity_dv WITH NO DATA;
+
+CREATE UNIQUE INDEX tx_similarity_mv_tx_acs ON tx_similarity_mv (tx_ac1, tx_ac2);
+
+-- backward compatibility for older view
+CREATE OR REPLACE VIEW tx_similarity_v AS
+SELECT * FROM tx_similarity_mv;
+
