@@ -102,8 +102,8 @@ as a local postgresql process. The only requirement is docker itself
 #. Run the image 
 
    ::
-      
-      $ docker run -dit --name uta_20150827 -p 50827:5432 biocommons/uta:uta_20150827
+      $ docker volume create --name=uta_vol
+      $ docker run -dit --name uta_20180821 -p 5432:5432 biocommons/uta:uta_20180821
       
    The first time you run this image, it will initialize a postgresql
    database cluster, then download a database dump and install it.  -d
