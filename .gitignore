@@ -53,6 +53,7 @@ loading/dumps
 loading/invitae_transcripts.txt
 loading/logs
 misc/docker/fig.yml
+misc
 nosetests.xml
 sdist
 tmp
