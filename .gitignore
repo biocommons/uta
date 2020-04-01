@@ -53,9 +53,9 @@ loading/dumps
 loading/invitae_transcripts.txt
 loading/logs
 misc/docker/fig.yml
-misc
+misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz
+misc/partial-alignments
 nosetests.xml
 sdist
 tmp
 venv
-misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz
