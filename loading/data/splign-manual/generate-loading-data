@@ -103,6 +103,7 @@ if __name__ == "__main__":
     exonset_out = uta.formats.exonset.ExonSetWriter(gzip.open(exonset_fn, "wt"))
     
     for fn in opts.FILES:
+        _logger.info("# " + fn)
         txinfo, exonset = parse_splign(fn, txdata)
         txinfo_out.write(txinfo)
         exonset_out.write(exonset)
