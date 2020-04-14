@@ -11,7 +11,7 @@ import logging
 import sys
 import psycopg2
 import psycopg2.extras
-from eutils.client import Client
+from eutils import Client
 
 
 def getdata(conn, sql):
@@ -95,15 +95,15 @@ if __name__ == "__main__":
 
     uta_tx = get_uta_transcripts(conn, uta)
 
-    print "# of transcripts in uta: %s" % len(uta_tx)
+    print("# of transcripts in uta: %s" % len(uta_tx))
 
     ncbi_tx = get_ncbi_transcripts(conn, ncbi)
 
-    print "# of transcripts in ncbi: %s" % len(ncbi_tx)
+    print("# of transcripts in ncbi: %s" % len(ncbi_tx))
 
     missing = list(uta_tx - ncbi_tx)
 
-    print "# missing in ncbi: %s" % len(missing)
+    print("# missing in ncbi: %s" % len(missing))
 
     client = Client()
 
@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
         for eg in egs:
             geneId, hgnc, protein_id = get_gene_info(eg)
-            print eg.acv, eg.gene, eg.moltype, geneId, hgnc, protein_id
+            print(eg.acv, eg.gene, eg.moltype, geneId, hgnc, protein_id)
             store_assocacs(conn, ncbi, eg.gene, eg.acv, geneId, protein_id, 'NCBI')
 
         conn.commit()
