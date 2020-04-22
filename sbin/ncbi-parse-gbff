@@ -137,7 +137,7 @@ if __name__ == "__main__":
     skipped_ids = set()
     all_prefixes = Counter()
     for fn in opts.GBFF_FILES:
-        flo = gzip.open(fn)
+        flo = gzip.open(fn, "rt")
         logger.info("opened " + fn)
         genes = set()
         prefixes = Counter()
