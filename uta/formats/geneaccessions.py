@@ -27,11 +27,9 @@ class GeneAccessionsReader(csv.DictReader):
                 GeneAccessions._fields) + " but got: " + ','.join(self.fieldnames))
 
     def __next__(self):
-        d = csv.DictReader.__next__(self)
+        d = super().__next__()
         return GeneAccessions(**d)
 
-    def next(self):
-        return self.__next__()
 
 if __name__ == '__main__':
     tmpfn = '/tmp/geneacs'

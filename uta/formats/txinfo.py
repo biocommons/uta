@@ -26,8 +26,8 @@ class TxInfoReader(csv.DictReader):
             raise RuntimeError('Format error: expected header with these columns: '
                                + ', '.join(TxInfo._fields) + " but got: " + ', '.join(self.fieldnames))
 
-    def next(self):
-        d = csv.DictReader.next(self)
+    def __next__(self):
+        d = super().__next__()
         return TxInfo(**d)
 
 
