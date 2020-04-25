@@ -38,9 +38,6 @@ class NCBITSVReader(object):
     def __next__(self):
         return self._dr.__next__()
 
-    def next(self):
-        return self.__next__()
-
 
 if __name__ == "__main__":
     from io import StringIO

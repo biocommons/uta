@@ -1,0 +1,125 @@
+# Transcript, gene, and genomic alignment info
+# cds start,end (in human, 1-based coordinates) and hgnc symbol
+
+# This is the template:
+# genomic_region is for notetaking rather than computational use
+NM_000000.0:      # transcript_accession
+  cds:            # CDS start and end, 1-based inclusive
+  hgnc:           # HGNC *symbol*
+  genomic_region: # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/259291
+
+
+NM_001025190.1:
+  # This RefSeq was permanently suppressed because it is now thought that this gene is a pseudogene
+  cds: 1,3162
+  hgnc: MSLNL
+  genomic_region: NC_000016.9 (819428..831996, complement)
+
+NM_006060.6:
+  cds: 222,1781
+  hgnc: IKZF1
+  genomic_region: NC_000007.13 (50344378..50367358) , (50444231..50472799)
+
+NM_000769.4:
+  cds: 26,1498
+  hgnc: CYP2C19
+  genomic_region: NC_000010.10 (96522463..96612671)
+
+NM_001807.4:
+  cds: 17,2287
+  hgnc: CEL
+  genomic_region: NC_000009.11 (135936741..135947250)
+
+NM_002116.7:
+  cds: 85,1182
+  hgnc: HLA-A
+  genomic_region: NC_000006.11 (29910247..29913661)
+
+NM_002122.3:
+  cds: 54,821
+  hgnc: HLA-DQA1
+  genomic_region: NC_000006.11 (32605169..32612152)
+
+NM_006060.5:
+  cds: 269,1828
+  hgnc: IKZF1
+  genomic_region: NC_000007.13 (50344378..50367358) , (50444231..50472799)
+
+NM_000996.3:
+  cds: 65,397
+  hgnc: RPL35A
+  genomic_region: NC_000003.11 (197677023..197682722)
+
+NM_001261826.2:
+  cds: 293,3940
+  hgnc: AP3D1
+  genomic_region: NC_000019.9 (2100987..2151556, complement)
+
+NM_001355436.1:
+  cds: 144,7130
+  hgnc: SPTB
+  genomic_region: NC_000014.8 (65213001..65346604, complement)
+
+NM_001428.4:
+  cds: 117,1421
+  hgnc: ENO1
+  genomic_region: NC_000001.10 (8921059..8939151, complement)
+
+NM_032589.2:
+  genomic_region: NM_032589.2 was permanently suppressed because currently there is support for the transcript but not for the protein.
+  cds: 150,425
+  hgnc: DSCR8
+  genomic_region: NC_000021.8 (39493545..39528605)
+
+NM_176886.1:
+  cds: 1,900
+  hgnc: TAS2R45
+  genomic_region: NW_003571050.1 (327525..328424, complement)
+
+
+
+# The following alignments were deemed unusable but kept here as a
+# record.  There seem to be two cases:
+
+# Case 1: splign fails to align at all
+# Splign gives no indication why this doesn't align. I assume without
+# evidence that the alignment fails minimum thresholds for displaying
+# a hit.
+
+NM_002457.4:
+  cds: 28,15897
+  hgnc: MUC2
+  genomic_region: NC_000011.9 (1074875..1104417)
+
+
+# Case 2: overall low coverage and/or identity. 
+
+NM_001277444.1:
+  # coverage 73%, identity 73%, 61% ident over CDS. Unusable. -Reece 2020-04-08
+  cds: 76,3411
+  hgnc: NBPF9
+  genomic_region: NC_000001.10 (144811743..144830407)
+
+
+# Case 3: high identity alignments but with large gaps.  These
+# probably have small misassembled regions that prevent adequate
+# coverage.
+
+NM_031421.4:
+  # Splign alignment has 194 nt unaligned exonic sequence. This is unusable. -Reece 2020-04-08
+  cds: 131,2149
+  hgnc: TTC25
+  genomic_region: NC_000017.10 (40086888..40117669)
+
+NM_001349168.1:
+  # Splign alignment has 159 nt unaligned exonic sequence. This is unusable. -Reece 2020-04-08
+  cds: 239,4762
+  hgnc: DCAF1
+  genomic_region: NC_000003.11 (51433298..51534018, complement)
+
+NM_001733.5:
+  # Splign alignment has 232 nt unaligned exonic sequence. This is unusable. -Reece 2020-04-08
+  cds: 220,2337
+  hgnc: C1R
+  genomic_region: NC_000012.11 (7241205..7245043, complement) , (7187513..7189412, complement)
+

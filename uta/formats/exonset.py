@@ -27,11 +27,8 @@ class ExonSetReader(csv.DictReader):
                                ','.join(ExonSet._fields) + " but got: " + ','.join(self.fieldnames))
 
     def __next__(self):
-        d = csv.DictReader.__next__(self)
+        d = super().__next__()
         return ExonSet(**d)
-
-    def next(self):
-        return self.__next__()
 
 
 

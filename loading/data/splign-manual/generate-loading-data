@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+"""convert custom alignment files to files for loading into UTA"""
+
+
+import argparse
+import csv
+import gzip
+import logging
+import sys
+
+import yaml
+
+import uta.formats.exonset
+import uta.formats.txinfo
+
+_logger = logging.getLogger(__name__)
+
+origin = "NCBI"
+method = "splign-manual"
+
+txinfo_fn = "txinfo.gz"
+exonset_fn = "exonset.gz"
+txdata_fn = "txdata.yaml"
+
+
+def parse_args(argv):
+    ap = argparse.ArgumentParser(
+        description = __doc__,
+        )
+    ap.add_argument(
+        "FILES",
+        nargs="*"
+        )
+    opts = ap.parse_args(argv)
+    return opts
+
+def exons_to_string(exons):
+    return ";".join("{},{}".format(*e) for e in exons)
+
+def parse_splign(fn, txdata):
+    """return txinfo and exonset structures from given splign alignment summary
+
+    """
+    rows = list(csv.DictReader(open(fn), delimiter="\t"))
+    tx_acs = set(r["Query"] for r in rows)
+    alt_acs = set(r["Subject"] for r in rows)
+    assert len(tx_acs) == 1, f"{fn} contains alignments for multiple transcripts"
+    assert len(alt_acs) == 1, f"{fn} contains alignments for multiple genomic sequences"
+    tx_ac = list(tx_acs)[0]
+    alt_ac = list(alt_acs)[0]
+    tx_exons = [(int(r["Q.Start"]), int(r["Q.Fin"])) for r in rows]
+    alt_exons = [(int(r["S.Start"]), int(r["S.Fin"])) for r in rows]
+    strand = 1
+    if alt_exons[0][0] > alt_exons[0][1]:
+        strand = -1
+        alt_exons = [(ae[1],ae[0]) for ae in alt_exons]
+
+    tx_exons_str = exons_to_string((e[0]-1,e[1]) for e in tx_exons)
+    alt_exons_str = exons_to_string((e[0]-1,e[1]) for e in alt_exons)
+
+    try:
+        txd = txdata[tx_ac]
+    except KeyError:
+        raise KeyError(f"{tx_ac}: no cds or hgnc info in {txdata_fn}")
+
+    hgnc = txd["hgnc"]
+    if hgnc is None:
+        _logger.warn(f"No HGNC symbol in {txdata_fn} for {tx_ac}")
+
+    cds = txd["cds"]
+    if cds is None:
+        _logger.warning(f"No CDS info {txdata_fn} for {tx_ac}; will be non-coding transcript")
+        cds_se_i = None
+    else:
+        cds = [int(i) for i in txd["cds"].split(",")]
+        cds[0] -= 1         # interbase
+        cds_se_i = "{},{}".format(*cds)
+
+    txinfo = uta.formats.txinfo.TxInfo(
+        origin=origin,
+        ac=tx_ac,
+        hgnc=hgnc,
+        cds_se_i=cds_se_i,
+        exons_se_i=tx_exons_str)
+    exonset = uta.formats.exonset.ExonSet(
+        tx_ac=tx_ac,
+        alt_ac=alt_ac,
+        method=method,
+        strand=strand,
+        exons_se_i=alt_exons_str)
+    return txinfo, exonset
+
+
+if __name__ == "__main__":
+    import coloredlogs
+    coloredlogs.install(level="INFO")
+
+    opts = parse_args(sys.argv[1:])
+
+    txdata = yaml.load(open(txdata_fn), Loader=yaml.SafeLoader)
+
+    txinfo_out = uta.formats.txinfo.TxInfoWriter(gzip.open(txinfo_fn, "wt"))
+    exonset_out = uta.formats.exonset.ExonSetWriter(gzip.open(exonset_fn, "wt"))
+    
+    for fn in opts.FILES:
+        _logger.info("# " + fn)
+        txinfo, exonset = parse_splign(fn, txdata)
+        txinfo_out.write(txinfo)
+        exonset_out.write(exonset)

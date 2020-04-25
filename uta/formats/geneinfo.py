@@ -32,13 +32,11 @@ class GeneInfoReader(csv.DictReader):
                                ','.join(GeneInfo._fields) + " but got: " + ','.join(self.fieldnames))
 
     def __next__(self):
-        d = csv.DictReader.__next__(self)
+        d = super().__next__()
         d['aliases'] = d['aliases'].split(default_sep)
         d['xrefs'] = d['xrefs'].split(default_sep)
         return GeneInfo(**d)
 
-    def next(self):
-        return self.__next__()
 
 
 if __name__ == '__main__':

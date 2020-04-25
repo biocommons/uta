@@ -46,16 +46,16 @@ def align_exons(session, opts, cf):
         return cur
 
     def align(s1, s2):
-        score, cigar = utaaa.needleman_wunsch_gotoh_align(str(s1),
-                                                          str(s2),
+        score, cigar = utaaa.needleman_wunsch_gotoh_align(s1.encode("ascii"),
+                                                          s2.encode("ascii"),
                                                           extended_cigar=True)
         tx_aseq, alt_aseq = utaaa.cigar_alignment(
             tx_seq, alt_seq, cigar, hide_match=False)
-        return tx_aseq, alt_aseq, cigar.to_string()
+        return tx_aseq.decode("ascii"), alt_aseq.decode("ascii"), cigar.to_string().decode("ascii")
 
     aln_sel_sql = """
     SELECT * FROM tx_alt_exon_pairs_v TAEP
-    WHERE exon_aln_id is NULL
+    WHERE exon_aln_id is NULL and tx_ac !~ '/'
     ORDER BY tx_ac, alt_ac
     """
 
@@ -102,6 +102,7 @@ def align_exons(session, opts, cf):
         try:
             tx_seq = _fetch_seq(r.tx_ac, r.tx_start_i, r.tx_end_i)
         except KeyError:
+            import IPython; IPython.embed()	  ### TODO: Remove IPython.embed()
             logger.warning(
                 "{r.tx_ac}: Not in sequence sources; can't align".format(r=r))
             ac_warning.add(r.tx_ac)
@@ -732,7 +733,7 @@ def _get_mfdb(cf):
 
 def _get_seqrepo(cf):
     sr_dir = cf.get("sequences", "seqrepo")
-    sr = SeqRepo(root_dir=sr_dir)
+    sr = SeqRepo(root_dir=sr_dir, translate_ncbi_namespace=True)
     logger.info("Opened {sr}".format(sr=sr))
     return sr
 
@@ -764,7 +765,7 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
     if existing.count() == 1:
         es = existing[0]
         es_ess = es.exons_as_str(transcript_order=True)
-        esh = hashlib.sha1(es_ess).hexdigest()[:8]
+        esh = hashlib.sha1(es_ess.encode("ascii")).hexdigest()[:8]
         alt_aln_method_with_hash = method + "/" + esh
 
         if es_ess == ess:
@@ -797,7 +798,7 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
         )
     session.add(es)
 
-    exons = [map(int, se.split(",")) for se in ess.split(";")]
+    exons = [tuple(map(int, se.split(","))) for se in ess.split(";")]
     exons.sort(reverse=int(strand) == MINUS_STRAND)
     for i_ex, ex in enumerate(exons):
         s, e = ex

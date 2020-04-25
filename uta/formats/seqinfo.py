@@ -26,14 +26,12 @@ class SeqInfoReader(csv.DictReader):
                                ','.join(SeqInfo._fields) + " but got: " + ','.join(self.fieldnames))
 
     def __next__(self):
-        d = csv.DictReader.__next__(self)
+        d = super().__next__()
         si = SeqInfo(**d)
         if si.seq == '':
             si.seq = None
         return si
 
-    def next(self):
-        return self.__next__()
 
 
 if __name__ == '__main__':
