@@ -1,12 +1,18 @@
-# Python project Makefile
+# Makefile for Python project
 
-.SUFFIXES :
-.PRECIOUS :
-.PHONY : FORCE
 .DELETE_ON_ERROR:
+.PHONY: FORCE
+.PRECIOUS:
+.SUFFIXES :
 
-SHELL:=/bin/bash -o pipefail
+SHELL:=/bin/bash -e -o pipefail
 SELF:=$(firstword $(MAKEFILE_LIST))
+
+PKG=bioutils
+PKGD=$(subst .,/,${PKG})
+
+PYV=3.7
+VEDIR=venv/${PYV}
 
 #UTA_DB_URL=postgresql://uta_public:uta_public@uta.invitae.com/uta/uta_20140210
 #UTA_DB_URL=postgresql://localhost/uta/uta_20140210
@@ -18,8 +24,8 @@ SELF:=$(firstword $(MAKEFILE_LIST))
 default: help
 
 #=> help -- display this help message
-help: config
-	@dev/makefile-extract-documentation "${SELF}"; 
+help:
+	@sbin/makefile-extract-documentation "${SELF}"
 
 config:
 	@echo CONFIGURATION
@@ -29,21 +35,30 @@ config:
 ############################################################################
 #= SETUP, INSTALLATION, PACKAGING
 
-#=> setup
-setup: develop
+#=> devready: create venv and install pkg in develop mode
+.PHONY: devready
+devready:
+	make ${VEDIR} && source ${VEDIR}/bin/activate && make develop
+	@echo '#################################################################################'
+	@echo '###  Do not forget to `source ${VEDIR}/bin/activate` to use this environment  ###'
+	@echo '#################################################################################'
 
-#=> docs -- make sphinx docs
-changelog:
-	make -C doc/changelog
-docs: setup changelog build_sphinx
+#=> venv: make a Python 3 virtual environment
+venv/3 venv/3.5 venv/3.6 venv/3.7: venv/%:
+	python$* -mvenv $@; \
+	source $@/bin/activate; \
+	python -m ensurepip --upgrade; \
+	pip install --upgrade pip setuptools
 
-#=> build_sphinx
-# sphinx docs needs to be able to import packages
-build_sphinx: develop
+#=> develop: install package in develop mode
+develop:
+	pip install -e .[dev]
 
-#=> develop, bdist, bdist_egg, sdist, upload_docs, etc
-develop: %:
-	python setup.py $*
+#=> install: install package
+#=> bdist bdist_egg bdist_wheel build sdist: distribution options
+.PHONY: bdist bdist_egg bdist_wheel build build_sphinx sdist install
+bdist bdist_egg bdist_wheel build sdist install: %:
+	python setup.py $@
 
 bdist bdist_egg build build_sphinx install sdist: %:
 	python setup.py $*
@@ -87,6 +102,15 @@ ci-test-ve: ve
 ############################################################################
 #= UTILITY TARGETS
 
+# N.B. Although code is stored in github, I use hg and hg-git on the command line
+#=> reformat: reformat code with yapf and commit
+.PHONY: reformat
+reformat:
+	@if hg sum | grep -qL '^commit:.*modified'; then echo "Repository not clean" 1>&2; exit 1; fi
+	@if hg sum | grep -qL ' applied'; then echo "Repository has applied patches" 1>&2; exit 1; fi
+	yapf -i -r "${PKGD}" tests
+	hg commit -m "reformatted with yapf"
+
 #=> changelog
 doc/source/changelog.rst: CHANGELOG
 	clog-txt-to-rst <$< >$@
@@ -99,42 +123,29 @@ docs-aux:
 	make -C misc/railroad doc-install
 	make -C examples doc-install
 
-#=> ve -- create a *local* virtualenv (not typically needed)
-VE_DIR:=ve
-VE_MAJOR:=1
-VE_MINOR:=10
-VE_PY_DIR:=virtualenv-${VE_MAJOR}.${VE_MINOR}
-VE_PY:=${VE_PY_DIR}/virtualenv.py
-${VE_PY}:
-	curl -sO  https://pypi.python.org/packages/source/v/virtualenv/virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
-	tar -xvzf virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
-	rm -f virtualenv-${VE_MAJOR}.${VE_MINOR}.tar.gz
-${VE_DIR}: ${VE_PY} 
-	${SYSTEM_PYTHON} $< ${VE_DIR} 2>&1 | tee "$@.err"
-	/bin/mv "$@.err" "$@"
-
-
 ############################################################################
 #= CLEANUP
-.PHONY: clean cleaner cleanest pristine
-#=> clean: clean up editor backups, etc.
+
+#=> clean: remove temporary and backup files
+.PHONY: clean
 clean:
-	find . -name \*~ -print0 | xargs -0r /bin/rm
-#=> cleaner: above, and remove generated files
+	find . \( -name \*~ -o -name \*.bak \) -print0 | xargs -0r rm
+
+#=> cleaner: remove files and directories that are easily rebuilt
+.PHONY: cleaner
 cleaner: clean
-	find . -name \*.pyc -print0 | xargs -0r /bin/rm -f
-	/bin/rm -fr build bdist cover dist sdist ve virtualenv*
-	-make -C doc clean
-#=> cleanest: above, and remove the virtualenv, .orig, and .bak files
+	rm -fr .cache *.egg-info build dist doc/_build htmlcov
+	find . \( -name \*.pyc -o -name \*.orig -o -name \*.rej \) -print0 | xargs -0r rm
+	find . -name __pycache__ -print0 | xargs -0r rm -fr
+
+#=> cleanest: remove files and directories that require more time/network fetches to rebuild
+.PHONY: cleanest
 cleanest: cleaner
-	find . \( -name \*.orig -o -name \*.bak \) -print0 | xargs -0r /bin/rm -v
-	/bin/rm -fr distribute-* *.egg *.egg-info *.tar.gz nosetests.xml cover
-#=> pristine: above, and delete anything unknown to mercurial
-pristine: cleanest
-	hg st -un0 | xargs -0r echo /bin/rm -fv
+	rm -fr .eggs .tox venv
+
 
 ## <LICENSE>
-## Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
+## Copyright 2016 Source Code Committers
 ## 
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
