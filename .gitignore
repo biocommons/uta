@@ -55,7 +55,6 @@ loading/logs
 misc/docker/fig.yml
 misc/ncbi-geneinfo/ncbi.geneinfo.tsv.gz
 misc/partial-alignments
-nosetests.xml
 sdist
 tmp
 venv
