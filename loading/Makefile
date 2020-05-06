@@ -72,7 +72,7 @@ _:=$(shell mkdir -p ${LOG_DIR})
 
 include .${CONF}.conf.mk
 .${CONF}.conf.mk: ${GLOBAL_CONF_FN} ${CONF_FN}
-	../dev/conf-to-vars $^ >$@
+	../sbin/conf-to-vars $^ >$@
 
 schema=$(shell python -c 'import uta.models; print(uta.models.schema_name)')
 
@@ -98,7 +98,7 @@ config:
 
 #=> help -- 
 help: config
-	@../dev/makefile-extract-documentation "${SELF}"
+	@../sbin/makefile-extract-documentation "${SELF}"
 
 
 

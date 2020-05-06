@@ -3,38 +3,41 @@ splign for loading into UTA.  See
 [#220](https://github.com/biocommons/uta/issues/220) for details.
 
 
-## Available Transcripts
+## Loading Summary
 
 Andreas requested custom alignments for 18 transcripts. They are shown
 below with their status.
 
-### Aligned and can be loaded into UTA:
+* Aligned and can be loaded into UTA:
 
-    NM_000769.4     CYP2C19    aligned
-    NM_001025190.1  MSLNL      aligned
-    NM_001807.4     CEL        aligned
-    NM_002122.3     HLA-DQA1   aligned
-    NM_006060.6     IKZF1      aligned
-    NM_176886.1     TAS2R45    aligned
+  ```
+  NM_000769.4     CYP2C19    aligned
+  NM_001025190.1  MSLNL      aligned
+  NM_001807.4     CEL        aligned
+  NM_002122.3     HLA-DQA1   aligned
+  NM_006060.6     IKZF1      aligned
+  NM_176886.1     TAS2R45    aligned
+  ```
 
-### Failed to align and cannot currently be loaded:
+* Failed to align and cannot currently be loaded:
 
-    NM_000996.3     RPL35A     terminal unaligned regions
-    NM_001261826.2  AP3D1      terminal unaligned regions
-    NM_001355436.1  SPTB       terminal unaligned regions
-    NM_001428.4     ENO1       terminal unaligned regions
-    NM_002116.7     HLA-A      terminal unaligned regions
-    NM_006060.5     IKZF1      terminal unaligned regions
-    NM_032589.2     DSCR8      terminal unaligned regions
-					         
-    NM_031421.4     TTC25      internal unaligned region
-    NM_001349168.1  DCAF1      internal unaligned region
-    NM_001733.5     C1R        internal unaligned region
-					         
-    NM_001277444.1  NBPF9      low quality; unusable
-					         
-    NM_002457.4     MUC2       no alignment
-
+  ```
+  NM_000996.3     RPL35A     terminal unaligned regions
+  NM_001261826.2  AP3D1      terminal unaligned regions
+  NM_001355436.1  SPTB       terminal unaligned regions
+  NM_001428.4     ENO1       terminal unaligned regions
+  NM_002116.7     HLA-A      terminal unaligned regions
+  NM_006060.5     IKZF1      terminal unaligned regions
+  NM_032589.2     DSCR8      terminal unaligned regions
+                         
+  NM_031421.4     TTC25      internal unaligned region
+  NM_001349168.1  DCAF1      internal unaligned region
+  NM_001733.5     C1R        internal unaligned region
+                         
+  NM_001277444.1  NBPF9      low quality; unusable
+                         
+  NM_002457.4     MUC2       no alignment
+  ```
 
 ## Procedure
 
@@ -63,7 +66,7 @@ For a given RefSeq transcript (e.g., NM_000996.3), do the following:
      a large margin (10kb or more).  e.g., 197600000..197690000
    - Optional: Generate list of alignments to perform using
      ./generate-splign-page-params like this: `./generate-splign-page-params txdata.yaml`
-	 This step makes it easy to copy paste params and the resulting
+     This step makes it easy to copy paste params and the resulting
      filename to reduce errors.
 
 1. Evaluate the alignment.
@@ -81,8 +84,21 @@ For a given RefSeq transcript (e.g., NM_000996.3), do the following:
    - `$ ./generate-loading-data alignments/*.splign`. This command
      will write txinfo.gz and exonset.gz.
 
-1. Load these data as described in the UTA loading instructions.
+1. Load the above data like this:
 
+  ```sh
+  cd loading    # i.e., <repo_root>/loading
+  make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/seqinfo.log
+  make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/txinfo.log
+  make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/exonset.log
+  make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/align-exons.log
+
+  CONF_OPTS="--conf=../etc/global.conf --conf=../etc/uta_dev@localhost.conf"
+  uta ${CONF_OPTS} analyze
+  uta ${CONF_OPTS} refresh-matviews
+  uta ${CONF_OPTS} grant-permissions
+
+  ```
 
 ## Quality Control
 
