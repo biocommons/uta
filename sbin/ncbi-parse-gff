@@ -382,7 +382,7 @@ if __name__ == "__main__":
             if not ti_written[ti.ac]:
                 # write a single txinfo line once; multiple may occur for multiple alignments of e.g., one NM to NC, NW, NT
                 tiw.write(ti)
-                ti_written[ti] = True
+                ti_written[ti.ac] = True
 
             esw.write(es)
 

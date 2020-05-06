@@ -88,7 +88,7 @@ if __name__ == "__main__":
             len=len(seq),
             md5=seq_md5(seq),
             origin=opts.origin,
-            seq=seq if len(seq) <= opts.max_seq_len else None,
+            seq=None,
         )
         siw.write(si)
 
