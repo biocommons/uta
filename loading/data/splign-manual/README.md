@@ -81,8 +81,13 @@ For a given RefSeq transcript (e.g., NM_000996.3), do the following:
    - If there are multiple alignments, include only the best (first).
 
 1. (Re)Generate loading files
-   - `$ ./generate-loading-data alignments/*.splign`. This command
+   - `./generate-loading-data alignments/*.splign`. This command
      will write txinfo.gz and exonset.gz.
+
+1. Generate fasta files and seqinfo.gz
+   
+   - `seqrepo export $(gzip -cdq txinfo.gz  | cut -f2 | tail +2) | gzip -c >seqs.fa.gz`
+   - `../../../sbin/fasta-to-seqinfo -o NCBI seqs2.fa.gz | gzip -c >seqinfo.gz`
 
 1. Load the above data like this:
 
