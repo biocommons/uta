@@ -96,7 +96,8 @@ For a given RefSeq transcript (e.g., NM_000996.3), do the following:
   make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/seqinfo.log
   make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/txinfo.log
   make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/exonset.log
-  make SRC_NAME=splign-manual logs/uta_dev@localhost/splign-manual/align-exons.log
+
+  make align-exons
 
   CONF_OPTS="--conf=../etc/global.conf --conf=../etc/uta_dev@localhost.conf"
   uta ${CONF_OPTS} analyze
