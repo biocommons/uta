@@ -91,30 +91,48 @@ as a local postgresql process. The only requirement is docker itself
 
 #. `Install docker <https://docs.docker.com/installation/>`_.
 
+#. Define the uta version to download
+
+   ::
+
+      $ uta_v=uta_20180821
+
+   This variable is used only for consistency in the examples that
+   follow. Define this variable is not required for any other reason.
+
+   The UTA version string indicates the data release date. The tag is
+   made at the time of loading and is used to derive the filename for
+   the database dumps and docker images.  Therefore, the public
+   postgresql instances, database dumps, and docker images will always
+   contain exactly the same content.
+
+
 #. Fetch the uta docker image from docker hub.
 
    ::
 
-      $ docker pull biocommons/uta:uta_20150827
+      $ docker pull biocommons/uta:$uta_v
 
    This process will likely take 1-3 minutes.
    
 #. Run the image 
 
    ::
-      $ docker volume create --name=uta_vol
-      $ docker run -dit --name uta_20180821 -p 5432:5432 biocommons/uta:uta_20180821
-      
+      $ docker volume create --name=$uta_v
+      $ docker run --name $uta_v -v $uta_v:/var/lib/postgresql/data -p 5432:5432 biocommons/uta:$uta_v
+
    The first time you run this image, it will initialize a postgresql
    database cluster, then download a database dump and install it.  -d
    starts the container in daemon (background) mode. To see progress::
 
-      $ docker logs -f uta_20150827
+      $ docker logs -f $uta_v
 
    You will see messages from several processes running in
    parallel. Near the end, you'll see::
 
      == You may now connect to uta.  No password is required.
+     ...
+     2020-05-28 22:08:45.654 UTC [1] LOG:  database system is ready to accept connections
 
    Hit Ctrl-C to stop watching logs. (The container will still be running.)
 
@@ -131,7 +149,7 @@ as a local postgresql process. The only requirement is docker itself
    the container port 5432.  The following command connects to the UTA
    instance::
 
-      $ psql -h localhost -p 50827 -U anonymous -d uta -c 'select * from uta_20150827.meta'
+      $ psql -h localhost -p 50827 -U anonymous -d uta -c "select * from $uta_v.meta"
 
    **With DockerToolbox (Mac and Windows)**
 
@@ -141,7 +159,7 @@ as a local postgresql process. The only requirement is docker itself
    (not that of the host OS).  In order to connect to UTA, you must
    use the IP address of the VM, like this::
 
-      $ psql -h $(docker-machine ip default) -p 50827 -U anonymous -d uta -c 'select * from uta_20150827.meta'
+      $ psql -h $(docker-machine ip default) -p 50827 -U anonymous -d uta -c "select * from $uta_v.meta"
 
 
 
