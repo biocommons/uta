@@ -118,6 +118,7 @@ as a local postgresql process. The only requirement is docker itself
 #. Run the image 
 
    ::
+
       $ docker volume create --name=$uta_v
       $ docker run --name $uta_v -v $uta_v:/var/lib/postgresql/data -p 5432:5432 biocommons/uta:$uta_v
 
