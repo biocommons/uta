@@ -120,7 +120,12 @@ as a local postgresql process. The only requirement is docker itself
    ::
 
       $ docker volume create --name=$uta_v
-      $ docker run --name $uta_v -v $uta_v:/var/lib/postgresql/data -p 5432:5432 biocommons/uta:$uta_v
+      $ docker run \
+        --name $uta_v \
+	-e POSTGRES_PASSWORD=some-password-you-make-up \
+	-p 5432:5432 \
+        -v $uta_v:/var/lib/postgresql/data \
+	biocommons/uta:$uta_v
 
    The first time you run this image, it will initialize a postgresql
    database cluster, then download a database dump and install it.  -d
