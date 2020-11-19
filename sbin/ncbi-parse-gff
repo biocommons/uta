@@ -66,7 +66,7 @@ class ExonAlignment(object):
     match_type = attr.ib()
     g_start = attr.ib(converter=int)
     g_end = attr.ib(converter=int)
-    score = attr.ib(converter=float)
+    score = attr.ib()
     strand = attr.ib()
     aln_id = attr.ib()
     tx_ac = attr.ib()
@@ -185,7 +185,7 @@ def read_exon_alignments(fn):
         if not line.startswith('#'):
             try:
                 yield ExonAlignment(**line_re.match(line).groupdict())
-            except AttributeError:
+            except (AttributeError, ValueError):
                 raise Exception("Failed at", line)
 
 

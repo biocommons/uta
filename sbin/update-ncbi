@@ -12,7 +12,7 @@ import sys
 import psycopg2
 import psycopg2.extras
 from eutils import Client
-
+from retry import retry 
 
 def getdata(conn, sql):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -58,11 +58,14 @@ def get_ncbi_transcripts(conn, ncbi):
 
 
 def get_gene_info(eg):
-    xrefs = eg.features.cds.db_xrefs
-
+    protein_id = eg.features.cds.qualifiers['protein_id']
+    try:
+        xrefs = eg.features.cds.db_xrefs
+    except:
+        xrefs = []
+        print("Could not resolve xrefs for: {}".format(protein_id))
     geneId = None
     hgnc = None
-    protein_id = eg.features.cds.qualifiers['protein_id']
 
     for ref in xrefs:
         spl = ref.split(':')
@@ -83,6 +86,9 @@ def store_assocacs(conn, ncbi, hgnc, tx_ac, gene_id, pro_ac, origin):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(sql, [hgnc, tx_ac, gene_id, pro_ac, origin])
 
+@retry()
+def fetch_ids_ncbi(my_ids):
+    return client.efetch('nuccore', my_ids)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
@@ -119,12 +125,15 @@ if __name__ == "__main__":
         ids = missing[start:stop]
 
         start += step
-
-        egs = client.efetch('nuccore', ",".join(ids))
-
+        my_ids =  ",".join(ids)
+        #print(my_ids)
+        egs = fetch_ids_ncbi(my_ids)
+         
         for eg in egs:
-            geneId, hgnc, protein_id = get_gene_info(eg)
-            print(eg.acv, eg.gene, eg.moltype, geneId, hgnc, protein_id)
-            store_assocacs(conn, ncbi, eg.gene, eg.acv, geneId, protein_id, 'NCBI')
-
+            try:
+                geneId, hgnc, protein_id = get_gene_info(eg)
+                print(eg.acv, eg.gene, eg.moltype, geneId, hgnc, protein_id)
+                store_assocacs(conn, ncbi, eg.gene, eg.acv, geneId, protein_id, 'NCBI')
+            except:
+                print("unable to get gene info for {}".format(my_ids))
         conn.commit()

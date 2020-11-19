@@ -123,3 +123,62 @@ NM_001733.5:
   hgnc: C1R
   genomic_region: NC_000012.11 (7241205..7245043, complement) , (7187513..7189412, complement)
 
+# Transcript, gene, and genomic alignment info
+# cds start,end (in human, 1-based coordinates) and hgnc symbol
+
+# This is the template:
+# genomic_region is for notetaking rather than computational use
+NM_001038633.3:      # transcript_accession
+  cds: 893,1684            # CDS start and end, 1-based inclusive
+  hgnc: RSPO1           # HGNC *symbol*
+  genomic_region: NC_000001.10 (38076821..38100595, complement) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/284654
+
+NM_005363.3:      # transcript_accession
+  cds: 208,1152           # CDS start and end, 1-based inclusive
+  hgnc: MAGEA6          # HGNC *symbol*
+  genomic_region: NC_000023.10 (151867245..151870814) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/4105
+
+NM_006561.3:      # transcript_accession
+  cds: 161,1726           # CDS start and end, 1-based inclusive
+  hgnc: CELF2           # HGNC *symbol*
+  genomic_region: NC_000010.10 (10838851..11378674) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/10659
+
+NM_001242908.1:      # transcript_accession
+  cds: 714,1505           # CDS start and end, 1-based inclusive
+  hgnc: RSPO1          # HGNC *symbol*
+  genomic_region: NC_000001.10 (38076821..38100595, complement) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/284654
+
+NM_001242909.1:      # transcript_accession
+  cds: 474,1184           # CDS start and end, 1-based inclusive
+  hgnc: RSPO1          # HGNC *symbol*
+  genomic_region: NC_000001.10 (38076821..38100595, complement) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/259291
+
+NM_001242910.1:      # transcript_accession
+  cds: 714,1316           # CDS start and end, 1-based inclusive
+  hgnc: RSPO1          # HGNC *symbol*
+  genomic_region: NC_000001.10 (38076821..38100595, complement) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/284654
+
+NM_001012709.1:      # transcript_accession
+  cds: 46,912            # CDS start and end, 1-based inclusive
+  hgnc: KRTAP5-4           # HGNC *symbol*
+  genomic_region: NC_000011.9 (1642188..1643368, complement)  # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/387267
+
+NM_001123068.1:      # transcript_accession
+  cds: 34,528            # CDS start and end, 1-based inclusive
+  hgnc: COAS-2          # HGNC *symbol*
+  genomic_region: NC_000001.10 (143767144..143767881, complement) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/644591
+
+NM_130797.2:      # transcript_accession
+  cds: 130,2727           # CDS start and end, 1-based inclusive
+  hgnc: DPPX          # HGNC *symbol*
+  genomic_region: NC_000007.13 (153584419..154264025) , (154400205..154685995) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/1804
+
+NM_033060.2:      # transcript_accession
+  cds: 42,425           # CDS start and end, 1-based inclusive
+  hgnc: KRTAP4-1          # HGNC *symbol*
+  genomic_region: NC_000017.10 (39340352..39341147, complement) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/1804
+
+NM_033060.3:      # transcript_accession
+  cds: 58,441           # CDS start and end, 1-based inclusive
+  hgnc: KRTAP4-1          # HGNC *symbol*
+  genomic_region: NC_000017.10 (39340352..39341163, complement) # from gene page e.g., https://www.ncbi.nlm.nih.gov/gene/1804
