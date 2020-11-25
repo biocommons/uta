@@ -258,6 +258,16 @@ if __name__ == "__main__":
         tx2ti = {ti.ac: ti for ti in tir}
         logger.info(
             "read {} CDS data from {}".format(len(tx2ti), opts.txinfo))
+        # add any gene-accession mappings if they are not in geneacs file; raise error if they disagree with txinfo file
+        if tx2gene:
+            for ti_ac in tx2ti:
+                if not tx2gene.get(ti_ac):
+                    tx2gene[ti_ac] = tx2ti[ti_ac].hgnc
+                if tx2gene[ti_ac] != tx2ti[ti_ac].hgnc:
+                    raise ValueError('HGNC symbol disagrees in txinfo and geneacs files for accession {ti_ac}'.format(
+                        ti_ac=ti_ac
+                    ))
+
     else:
         tx2ti = None
         logger.info("No gbff txinfo provided (-T); CDS start,end will be undefined for all transcripts and transcript-genome exon structures will not be verified")
