@@ -1,10 +1,11 @@
+dist: xenial
 sudo: required
-dist: trusty
-services:
-- postgresql
 language: python
 python:
-- '2.7'
+  - "3.8"
+cache: pip
+services:
+- postgresql
 before_install:
 - pip install -U setuptools
 - pip install -U pysam
