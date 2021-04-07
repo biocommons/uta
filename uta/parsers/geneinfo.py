@@ -10,7 +10,7 @@ class GeneInfoParser(object):
 
     def __init__(self, fh):
         self._fh = fh
-        header = self._fh.next().rstrip()
+        header = next(self._fh).rstrip()
         if header != "#Format: tax_id GeneID Symbol LocusTag Synonyms dbXrefs chromosome map_location description type_of_gene Symbol_from_nomenclature_authority Full_name_from_nomenclature_authority Nomenclature_status Other_designations Modification_date (tab is used as a separator, pound sign - start of a comment)":
             raise UTAError("""gene info doesn't contain expected header; got:\n{header}""".format(
                 header=header))
@@ -23,7 +23,8 @@ class GeneInfoParser(object):
         return self
 
     def next(self):
-        return self._csvreader.next()
+        return next(self._csvreader)
+
 
 # <LICENSE>
 # Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)

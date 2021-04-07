@@ -57,7 +57,7 @@ class Seq(Base):
 
     def _seq_hash(context):
         seq = context.current_parameters["seq"]
-        return None if seq is None else hashlib.md5(seq.upper()).hexdigest()
+        return None if seq is None else hashlib.md5(seq.upper().encode("ascii")).hexdigest()
 
     def _seq_len(context):
         seq = context.current_parameters["seq"]

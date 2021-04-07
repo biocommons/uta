@@ -1,4 +1,3 @@
-import ConfigParser
 import os
 import unittest
 
@@ -98,7 +97,7 @@ class Test_uta_models(unittest.TestCase):
         )
         cls.session.add(chr8_sa_n)
 
-        for ac, tx_info in transcripts.iteritems():
+        for ac, tx_info in transcripts.items():
             t_seq_n = usam.Seq(
                 seq=tx_info['seq']
             )

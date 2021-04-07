@@ -15,7 +15,7 @@ class Test_parsers_geneinfoparser(unittest.TestCase):
 
     def test1(self):
         fn = os.path.join(data_dir, 'gene_info_100human.gz')
-        gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(fn))
+        gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(fn, "rt"))
         gi = gip.next()
         self.assertEqual(gi, {
             'Full_name_from_nomenclature_authority': 'alpha-1-B glycoprotein',

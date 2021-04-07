@@ -11,7 +11,7 @@ class SeqGeneParser(object):
     def __init__(self, fh, filter=None):
         self._fh = fh
         self._filter = filter if filter else lambda r: True
-        header = self._fh.next().rstrip()
+        header = next(self._fh).rstrip()
         if header != "#tax_id	chromosome	chr_start	chr_stop	chr_orient	contig	ctg_start	ctg_stop	ctg_orient	feature_name	feature_id	feature_type	group_label	transcript	evidence_code":
             raise UTAError("""file doesn't contain expected header; got:\n{header}""".format(
                 header=header))

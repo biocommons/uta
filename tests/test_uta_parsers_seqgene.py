@@ -15,7 +15,7 @@ class Test_parsers_seqgene(unittest.TestCase):
 
     def test1(self):
         fn = os.path.join(data_dir, 'seq_gene_100.md.gz')
-        parser = uta.parsers.seqgene.SeqGeneParser(gzip.open(fn))
+        parser = uta.parsers.seqgene.SeqGeneParser(gzip.open(fn, "rt"))
         rec = parser.next()
         self.assertEqual(rec, {
             'chr_orient': '+',
