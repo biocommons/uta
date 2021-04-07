@@ -107,11 +107,11 @@ help: config
 
 load-ncbi-dev:	logs/uta_dev@localhost/${SRC_NAME}/genes.geneinfo.log \
 		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.seqinfo.log	\
-		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.seqinfo.log	\
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.39.seqinfo.log	\
 		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.txinfo.log  \
-		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.txinfo.log  \
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.39.txinfo.log  \
 		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.25.exonset.log	\
-		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.33.exonset.log \
+		logs/uta_dev@localhost/${SRC_NAME}/GCF_000001405.39.exonset.log \
 		${LOG_DIR}/align-exons.log \
 		${LOG_DIR}/merged.assocacs.log
 	uta ${CONF_OPTS} analyze
@@ -172,7 +172,7 @@ ${LOG_DIR}/merged.assocacs.log: data/merged.assocacs.gz FORCE
 	mv $@.tmp $@
 
 
-data/merged.assocacs.gz: data/${SRC_NAME}/assocacs.gz $(wildcard data/aux/assocacs.d/*.assocacs.gz)
+data/merged.assocacs.gz: $(sort $(wildcard data/aux/assocacs.d/*.assocacs.gz))
 	assoc-acs-merge $^ | gzip -c >$@.tmp
 	mv $@.tmp $@
 

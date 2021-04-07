@@ -37,7 +37,6 @@ import collections
 import gzip
 import io
 import itertools
-import logging
 import logging.config
 import os
 import pprint
@@ -47,9 +46,6 @@ import sys
 
 import attr
 import prettytable
-
-import Bio.SeqIO
-from bioutils.digests import seq_md5
 
 from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter, TxInfoReader
@@ -66,7 +62,7 @@ class ExonAlignment(object):
     match_type = attr.ib()
     g_start = attr.ib(converter=int)
     g_end = attr.ib(converter=int)
-    score = attr.ib(converter=float)
+    score = attr.ib()
     strand = attr.ib()
     aln_id = attr.ib()
     tx_ac = attr.ib()
@@ -185,7 +181,7 @@ def read_exon_alignments(fn):
         if not line.startswith('#'):
             try:
                 yield ExonAlignment(**line_re.match(line).groupdict())
-            except AttributeError:
+            except (AttributeError, ValueError):
                 raise Exception("Failed at", line)
 
 
@@ -262,6 +258,18 @@ if __name__ == "__main__":
         tx2ti = {ti.ac: ti for ti in tir}
         logger.info(
             "read {} CDS data from {}".format(len(tx2ti), opts.txinfo))
+        # add any gene-accession mappings from txinfo file if they are not in geneacs file; log warning if they disagree
+        if tx2gene:
+            for ti_ac in tx2ti:
+                if not tx2gene.get(ti_ac):
+                    tx2gene[ti_ac] = tx2ti[ti_ac].hgnc
+                if tx2gene[ti_ac] != tx2ti[ti_ac].hgnc:
+                    logger.warning('HGNC symbol disagrees in txinfo ({tx2ti_hgnc}) and geneacs ({tx2gene_hgnc}) files for accession {ti_ac}'.format(
+                        tx2ti_hgnc=tx2ti[ti_ac].hgnc,
+                        tx2gene_hgnc=tx2gene[ti_ac].hgnc,
+                        ti_ac=ti_ac
+                    ))
+
     else:
         tx2ti = None
         logger.info("No gbff txinfo provided (-T); CDS start,end will be undefined for all transcripts and transcript-genome exon structures will not be verified")
@@ -302,7 +310,7 @@ if __name__ == "__main__":
             txalns_esm = txalns
         else:
             if tx_ac not in tx2ti:
-                logger.warn("{ta.tx_ac}~{ta.ref_ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
+                logger.warning("{ta.tx_ac}~{ta.ref_ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
                     ta=ta0, opts=opts))
                 ac_not_in_gbff.add(tx_ac)
                 bin = "nogbff"
@@ -313,10 +321,10 @@ if __name__ == "__main__":
             txalns_esm = [ta for ta in txalns if ta.tx_exons_se_i == gbff_ti.exons_se_i]
             n_rm = len(txalns) - len(txalns_esm)
             if n_rm > 0:
-                logger.warn("{ta.tx_ac}~{ta.ref_ac}: Removed {n_rm}/{n_tot} exon structures that differ from gbff definition".format(
+                logger.warning("{ta.tx_ac}~{ta.ref_ac}: Removed {n_rm}/{n_tot} exon structures that differ from gbff definition".format(
                     n_rm=n_rm, n_tot=len(txalns), ta=ta, opts=opts))
             if len(txalns_esm) == 0:
-                logger.warn("{ta.tx_ac}~{ta.ref_ac}: All {n} exon structures differ from gbff definition; skipping alignment".format(
+                logger.warning("{ta.tx_ac}~{ta.ref_ac}: All {n} exon structures differ from gbff definition; skipping alignment".format(
                     ta=ta, opts=opts, n=len(txalns)))
                 ac_exons_differ.add(tx_ac)
                 bin = "esdiffer"
@@ -344,7 +352,7 @@ if __name__ == "__main__":
 
         elif len(txalns_strict) > 1:
 
-            logger.warn("{ta.tx_ac}~{ta.ref_ac}: Multiple ({n}) strict alignments; cov/pig: {stats}".format(
+            logger.warning("{ta.tx_ac}~{ta.ref_ac}: Multiple ({n}) strict alignments; cov/pig: {stats}".format(
                 ta=txalns_strict[0], n=len(txalns_strict), opts=opts,
                 stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_strict),
                 ))
@@ -358,13 +366,13 @@ if __name__ == "__main__":
                           if (txaln.pct_coverage > opts.min_coverage
                               and txaln.pct_identity_gap > opts.min_pct_identity_gap)]
             if len(txalns_min) == 0:
-                logger.warn("{ta.tx_ac}~{ta.ref_ac}: No usable alignments; cov/pig: {stats}".format(
+                logger.warning("{ta.tx_ac}~{ta.ref_ac}: No usable alignments; cov/pig: {stats}".format(
                     ta=txalns[0],
                     stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_esm),
                     ))
                 bin = "none"
             else:
-                logger.warn("{ta.tx_ac}~{ta.ref_ac}: Resorting to minimum criteria; loading {n} alignments; cov/pig: {stats}".format(
+                logger.warning("{ta.tx_ac}~{ta.ref_ac}: Resorting to minimum criteria; loading {n} alignments; cov/pig: {stats}".format(
                     ta=txalns_min[0], n=len(txalns_min),
                     stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_min),
                     ))
@@ -393,17 +401,17 @@ if __name__ == "__main__":
 
     seen_but_failed = ac_failed - ac_in_source
     if seen_but_failed:
-        logger.warn("{n_acv} acvs seen but failed criteria: {acs}".format(
+        logger.warning("{n_acv} acvs seen but failed criteria: {acs}".format(
             n_acv=len(seen_but_failed), acs=",".join(sorted(seen_but_failed))))
 
     if ac_not_in_gbff:
         s_not_g_b = set(k.partition(".")[
                         0] for k in ac_in_source) - set(k.partition(".")[0] for k in tx2gene.keys())
-        logger.warn("{n_acv} acvs ({n_ac} base acs) in source not in geneacs file: {acs}".format(
+        logger.warning("{n_acv} acvs ({n_ac} base acs) in source not in geneacs file: {acs}".format(
             n_acv=len(ac_not_in_gbff), n_ac=len(s_not_g_b), opts=opts, acs=",".join(sorted(ac_not_in_gbff))))
 
     if ac_exons_differ:
-        logger.warn("{n} accessions in gbff-derived txinfo have different exon coordinates: {acs}".format(
+        logger.warning("{n} accessions in gbff-derived txinfo have different exon coordinates: {acs}".format(
             n=len(ac_exons_differ), opts=opts, acs=",".join(sorted(ac_exons_differ))))
 
     pprint.pprint(opts)

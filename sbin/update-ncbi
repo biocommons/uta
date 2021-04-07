@@ -12,7 +12,7 @@ import sys
 import psycopg2
 import psycopg2.extras
 from eutils import Client
-
+from retry import retry 
 
 def getdata(conn, sql):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -27,16 +27,11 @@ def get_uta_transcripts(conn, uta):
     """.format(s=uta)
 
     rows = getdata(conn, sql)
-
     all_uta_tx = [r['tx_ac'] for r in rows]
-
     uta_nms = set()
-
     for tx in all_uta_tx:
-
         if tx.startswith('NM_'):
             uta_nms.add(tx)
-
     return uta_nms
 
 
@@ -45,10 +40,8 @@ def get_ncbi_transcripts(conn, ncbi):
     distinct(tx_ac)
     from {s}.assocacs
     """.format(s=ncbi)
-
     rows = getdata(conn, sql)
     all_ncbi_tx = [r['tx_ac'] for r in rows]
-
     ncbi_nms = set()
     for tx in all_ncbi_tx:
         if tx.startswith('NM_'):
@@ -58,19 +51,20 @@ def get_ncbi_transcripts(conn, ncbi):
 
 
 def get_gene_info(eg):
-    xrefs = eg.features.cds.db_xrefs
-
+    protein_id = eg.features.cds.qualifiers['protein_id']
+    try:
+        xrefs = eg.features.cds.db_xrefs
+    except:
+        xrefs = []
+        print("Could not resolve xrefs for: {}".format(protein_id))
     geneId = None
     hgnc = None
-    protein_id = eg.features.cds.qualifiers['protein_id']
-
     for ref in xrefs:
         spl = ref.split(':')
         if spl[0] == 'GeneID':
             geneId = spl[1]
         elif spl[0] == 'HGNC':
             hgnc = spl[2]
-
     return geneId, hgnc, protein_id
 
 
@@ -79,9 +73,15 @@ def store_assocacs(conn, ncbi, hgnc, tx_ac, gene_id, pro_ac, origin):
           insert into {s}.assocacs (hgnc, tx_ac, gene_id, pro_ac, origin)
           values (%s,%s,%s,%s,%s)
         """.format(s=ncbi)
-
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute(sql, [hgnc, tx_ac, gene_id, pro_ac, origin])
+    return cur.rowcount
+
+
+@retry()
+def fetch_ids_ncbi(ids):
+    my_ids =  ",".join(ids)
+    return client.efetch('nuccore', my_ids)
 
 
 if __name__ == "__main__":
@@ -89,42 +89,42 @@ if __name__ == "__main__":
     logger = logging.getLogger()
 
     url = "postgresql://uta_admin@localhost/uta_dev"
-
     uta, ncbi = sys.argv[1:3]
     conn = psycopg2.connect(url)
 
     uta_tx = get_uta_transcripts(conn, uta)
-
     print("# of transcripts in uta: %s" % len(uta_tx))
-
     ncbi_tx = get_ncbi_transcripts(conn, ncbi)
-
     print("# of transcripts in ncbi: %s" % len(ncbi_tx))
-
     missing = list(uta_tx - ncbi_tx)
-
-    print("# missing in ncbi: %s" % len(missing))
-
+    print(f"# missing in {ncbi}: {len(missing)}")
+    if len(ncbi_tx - uta_tx) > 0:
+        print("# transcripts found in {} but not in {}: {}".format(ncbi, uta, len(list(ncbi_tx - uta_tx))))
+        #print("{}".format("\n".join(list(ncbi_tx - uta_tx))))
+    
     client = Client()
-
     start = 0
-    step = 500
+    step = 250
 
     while start < len(missing):
-
         stop = start + step
         if stop > len(missing):
             stop = len(missing)
-
+        print(f"processing {start} - {stop} tx of {len(missing)}")
         ids = missing[start:stop]
-
         start += step
-
-        egs = client.efetch('nuccore', ",".join(ids))
-
+        egs = fetch_ids_ncbi(ids)
+        if len(list(egs)) != len(ids):
+            raise ValueError(f"tried to fetch {len(ids)} records from NCBI but only fetched {len(list(egs))}")
+        rows_added = 0
         for eg in egs:
-            geneId, hgnc, protein_id = get_gene_info(eg)
-            print(eg.acv, eg.gene, eg.moltype, geneId, hgnc, protein_id)
-            store_assocacs(conn, ncbi, eg.gene, eg.acv, geneId, protein_id, 'NCBI')
-
+            try:
+                geneId, hgnc, protein_id = get_gene_info(eg)
+                #print(eg.acv, eg.gene, eg.moltype, geneId, hgnc, protein_id)
+                row_count = store_assocacs(conn, ncbi, eg.gene, eg.acv, geneId, protein_id, 'NCBI')
+            except:
+                print("Unable to get gene info for {}".format(eg.acv))
+            rows_added += row_count
+        if not rows_added == len(ids):
+            raise ValueError("{len(ids)} transcripts need to be added, but only able to insert {rows_added} records to db")
         conn.commit()
