@@ -58,3 +58,4 @@ misc/partial-alignments
 sdist
 tmp
 venv
+nosetests.xml

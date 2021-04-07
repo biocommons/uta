@@ -8,10 +8,9 @@
 SHELL:=/bin/bash -e -o pipefail
 SELF:=$(firstword $(MAKEFILE_LIST))
 
-PKG=bioutils
-PKGD=$(subst .,/,${PKG})
-
-PYV=3.7
+PKG:=uta
+PKGD:=$(subst .,/,${PKG})
+PYV:=3.8
 VEDIR=venv/${PYV}
 
 #UTA_DB_URL=postgresql://uta_public:uta_public@uta.invitae.com/uta/uta_20140210
@@ -35,7 +34,15 @@ config:
 ############################################################################
 #= SETUP, INSTALLATION, PACKAGING
 
-#=> devready: create venv and install pkg in develop mode
+#=> venv: make a Python 3 virtual environment
+venv: ${VEDIR}
+venv/3.6 venv/3.7 venv/3.8: venv/%:
+	python$* -mvenv $@; \
+	source $@/bin/activate; \
+	python -m ensurepip --upgrade; \
+	pip install --upgrade pip setuptools
+
+#=> devready: create venv, install prerequisites, install pkg in develop mode
 .PHONY: devready
 devready:
 	make ${VEDIR} && source ${VEDIR}/bin/activate && make develop
@@ -43,39 +50,16 @@ devready:
 	@echo '###  Do not forget to `source ${VEDIR}/bin/activate` to use this environment  ###'
 	@echo '#################################################################################'
 
-#=> venv: make a Python 3 virtual environment
-venv/3 venv/3.5 venv/3.6 venv/3.7: venv/%:
-	python$* -mvenv $@; \
-	source $@/bin/activate; \
-	python -m ensurepip --upgrade; \
-	pip install --upgrade pip setuptools
-
 #=> develop: install package in develop mode
-develop:
-	pip install -e .[dev]
-
 #=> install: install package
 #=> bdist bdist_egg bdist_wheel build sdist: distribution options
-.PHONY: bdist bdist_egg bdist_wheel build build_sphinx sdist install
+.PHONY: bdist bdist_egg bdist_wheel build build_sphinx sdist install develop
+develop:
+	pip install -e .
 bdist bdist_egg bdist_wheel build sdist install: %:
 	python setup.py $@
 
-bdist bdist_egg build build_sphinx install sdist: %:
-	python setup.py $*
 
-#=> upload
-upload: upload_pypi
-
-#=> upload_all: upload_pypi, upload_invitae, and upload_docs
-upload_all: upload_pypi upload_docs
-
-#=> upload_*: upload to named pypi service (requires config in ~/.pypirc)
-upload_%:
-	python setup.py bdist_egg sdist upload -r $*
-
-#=> upload_docs: upload documentation to pythonhosted
-upload_docs: %:
-	python setup.py $* -r pypi
 
 
 ############################################################################

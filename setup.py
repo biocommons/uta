@@ -15,7 +15,7 @@ setup(
     description="Universal Transcript Archive",
     name="uta",
     packages=find_packages(),
-    url="https://bitbucket.org/biocommons/uta",
+    url="https://github.com/biocommons/uta",
 
     classifiers = [
         "Development Status :: 3 - Alpha",
@@ -24,7 +24,7 @@ setup(
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python",
         "Topic :: Database :: Front-Ends",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -49,7 +49,6 @@ setup(
     },
 
     install_requires=[
-        # "MySQL-python",
         "attrs",
         "biocommons.seqrepo",
         "biopython>=1.69",
@@ -78,18 +77,19 @@ setup(
     tests_require=[
         "coverage",
         "testing.postgresql",
+        "wheel",                # to suppress warnings from build env
     ],
 )
 
 # <LICENSE>
-# Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
-##
+# Copyright 2021 UTA Contributors (https://github.com/biocommons/uta)
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-##
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-##
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
