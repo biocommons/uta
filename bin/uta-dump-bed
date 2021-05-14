@@ -3,6 +3,7 @@
 
 import argparse
 import os
+import pathlib
 import sys
 import operator
 
@@ -28,6 +29,12 @@ def parse_args(argv):
         help="filter transcripts by this alignment method",
     )
     ap.add_argument(
+        "--gene-list",
+        "-G",
+        type=pathlib.Path,
+        required=False,
+        default=None)
+    ap.add_argument(
         "--schema",
         default="uta_20210129",
     )
@@ -45,7 +52,6 @@ if __name__ == "__main__":
         if s['refseq_ac'].startswith('NC_')
         }
 
-
     conn = psycopg2.connect(
         "host=uta.biocommons.org dbname=uta user=anonymous password=anonymous")
     cur = conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
@@ -54,8 +60,13 @@ if __name__ == "__main__":
 	FROM {opts.schema}.tx_exon_set_summary_mv ESS
 	JOIN {opts.schema}.transcript T ON ESS.tx_ac=T.ac
 	WHERE tx_ac ~ '^NM_' AND alt_ac ~ '^NC_0000' AND alt_aln_method = %s
-        ORDER by alt_ac, se_i
+        """
+    if opts.gene_list:
+        genes = [f"'{g.strip()}'" for g in open(opts.gene_list).read().split()]
+        query += f""" AND ESS.hgnc in ({",".join(genes)})"""
+    query += """ ORDER by alt_ac, se_i
 	"""
+
     cur.execute(query.format(opts=opts), [opts.method])
 
     # records like this:
@@ -77,7 +88,7 @@ if __name__ == "__main__":
     # │ cds_end_i      │ 1224
 
     print(
-        '#gffTags\ntrack name={opts.schema}_{opts.method} type=bedDetail description="{opts.method} alignments from UTA ({opts.schema}) visibility=3"'
+        '#gffTags\ntrack name={opts.schema}_{opts.assembly}_{opts.method} type=bedDetail description="{opts.method} alignments from UTA ({opts.schema}) visibility=3"'
         .format(opts=opts))
 
     for row in cur:
@@ -107,7 +118,7 @@ if __name__ == "__main__":
             prepend_chr(NC_to_chr[row.alt_ac]),  # chrom "chr.."
             str(chrom_start),
             str(chrom_end),
-            row.tx_ac,                           # name
+            f"{row.hgnc}/{row.tx_ac}",           # name
             "0",                                 # score
             "+" if row.alt_strand == 1 else "-", # strand
             str(thick_start),                    # thickStart
