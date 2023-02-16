@@ -41,25 +41,25 @@ Accessing the Public UTA Instance
 
 Invitae provides a public instance of UTA.  The connection parameters are:
 
-============  ===================
+============  ======================
 **param**     **value**
-============  ===================
-**host**      ``uta.invitae.com``
+============  ======================
+**host**      ``uta.biocommons.org``
 **port**      ``5432`` (default)
 **database**  ``uta``
 **login**     ``anonymous``
 **password**  ``anonymous``
-============  ===================
+============  ======================
 
 
 For example::
 
-  $ PGPASSWORD=anonymous psql -h uta.invitae.com -U anonymous -d uta
+  $ PGPASSWORD=anonymous psql -h uta.biocommons.org -U anonymous -d uta
 
 Or, in Python::
 
   > import psycopg2, psycopg2.extras
-  > conn = psycopg2.connect("host=uta.invitae.com dbname=uta user=anonymous password=anonymous")
+  > conn = psycopg2.connect("host=uta.biocommons.org dbname=uta user=anonymous password=anonymous")
   > cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
   > cur.execute("select * from uta_20140210.tx_def_summary_v where hgnc='BRCA1'")
   > row = cur.fetchone()
