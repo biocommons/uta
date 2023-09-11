@@ -1,31 +1,35 @@
+# Manage releasing a uta schema dump from dev to dl.biocommons.org and to prd
+
+
 .SUFFIXES:
 .PHONY: FORCE
 .DELETE_ON_ERROR:
 
 SHELL:=/bin/bash -o pipefail
 
-SCHEMA:=uta_20140210
+SCHEMA:=uta_20210129b
 
-export PGUSER=reece
-export PGDATABASE=reece
-export PGHOST=
+export PGUSER=postgres
+export PGHOST=uta.biocommons.org
 
+FILES:=${SCHEMA}.pgd.gz	${SCHEMA}-schema.pgd.gz ${SCHEMA}.pgd.gz.sha512 ${SCHEMA}-schema.pgd.gz.sha512  
 
-default: ${SCHEMA}-schema.pgd.gz ${SCHEMA}-schema.pgd.gz.sha1 ${SCHEMA}.pgd.gz ${SCHEMA}.pgd.gz.sha1
-
+.PHONY: dumps
+dumps: ${FILES}
 
 %-schema.pgd.gz:
-	pg_dump -U uta_admin --no-owner -n $* --schema-only | gzip -cq >$@
+	pg_dump -d uta_dev -U uta_admin --no-owner -n $* --schema-only | gzip -cq >$@
 
 %.pgd.gz:
-	pg_dump -U uta_admin --no-owner -n $*               | gzip -cq >$@
+	pg_dump -d uta_dev -U uta_admin --no-owner -n $*               | gzip -cq >$@
 
-%.sha1: %
-	sha1sum $< >$@
+%.sha512: %
+	sha512sum $< >$@
 
+.PHONY: push
+dl-push: ${FILES}
+	rsync --progress $^ stuart:/biocommons/dl.biocommons.org/uta/
 
-uta-push-%: %.pgd.gz
-	gzip -cdq <$< | time psql -1 -v ON_ERROR_STOP=1 -h uta.invitae.com -U uta_admin -d uta -f -
-
-db-push-%: %.pgd.gz
-	gzip -cdq <$< | time psql -1 -v ON_ERROR_STOP=1 -h db.locusdev.net -U reece -d uta -f -
+.PHONY: 
+db-push: ${SCHEMA}.pgd.gz
+	gzip -cdq <$< | time psql -d uta -1be -v ON_ERROR_STOP=1 -f -
