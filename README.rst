@@ -95,7 +95,7 @@ as a local postgresql process. The only requirement is docker itself
 
    ::
 
-      $ uta_v=uta_20180821
+      $ uta_v=uta_20210129b
 
    This variable is used only for consistency in the examples that
    follow. Define this variable is not required for any other reason.
@@ -118,18 +118,20 @@ as a local postgresql process. The only requirement is docker itself
 #. Run the image 
 
    ::
-
-      $ docker volume create --name=$uta_v
+      
       $ docker run \
-        --name $uta_v \
-	-e POSTGRES_PASSWORD=some-password-you-make-up \
-	-p 5432:5432 \
-        -v $uta_v:/var/lib/postgresql/data \
-	biocommons/uta:$uta_v
+         -d \
+         -e POSTGRES_PASSWORD=some-password-that-you-make-up \
+         -v /tmp:/tmp \
+         -v uta_vol:/var/lib/postgresql/data \
+         --name $uta_v \
+         --network=host \
+         biocommons/uta:$uta_v
 
    The first time you run this image, it will initialize a postgresql
-   database cluster, then download a database dump and install it.  -d
-   starts the container in daemon (background) mode. To see progress::
+   database cluster, then download a database dump and install it.
+   
+   -d starts the container in daemon (background) mode. To see progress::
 
       $ docker logs -f $uta_v
 
@@ -148,24 +150,13 @@ as a local postgresql process. The only requirement is docker itself
    least 4 lines showing schema_version, create date, license, and uta
    (code) version used to build the instance.
 
-   **Linux**
-
-   On Linux, where docker runs natively, ``-p 50827:5432`` option to
-   the ``docker run`` command causes localhost:50827 to be mapped to
-   the container port 5432.  The following command connects to the UTA
-   instance::
-
-      $ psql -h localhost -p 50827 -U anonymous -d uta -c "select * from $uta_v.meta"
-
-   **With DockerToolbox (Mac and Windows)**
-
-   On Mac and Windows, docker runs in a virtual machine using
-   `DockerToolbox <https://www.docker.com/docker-toolbox>`__.  The
-   ``-p 50827:5432`` option to the ``docker run`` maps VM port 50827
-   (not that of the host OS).  In order to connect to UTA, you must
-   use the IP address of the VM, like this::
-
-      $ psql -h $(docker-machine ip default) -p 50827 -U anonymous -d uta -c "select * from $uta_v.meta"
+      $ psql -h localhost -U anonymous -d uta -c "select * from $uta_v.meta"
+            key       |                               value                          
+      ----------------+--------------------------------------------------------------
+       schema_version | 1.1
+       created on     | 2015-08-21T10:53:50.666152      
+       license        | CC-BY-SA (http://creativecommons.org/licenses/by-sa/4.0/deed.
+       uta version    | 0.2.0a2.dev11+n52ed6e969cfc
 
 
 
