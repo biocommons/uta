@@ -1,0 +1,81 @@
+name: UTA Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      genome-build:
+        description: Genome build
+        type: choice
+        options:
+          - GRCh37
+          - GRCh38
+        default: GRCh38
+      run-fetch-data:
+        description: Fetch data with mirrors-ncbi
+        type: boolean
+        default: false
+      run-build-seqrepo:
+        description: Build SeqRepo
+        type: boolean
+        default: false
+      run-push-seqrepo:
+        description: Push SeqRepo to download area
+        type: boolean
+        default: false
+      run-prepare-loading:
+        description: Prepare files for loading
+        type: boolean
+        default: false
+      run-create-load-db:
+        description: Create loading database
+        type: boolean
+        default: false
+      run-load-data:
+        description: Load data
+        type: boolean
+        default: false
+      run-custom-transcripts:
+        description: Add custom transcript alignments
+        type: boolean
+        default: false
+      run-rename-db:
+        description: Rename database
+        type: boolean
+        default: false
+      run-create-update-ncbi-schema:
+        description: Create & update ncbi schema
+        type: boolean
+        default: false
+      run-dumb-new-db:
+        description: Dumb new database
+        type: boolean
+        default: false
+      run-deploy-db-for-testing:
+        description: Deploy new database for testing
+        type: boolean
+        default: false
+      run-test-build:
+        description: Test build
+        type: boolean
+        default: false
+      run-deploy-to-production:
+        description: Deploy to production
+        type: boolean
+        default: false
+
+jobs:
+  summarize-inputs:
+    name: Workflow inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GHA inputs to summary page
+        uses: actions/github-script@v6
+        env:
+          INPUTS_JSON: ${{ toJson(inputs) }}
+        with:
+          script: |
+            await core.summary
+            .addHeading('Inputs')
+            .addCodeBlock(JSON.stringify(JSON.parse(process.env.INPUTS_JSON), null, 2), 'json')
+            .write()
+
