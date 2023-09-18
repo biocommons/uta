@@ -1,8 +1,7 @@
 from setuptools import setup, find_packages
 
-#with open("doc/description.txt") as f:
-#    long_description = f.read()
-long_description = "whatever"
+with open("README.md") as f:
+    long_description = f.read()
 
 setup(
     license = "Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
