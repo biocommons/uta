@@ -261,10 +261,12 @@ To develop UTA, follow these steps.
 
 2.  Clone UTA and install:
 
-    Note: this installation process is currently unimplemented.
-
         $ git clone git@github.com:biocommons/uta.git
         $ cd uta
-        $ pip install -e .[dev]
+        $ pip install -e .[test]
 
 3.  Restore a database or load a new one using the instructions [above](#installing-from-database-dumps).
+
+4.  To run the tests:
+
+        $ python3 -m unittest
