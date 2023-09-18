@@ -1,0 +1,83 @@
+[project]
+name = "uta"
+dynamic = ["version"]
+description = "Universal Transcript Archive"
+readme = "README.md"
+requires-python = ">=3.5"
+license = {text = "Apache-2.0"}
+
+keywords = [
+    "bioinformatics",
+    "computational biology",
+    "genome variants",
+    "genome variation",
+    "genomic variants",
+    "genomic variation",
+    "genomics",
+    "hgvs",
+]
+
+authors = [
+  {name = "UTA Contributors", email = "reecehart+uta@gmail.com" }
+]
+maintainers = [
+  {name = "UTA Contributors", email = "reecehart+uta@gmail.com" }
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+
+dependencies = [
+  "attrs",
+  "biocommons.seqrepo",
+  "biopython>=1.69",
+  "bioutils",
+  "colorlog",
+  "configparser",
+  "docopt",
+  "eutils>=0.3.2",
+  "nose",
+  "prettytable",
+  "psycopg2-binary",
+  "pytz",
+  "recordtype",
+  "sqlalchemy",
+  "uta-align",
+]
+
+[project.optional-dependencies]
+test = ["coverage", "testing.postgresql"]
+
+[project.urls]  # Optional
+"Homepage" = "https://github.com/biocommons/uta"
+"Bug Reports" = "https://github.com/biocommons/uta/issues"
+"Source" = "https://github.com/biocommons/uta"
+
+[project.scripts]
+uta = "uta.cli:main"
+
+# This is configuration specific to the `setuptools` build backend.
+# If you are using a different build backend, you will need to change this.
+[tool.setuptools]
+# If there are data files included in your packages that need to be
+# installed, specify them here.
+package-data = {"sample" = ["*.dat"]}
+
+[build-system]
+requires = [
+  "setuptools>=43.0.0",
+  "setuptools_scm==1.11.1",
+  "wheel"
+]
+build-backend = "setuptools.build_meta"
