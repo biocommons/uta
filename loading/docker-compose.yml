@@ -22,8 +22,7 @@ services:
     ports:
       - "5432:5432"
 #    healthcheck:
-#      #test: [ "CMD", "psql -h localhost -U anonymous -d uta -c \"select * from ${uta_v}.meta\""]
-#      test: [ "CMD", "psql -h localhost -U anonymous -d uta -c \"select * from blahblah.meta\""]
+#      test: [ "CMD", "ls",  "/uta-ready"]
 #      interval: 30s
 #      retries: 3
 #      timeout: 10s

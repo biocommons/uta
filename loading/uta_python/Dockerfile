@@ -10,6 +10,7 @@ RUN apt-get update
 RUN apt-get -y install make
 RUN apt-get -y install curl
 RUN apt-get -y install git
+RUN apt-get -y install postgresql-client
 
 # Install any Python dependencies
 RUN pip install git+https://github.com/ecalifornica/uta-align@fix-possible-bug
