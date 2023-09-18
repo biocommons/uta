@@ -3,6 +3,11 @@
 This directory contains files for loading and releasing a new UTA database.
 
 
+Set the version of the most recent UTA release.
+```shell
+export uta_v=20210129b
+```
+
 To build
 ```shell
 docker-compose build

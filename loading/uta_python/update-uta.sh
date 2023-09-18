@@ -1,0 +1,1 @@
+psql -h postgres -U uta_admin -d uta -c "select * from uta_20210129b.meta"

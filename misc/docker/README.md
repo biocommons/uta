@@ -10,7 +10,6 @@ UTA_VERSION=uta_20210129b
 
 2. Build docker image
 ```
-export uta_v=20210129b
 docker build -f uta.dockerfile --build-arg uta_version=$UTA_VERSION --rm=true -t biocommons/uta:$UTA_VERSION .
 ```
 
