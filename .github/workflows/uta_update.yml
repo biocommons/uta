@@ -1,0 +1,27 @@
+name: UTA Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      run-uta-update:
+        description: Run UTA update
+        type: boolean
+        default: true
+
+
+jobs:
+  summarize-inputs:
+    name: Workflow inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GHA inputs to summary page
+        uses: actions/github-script@v6
+        env:
+          INPUTS_JSON: ${{ toJson(inputs) }}
+        with:
+          script: |
+            await core.summary
+            .addHeading('Inputs')
+            .addCodeBlock(JSON.stringify(JSON.parse(process.env.INPUTS_JSON), null, 2), 'json')
+            .write()
+
