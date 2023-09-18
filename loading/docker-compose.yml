@@ -1,0 +1,47 @@
+version: '3'
+
+
+
+#docker run \
+#   -d \
+#   -e POSTGRES_PASSWORD=uta \
+#   -v /tmp:/tmp \
+#   -v uta_vol:/var/lib/postgresql/data \
+#   --name $uta_v \
+#   --network=host \
+#   biocommons/uta:$uta_v
+
+
+services:
+  postgres:
+    image: biocommons/uta:uta_${uta_v}
+    # image: biocommons/uta:uta_20210129b
+    container_name: uta_${uta_v}
+    environment:
+      POSTGRES_PASSWORD: uta_admin
+    ports:
+      - "5432:5432"
+#    healthcheck:
+#      #test: [ "CMD", "psql -h localhost -U anonymous -d uta -c \"select * from ${uta_v}.meta\""]
+#      test: [ "CMD", "psql -h localhost -U anonymous -d uta -c \"select * from blahblah.meta\""]
+#      interval: 30s
+#      retries: 3
+#      timeout: 10s
+
+  uta_python:
+    build:
+      context: ./uta_python  # Path to your Python application's Dockerfile
+    container_name: uta_python
+    depends_on:
+      - postgres
+    volumes:
+      - ../../uta:/uta  # Mount the "uta" directory into the /app directory in the container
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: uta_dev
+      POSTGRES_USER: uta_admin
+      POSTGRES_PASSWORD: uta_admin
+
+volumes:
+  postgres_data:
