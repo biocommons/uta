@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
-with open("doc/description.txt") as f:
-    long_description = f.read()
-
+#with open("doc/description.txt") as f:
+#    long_description = f.read()
+long_description = "whatever"
 
 setup(
     license = "Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
@@ -69,8 +69,6 @@ setup(
     setup_requires = [
         "nose",
         "setuptools_scm==1.11.1",
-        "sphinx",
-        "sphinxcontrib-fulltoc",
         "wheel",
     ],
 
