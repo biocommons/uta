@@ -9,7 +9,7 @@ on:
         default: true
 
 env:
-  UTA_V=20210129b
+  UTA_V: 20210129b
 
 jobs:
   summarize-inputs:
