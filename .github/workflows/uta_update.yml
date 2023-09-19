@@ -8,6 +8,8 @@ on:
         type: boolean
         default: true
 
+env:
+  UTA_V=20210129b
 
 jobs:
   summarize-inputs:
@@ -29,27 +31,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Set up Docker
-        uses: docker/setup-action@v2
-        with:
-          docker-version: '20.10.7'
-      - name: Build Docker Compose Services
-        uses: docker/compose-action@v2
-        with:
-          file: loading/docker-compose.yml
-          services: uta_python
-          build: --build
-      - name: Start Docker Compose Services
-        uses: docker/compose-action@v2
-        with:
-          file: loading/docker-compose.yml
-          services: uta_python
-      - name: Execute Commands Inside Container
-        uses: docker/exec-action@v2
-        with:
-          container: some_stuff_python
-          run: PGPASSWORD=anonymous psql -h postgres -U anonymous -d uta
+      - name: Change dir
+        run: cd loading
+      - name: Build the stack
         env:
-          DOCKER_CLI: bash
-        timeout-minutes: 5
+            uta_v: ${{ env.UTA_V }
+        run: docker-compose up -d
+      - name: Bring up the stack
+        env:
+            uta_v: ${{ env.UTA_V }
+        run: docker-compose up
+      - name: Bring down the stack
+        env:
+            uta_v: ${{ env.UTA_V }
+        run: docker-compose down --volumes
 
