@@ -35,14 +35,14 @@ jobs:
         run: cd loading
       - name: Build the stack
         env:
-            uta_v: ${{ env.UTA_V }
+            uta_v: ${{ env.UTA_V }}
         run: docker-compose up -d
       - name: Bring up the stack
         env:
-            uta_v: ${{ env.UTA_V }
+            uta_v: ${{ env.UTA_V }}
         run: docker-compose up
       - name: Bring down the stack
         env:
-            uta_v: ${{ env.UTA_V }
+            uta_v: ${{ env.UTA_V }}
         run: docker-compose down --volumes
 
