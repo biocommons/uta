@@ -48,8 +48,9 @@ jobs:
             uta_v: ${{ env.UTA_V }}
         run: |
           cd loading
-          docker exec -it uta_python bash -c 'PGPASSWORD=anonymous psql -h postgres -U anonymous -d uta'
+          docker exec uta_python bash -c 'PGPASSWORD=anonymous psql -h postgres -U anonymous -d uta'
       - name: Bring down the stack
+        if: always()
         env:
             uta_v: ${{ env.UTA_V }}
         run: |
