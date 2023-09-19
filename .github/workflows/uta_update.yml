@@ -42,7 +42,7 @@ jobs:
             uta_v: ${{ env.UTA_V }}
         run: |
           cd loading
-          docker-compose up
+          docker-compose up -d
       - name: Test the stack
         env:
             uta_v: ${{ env.UTA_V }}
