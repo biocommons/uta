@@ -43,6 +43,12 @@ jobs:
         run: |
           cd loading
           docker-compose up
+      - name: Test the stack
+        env:
+            uta_v: ${{ env.UTA_V }}
+        run: |
+          cd loading
+          docker exec -it uta_python bash -c 'PGPASSWORD=anonymous psql -h postgres -U anonymous -d uta'
       - name: Bring down the stack
         env:
             uta_v: ${{ env.UTA_V }}
