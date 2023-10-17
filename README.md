@@ -23,7 +23,7 @@ map variants between genomic, transcript, and protein coordinates.
 
 This code repository is primarily used for *generating* the UTA
 database. The primary interface for the database itself is via direct
-PostgreSQL access. (A [REST interface](https://github.com/biocommons/uta/issue/164/) is planned, but not yet available.)
+PostgreSQL access. (A [REST interface](https://github.com/biocommons/uta/issues/164/) is planned, but not yet available.)
 
 Users can access a public instance of UTA or build their own instance of
 the database.
