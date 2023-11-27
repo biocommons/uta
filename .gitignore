@@ -59,3 +59,4 @@ sdist
 tmp
 venv
 nosetests.xml
+.vscode
