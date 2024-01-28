@@ -32,7 +32,7 @@ createdb   --username "$POSTGRES_USER" -O uta_admin uta
 # progress and pg restore progress.
 
 UTA_BASENAME=${UTA_VERSION}${UTA_SCHEMA_ONLY:+-schema}.pgd.gz
-UTA_PGD_URL=https://dl.biocommons.org/uta/${UTA_BASENAME}
+UTA_PGD_URL=${UTA_BASEURL}/${UTA_BASENAME}
 UTA_PGD_FN=/tmp/${UTA_BASENAME}
 
 if ! [ -e "${UTA_PGD_FN}" ]; then
