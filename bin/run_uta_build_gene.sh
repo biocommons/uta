@@ -12,23 +12,15 @@ sbin/ncbi-parse-geneinfo DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz | gzi
 docker pull biocommons/uta:$uta_v
 
 ### stand up container for UTA database
-docker run \
-   -d \
-   -e POSTGRES_PASSWORD=temp \
-   -v /tmp:/tmp \
-   -v uta_vol:/var/lib/postgresql/data \
-#   -p 5432:5432 \
-   --name $uta_v \
-   --network=host \
-   biocommons/uta:$uta_v
-
-docker ps -a
+docker run -d -v /tmp:/tmp -v uta_vol:/var/lib/postgresql/data --name $uta_v --network=host biocommons/uta:$uta_v
+sleep 5
+docker ps
 
 ## update the uta database
-uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-geneinfo genes.geneinfo.gz
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-geneinfo genes.sample.gz
 
 ## psql_dump
-
+pg_dump -U uta_admin -h localhost -d uta -t uta_20210129b.gene | gzip -c > uta.pgd.gz
 ## stop local postgres container
 docker stop uta_20210129b
 docker rm uta_20210129b
