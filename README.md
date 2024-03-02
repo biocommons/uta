@@ -243,11 +243,13 @@ the installation environment.*
     uta_admin are likely to ease installation.
 
         $ createuser -U postgres uta_admin
-        $ createdb -U postgres -O uta_admin uta 
+        $ createuser -U postgres anonymous
+        $ createdb -U postgres -O uta_admin uta
 
 3.  Restore the database.
 
-        $ gzip -cdq uta_20150827.pgd.gz | psql -U uta_admin -1 -v ON_ERROR_STOP=1 -d uta -Eae
+        $ uta_v=uta_20210129b
+        $ gzip -cdq $uta_v.pgd.gz | psql -U uta_admin -1 -v ON_ERROR_STOP=1 -d uta -Eae
 
 ## Developer Setup
 
