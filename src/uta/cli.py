@@ -19,6 +19,7 @@ Usage:
   uta (-C CONF ...) [options] grant-permissions
   uta (-C CONF ...) [options] refresh-matviews
   uta (-C CONF ...) [options] analyze
+  uta ncbi-download
   
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
@@ -44,10 +45,11 @@ Examples:
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import sys
+
 import configparser
 import logging
 import logging.config
-import pkg_resources
 import time
 
 import docopt
@@ -56,37 +58,49 @@ import uta
 import uta.loading as ul
 from uta.exceptions import UTAError
 
+from uta.tools.ncbi_download import NCBIDownloader
+
 
 def shell(session, opts, cf):
     import IPython
+
     IPython.embed()
+
+
+def ncbi_download():
+    n = NCBIDownloader()
+    n.update()
 
 
 def main():
     dispatch_table = [
-        ("align-exons",         ul.align_exons),
-        ("analyze",             ul.analyze),
-        ("create-schema",       ul.create_schema),
-        ("drop-schema",         ul.drop_schema),
-        ("grant-permissions",   ul.grant_permissions),
-        ("load-exonset",        ul.load_exonset),
-        ("load-geneinfo",       ul.load_geneinfo),
-        ("load-origin",         ul.load_origin),
-        ("load-ncbi-seqgene",   ul.load_ncbi_seqgene),
-        ("load-seqinfo",        ul.load_seqinfo),
-        ("load-sequences",      ul.load_sequences),
-        ("load-sql",            ul.load_sql),
-        ("load-txinfo",         ul.load_txinfo),
-        ("refresh-matviews",    ul.refresh_matviews),
-        ("shell",               shell),
+        ("align-exons", ul.align_exons),
+        ("analyze", ul.analyze),
+        ("create-schema", ul.create_schema),
+        ("drop-schema", ul.drop_schema),
+        ("grant-permissions", ul.grant_permissions),
+        ("load-exonset", ul.load_exonset),
+        ("load-geneinfo", ul.load_geneinfo),
+        ("load-origin", ul.load_origin),
+        ("load-ncbi-seqgene", ul.load_ncbi_seqgene),
+        ("load-seqinfo", ul.load_seqinfo),
+        ("load-sequences", ul.load_sequences),
+        ("load-sql", ul.load_sql),
+        ("load-txinfo", ul.load_txinfo),
+        ("refresh-matviews", ul.refresh_matviews),
+        ("ncbi-download", ncbi_download),
+        ("shell", shell),
     ]
-
     opts = docopt.docopt(__doc__, version=uta.__version__)
 
-    #logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
-    #logging.config.fileConfig(logging_conf_fn)
-    #verbose_log_level = logging.INFO # if opts.verbose == 0 else logging.INFO if opts.verbose == 1 else logging.DEBUG
-    #logger.setLevel(level=verbose_log_level)
+    if opts['ncbi-download']:
+        ncbi_download()
+
+
+    # logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
+    # logging.config.fileConfig(logging_conf_fn)
+    # verbose_log_level = logging.INFO # if opts.verbose == 0 else logging.INFO if opts.verbose == 1 else logging.DEBUG
+    # logger.setLevel(level=verbose_log_level)
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -114,15 +128,13 @@ def main():
         raise UTAError("No valid actions specified")
     t0 = time.time()
     sub(session, opts, cf)
-    logger.info("{cmd}: {elapsed:.1f}s elapsed".format(
-        cmd=cmd, elapsed=time.time() - t0))
-
+    logger.info(
+        "{cmd}: {elapsed:.1f}s elapsed".format(cmd=cmd, elapsed=time.time() - t0)
+    )
 
 
 if __name__ == "__main__":
     main()
-
-
 
 
 # <LICENSE>

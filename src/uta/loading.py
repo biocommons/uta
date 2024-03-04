@@ -16,7 +16,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 import psycopg2.extras
 import six
-import uta_align.align.algorithms as utaaa
 
 from uta.lru_cache import lru_cache
 
@@ -32,6 +31,7 @@ usam = uta.models
 
 logger = logging.getLogger(__name__)
 
+
 def align_exons(session, opts, cf):
     # N.B. setup.py declares dependencies for using uta as a client.  The
     # imports below are loading depenencies only and are not in setup.py.
@@ -46,9 +46,11 @@ def align_exons(session, opts, cf):
         return cur
 
     def align(s1, s2):
-        score, cigar = utaaa.needleman_wunsch_gotoh_align(s1.encode("ascii"),
-                                                          s2.encode("ascii"),
-                                                          extended_cigar=True)
+        import uta_align.align.algorithms as utaaa
+
+        score, cigar = utaaa.needleman_wunsch_gotoh_align(
+            s1.encode("ascii"), s2.encode("ascii"), extended_cigar=True
+        )
         tx_aseq, alt_aseq = utaaa.cigar_alignment(
             tx_seq, alt_seq, cigar, hide_match=False)
         return tx_aseq.decode("ascii"), alt_aseq.decode("ascii"), cigar.to_string().decode("ascii")
