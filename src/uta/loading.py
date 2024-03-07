@@ -13,6 +13,7 @@ from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
 from bioutils.digests import seq_md5
 from bioutils.sequences import reverse_complement
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from sqlalchemy.orm.exc import NoResultFound
 import psycopg2.extras
 import six
@@ -199,8 +200,8 @@ def drop_schema(session, opts, cf):
 def grant_permissions(session, opts, cf):
     schema = usam.schema_name
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
     session.execute("set search_path = " + usam.schema_name)
 
     cmds = [
@@ -244,9 +245,9 @@ def load_exonset(session, opts, cf):
 
     update_period = 25
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     n_rows = len(gzip.open(opts["FILE"], 'rt').readlines()) - 1
     esr = ufes.ExonSetReader(gzip.open(opts["FILE"], 'rt'))
@@ -282,9 +283,9 @@ def load_exonset(session, opts, cf):
 
 
 def load_geneinfo(session, opts, cf):
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     gir = ufgi.GeneInfoReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
