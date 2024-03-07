@@ -23,7 +23,7 @@ def sample_line(**params):
         "start": 11874,
         "stop": 12227,
         "score": ".",
-        "strand": "+",
+        "strand": "1",
         "phase": ".",
         "attributes_str": "ID=exon-NR_046018.2-1;Parent=rna-NR_046018.2;transcript_id=NR_046018.2",
     }
@@ -86,7 +86,7 @@ class TestGFFParsing(unittest.TestCase):
             seqid="NC_000001.10",
             start=11874,
             end=12227,
-            strand="+",
+            strand="1",
             exon_number=1,
             parent_id="rna-NR_046018.2",
             transcript_id="NR_046018.2",

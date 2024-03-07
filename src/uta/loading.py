@@ -245,9 +245,9 @@ def load_exonset(session, opts, cf):
 
     update_period = 25
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     n_rows = len(gzip.open(opts["FILE"], 'rt').readlines()) - 1
     esr = ufes.ExonSetReader(gzip.open(opts["FILE"], 'rt'))

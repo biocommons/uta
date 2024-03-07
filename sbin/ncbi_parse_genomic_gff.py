@@ -1,3 +1,26 @@
+"""Write exonsets from NCBI GFF alignments, as obtained from
+ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions
+This service appeared in April 2015 and is due to update weekly.
+
+See uta.formats for a description of those file formats.
+
+In a nutshell, this means that you'll get data like this:
+
+ncbi-gff.exonsets.gz:
+tx_ac   alt_ac  method  strand  exons_se_i
+NM_130786.3 NC_000019.9 splign  -1  58864769,58864865;588646...
+NM_130786.3 NC_018930.2 splign  -1  58858699,58858795;588585...
+NM_130786.3 AC_000151.1 splign  -1  55173924,55174020;551738...
+NM_138933.2 NC_000010.10    splign  -1  52645340,52645435;52...
+
+UTA requires that the exon structure of a transcript accession as
+defined on its own sequence is unique. Although this is mostly true,
+there are instances where NCBI reports different exon structures for a
+single transcript. For example, NM_001300954.1 aligns with 11 exons on
+NC_000011.9 and 5 exons on NW_003871081.1, and the differences are NOT
+due merely to concatenation of adjacent spans.
+"""
+
 import argparse
 import os
 from typing import List, Optional
@@ -125,7 +148,7 @@ if __name__ == "__main__":
 
     transcript_alignments = parse_gff_file(gff_infile)
     logger.info(
-        f"read {len(transcript_alignments)} transcript alignments from {gff_infile}"
+        f"read {len(transcript_alignments)} transcript alignments from {gff_infile.name}"
     )
 
     for transcript_exons in transcript_alignments.values():
@@ -135,7 +158,7 @@ if __name__ == "__main__":
             tx_ac=e.transcript_id,
             alt_ac=e.seqid,
             method="splign",
-            strand=e.strand,
+            strand=-1 if e.strand == "-" else 1,
             exons_se_i=exons_se,
         )
         esw.write(es)
