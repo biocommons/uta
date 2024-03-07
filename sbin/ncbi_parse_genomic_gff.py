@@ -22,18 +22,16 @@ due merely to concatenation of adjacent spans.
 """
 
 import argparse
-import os
-from typing import List, Optional
 import gzip
+import logging.config
+import os
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import List, Optional
 
-import logging
+import pkg_resources
 
 from uta.formats.exonset import ExonSet, ExonSetWriter
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -63,7 +61,7 @@ def parse_gff_record(line: str) -> Optional[GFFRecord]:
 
     seqid, source, feature, start, end, score, strand, phase, attributes_str = fields
 
-    if feature != "exon" or not seqid.startswith("NC_"):
+    if feature != "exon":
         return
 
     attributes = {}
@@ -128,6 +126,11 @@ def get_zero_based_exon_ranges(transcript_exons: List[GFFRecord]) -> str:
 
 
 if __name__ == "__main__":
+    logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
+    logging.config.fileConfig(logging_conf_fn)
+    logging.getLogger().setLevel(logging.INFO)
+    logger = logging.getLogger(__name__)
+
     parser = argparse.ArgumentParser(description="Parse GFF file.")
     parser.add_argument(
         "gff_file", type=argparse.FileType("rb"), help="Path to the gzipped GFF file"

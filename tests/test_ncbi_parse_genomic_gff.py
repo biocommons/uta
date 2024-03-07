@@ -101,13 +101,6 @@ class TestGFFParsing(unittest.TestCase):
         parsed_record = parse_gff_record(line)
         self.assertEqual(parsed_record, expected_record)
 
-    def test_parse_gff_record_skips_non_NC_target(self):
-        # We exclude alignments to non-NC chromosomes
-        line = sample_line(seqid="NT_123")
-        expected_record = None
-        parsed_record = parse_gff_record(line)
-        self.assertEqual(parsed_record, expected_record)
-
     def test_parse_gff_record_skips_missing_transcript_id(self):
         # We exclude alignments missing transcript_id
         line = sample_line(

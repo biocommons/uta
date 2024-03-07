@@ -17,7 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.orm.exc import NoResultFound
 import psycopg2.extras
 import six
-# import uta_align.align.algorithms as utaaa
+import uta_align.align.algorithms as utaaa
 
 from uta.lru_cache import lru_cache
 

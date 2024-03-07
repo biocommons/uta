@@ -13,7 +13,7 @@ from sqlalchemy.ext.declarative import declarative_base
 # schema name support
 # also see etc/uta.conf
 
-schema_version = "20210129b"
+schema_version = "1.1"
 use_schema = True
 if use_schema:
     schema_name = "uta_" + schema_version.replace(".","_")
