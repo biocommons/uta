@@ -144,9 +144,7 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(description="Parse GFF file.")
-    parser.add_argument(
-        "gff_files", nargs='+', type=str, help="Path to GFF file(s)"
-    )
+    parser.add_argument("gff_files", nargs="+", type=str, help="Path to GFF file(s)")
     args = parser.parse_args()
 
     gff_files = args.gff_files

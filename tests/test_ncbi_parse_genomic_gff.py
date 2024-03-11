@@ -165,13 +165,13 @@ class TestGFFParsing(unittest.TestCase):
 
     def test_parse_gff_file_accepts_gzipped_files(self):
         # Create a gzipped version of the temp_gff file
-        with gzip.open(self.temp_gff.name + '.gz', 'wb') as f_out:
-            with open(self.temp_gff.name, 'rb') as f_in:
+        with gzip.open(self.temp_gff.name + ".gz", "wb") as f_out:
+            with open(self.temp_gff.name, "rb") as f_in:
                 f_out.write(f_in.read())
 
         # Test parsing the gzipped GFF file
         expected_result = {"rna-NR_046018.2": self.gff_records}
-        parsed_result = parse_gff_file([self.temp_gff.name + '.gz'])
+        parsed_result = parse_gff_file([self.temp_gff.name + ".gz"])
         self.assertEqual(parsed_result, expected_result)
 
     def test_get_zero_based_exon_ranges(self):
@@ -185,13 +185,19 @@ class TestGFFParsing(unittest.TestCase):
         script_path = os.path.join(BASE_DIR, "sbin", "ncbi_parse_genomic_gff.py")
 
         command = ["python", script_path, input_gff_file]
-        completed_process = subprocess.run(command, check=True, capture_output=True, text=True)
+        completed_process = subprocess.run(
+            command, check=True, capture_output=True, text=True
+        )
         stdout_content = completed_process.stdout
-        expected_file_path = os.path.join(CURRENT_DIR, "data", "expected_genomic_100.exonset")
+        expected_file_path = os.path.join(
+            CURRENT_DIR, "data", "expected_genomic_100.exonset"
+        )
         with open(expected_file_path, "r") as expected_file:
             expected_content = expected_file.read()
 
-        assert stdout_content == expected_content, "Output content doesn't match expected."
+        assert (
+            stdout_content == expected_content
+        ), "Output content doesn't match expected."
 
 
 if __name__ == "__main__":
