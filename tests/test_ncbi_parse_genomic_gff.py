@@ -1,14 +1,14 @@
 import gzip
+import os
 import subprocess
 import unittest
 from tempfile import NamedTemporaryFile
-import os
 
 from sbin.ncbi_parse_genomic_gff import (
+    get_zero_based_exon_ranges,
     GFFRecord,
     parse_gff_file,
     parse_gff_record,
-    get_zero_based_exon_ranges,
 )
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
