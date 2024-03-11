@@ -15,9 +15,10 @@ from bioutils.sequences import reverse_complement
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import text
 import psycopg2.extras
 import six
-import uta_align.align.algorithms as utaaa
+import uta_align as utaa
 
 from uta.lru_cache import lru_cache
 
@@ -41,16 +42,16 @@ def align_exons(session, opts, cf):
 
     def _get_cursor(con):
         cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-        cur.execute("set role {admin_role};".format(
-            admin_role=cf.get("uta", "admin_role")))
-        cur.execute("set search_path = " + usam.schema_name)
+        cur.execute(text("set role {admin_role};".format(
+            admin_role=cf.get("uta", "admin_role"))))
+        cur.execute(text("set search_path = " + usam.schema_name))
         return cur
 
     def align(s1, s2):
-        score, cigar = utaaa.needleman_wunsch_gotoh_align(s1.encode("ascii"),
-                                                          s2.encode("ascii"),
-                                                          extended_cigar=True)
-        tx_aseq, alt_aseq = utaaa.cigar_alignment(
+        score, cigar = utaa.algorithms.needleman_wunsch_gotoh_align(s1.encode("ascii"),
+                                                                    s2.encode("ascii"),
+                                                                    extended_cigar=True)
+        tx_aseq, alt_aseq = utaa.algorithms.cigar_alignment(
             tx_seq, alt_seq, cigar, hide_match=False)
         return tx_aseq.decode("ascii"), alt_aseq.decode("ascii"), cigar.to_string().decode("ascii")
 
@@ -151,9 +152,9 @@ def align_exons(session, opts, cf):
 
 
 def analyze(session, opts, cf):
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
     cmds = [
         "analyze verbose"
     ]
@@ -165,13 +166,13 @@ def analyze(session, opts, cf):
 
 def create_schema(session, opts, cf):
     """Create and populate initial schema"""
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     if session.bind.name == "postgresql" and usam.use_schema:
-        session.execute("create schema " + usam.schema_name)
-        session.execute("set search_path = " + usam.schema_name)
+        session.execute(text("create schema " + usam.schema_name))
+        session.execute(text("set search_path = " + usam.schema_name))
         session.commit()
 
     usam.Base.metadata.create_all(session.bind)
@@ -188,8 +189,8 @@ def create_schema(session, opts, cf):
 def drop_schema(session, opts, cf):
     if session.bind.name == "postgresql" and usam.use_schema:
         session.execute(
-            "set role {admin_role};".format(admin_role=cf.get("uta", "admin_role")))
-        session.execute("set search_path = " + usam.schema_name)
+            text("set role {admin_role};".format(admin_role=cf.get("uta", "admin_role"))))
+        session.execute(text("set search_path = " + usam.schema_name))
 
         ddl = "drop schema if exists " + usam.schema_name + " cascade"
         session.execute(ddl)
@@ -202,7 +203,7 @@ def grant_permissions(session, opts, cf):
 
     session.execute(text("set role {admin_role};".format(
         admin_role=cf.get("uta", "admin_role"))))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set search_path = " + usam.schema_name))
 
     cmds = [
         # alter db doesn't belong here, and probably better to avoid the implicit behevior this encourages
@@ -309,9 +310,9 @@ def load_ncbi_geneinfo(session, opts, cf):
     ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
     """
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(opts["FILE"], 'rt'))
     for gi in gip:
@@ -363,9 +364,9 @@ def load_ncbi_seqgene(session, opts, cf):
         return ti
 
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     o_refseq = session.query(usam.Origin).filter(
         usam.Origin.name == "NCBI RefSeq").one()
@@ -405,9 +406,9 @@ def load_origin(session, opts, cf):
     def _none_if_empty(s):
         return None if s == "" else s
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     orir = csv.DictReader(open(opts["FILE"]), delimiter='\t')
     for rec in orir:
@@ -442,9 +443,9 @@ def load_seqinfo(session, opts, cf):
     max_len = int(2e6)
 
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
 
@@ -522,9 +523,9 @@ def load_sequences(session, opts, cf):
     # 2e6 was chosen empirically based on sizes of NMs, NGs, NWs, NTs, NCs
     max_len = int(2e6)
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     sf = _get_seqfetcher(cf)
 
@@ -568,9 +569,9 @@ def load_sequences(session, opts, cf):
 
 def load_sql(session, opts, cf):
     """Create views"""
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     for fn in opts["FILES"]:
         logger.info("loading " + fn)
@@ -597,9 +598,9 @@ def load_txinfo(session, opts, cf):
     tir = ufti.TxInfoReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     n_new = 0
     n_unchanged = 0
@@ -694,9 +695,9 @@ def load_txinfo(session, opts, cf):
 
 
 def refresh_matviews(session, opts, cf):
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     # matviews must be updated in dependency order. Unfortunately,
     # it's difficult to determine this programmatically. The "right"

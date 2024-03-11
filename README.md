@@ -251,6 +251,7 @@ the installation environment.*
 
 ## Developer Setup
 
+### Virtual Environment
 To develop UTA, follow these steps.
 
 1.  Set up a virtual environment using your preferred method.
@@ -270,3 +271,45 @@ To develop UTA, follow these steps.
 4.  To run the tests:
 
         $ python3 -m unittest
+
+### Docker
+
+1. Clone UTA and build docker image:
+        
+        $ git clone git@github.com:biocommons/uta.git
+        $ cd uta
+        $ docker build -t uta .
+
+2. Restore a database or load a new one using the instructions [above](#installing-from-database-dumps).
+
+3. Run container and tests
+
+        $ docker run -it --rm uta-build uta:latest
+        $ python -m unittest
+
+## Running local UTA build
+
+### Docker
+To run local build of UTA you can follow these steps...
+
+1. Pick a UTA version as the base (ex. "uta_20210129b")
+
+2. Setup local database follow the steps above (`Installing with Docker`) to pull image, 
+   start and populate. __NOTE__...it does take about 5 minutes for the local database is ready.
+
+3. Build the image
+
+        $ docker build -t uta .
+
+4. Run UTA build. Supplying a local path with data needed for the workflow is a requirement.
+
+        $ docker run \
+           -it \
+           --rm \
+           --name uta-build \
+           --volume .:/opt/repos/uta \
+           --volume /System/Volumes/Data/locus/data/test-uta-22:/temp \
+           --network=host uta-build:latest
+
+5. Once in the container you can run this script to create new schema, process input files, 
+   update the database, and dump a new artifact.
