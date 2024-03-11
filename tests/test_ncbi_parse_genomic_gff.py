@@ -2,7 +2,6 @@ import subprocess
 import unittest
 from tempfile import NamedTemporaryFile
 import os
-import gzip
 
 from sbin.ncbi_parse_genomic_gff import (
     GFFRecord,
@@ -33,8 +32,8 @@ def sample_line(**params):
 
 class TestGFFParsing(unittest.TestCase):
     def setUp(self):
-        with NamedTemporaryFile(suffix=".gz", delete=False) as temp_gff:
-            with gzip.open(temp_gff.name, "wt") as f:
+        with NamedTemporaryFile(delete=False) as temp_gff:
+            with open(temp_gff.name, "wt") as f:
                 f.write(
                     "NC_000001.10\tBestRefSeq\texon\t11874\t12227\t.\t+\t.\tID=exon-NR_046018.2-1;Parent=rna-NR_046018.2;transcript_id=NR_046018.2\n"
                 )
@@ -170,33 +169,17 @@ class TestGFFParsing(unittest.TestCase):
 
     def test_script_output(self):
         # Run the script from the command line
-        file_prefix = "genomic_100"
-        input_gff_file = os.path.join(CURRENT_DIR, "data", f"{file_prefix}.gff.gz")
-
+        input_gff_file = os.path.join(CURRENT_DIR, "data", f"genomic_100.gff")
         script_path = os.path.join(BASE_DIR, "sbin", "ncbi_parse_genomic_gff.py")
-        expected_output_file = os.path.join(
-            CURRENT_DIR, "data", f"expected_{file_prefix}.exonset.gz"
-        )
-        output_file = os.path.join(os.getcwd(), f"{file_prefix}.exonset.gz")
 
-        command = ["python", script_path, input_gff_file, "--prefix", file_prefix]
-        subprocess.run(command, check=True)
-
-        # Compare the generated output file with the expected file
-        self.assertTrue(os.path.isfile(output_file), "Output file not generated.")
-        with gzip.open(expected_output_file, "rb") as expected_file, gzip.open(
-            output_file, "rb"
-        ) as actual_file:
+        command = ["python", script_path, input_gff_file]
+        completed_process = subprocess.run(command, check=True, capture_output=True, text=True)
+        stdout_content = completed_process.stdout
+        expected_file_path = os.path.join(CURRENT_DIR, "data", "expected_genomic_100.exonset")
+        with open(expected_file_path, "r") as expected_file:
             expected_content = expected_file.read()
-            actual_content = actual_file.read()
-            self.assertEqual(
-                expected_content,
-                actual_content,
-                "Output file content doesn't match expected.",
-            )
 
-        # Clean up temporary files if needed
-        os.remove(output_file)
+        assert stdout_content == expected_content, "Output content doesn't match expected."
 
 
 if __name__ == "__main__":

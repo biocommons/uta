@@ -22,9 +22,8 @@ due merely to concatenation of adjacent spans.
 """
 
 import argparse
-import gzip
 import logging.config
-import os
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, Optional
@@ -104,7 +103,7 @@ def _get_exon_number_from_id(alignment_id: str) -> int:
 
 def parse_gff_file(file_path: str) -> dict[str, List[GFFRecord]]:
     tx_data = defaultdict(list)
-    with gzip.open(file_path, "rt") as f:
+    with open(file_path, "rt") as f:
         for line in f:
             if line.startswith("#"):
                 continue
@@ -133,25 +132,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Parse GFF file.")
     parser.add_argument(
-        "gff_file", type=argparse.FileType("rb"), help="Path to the gzipped GFF file"
-    )
-    parser.add_argument(
-        "--prefix",
-        "-p",
-        type=str,
-        default="ncbi-gff",
-        help="Output filename (default: ncbi-gff)",
+        "gff_file", type=str, help="Path to GFF file"
     )
     args = parser.parse_args()
 
     gff_infile = args.gff_file
-    exonset_outfile = args.prefix + ".exonset.gz"
-    output_file = gzip.open(exonset_outfile + ".tmp", "wt")
-    esw = ExonSetWriter(output_file)
+    esw = ExonSetWriter(sys.stdout)
 
     transcript_alignments = parse_gff_file(gff_infile)
     logger.info(
-        f"read {len(transcript_alignments)} transcript alignments from {gff_infile.name}"
+        f"read {len(transcript_alignments)} transcript alignments from {gff_infile}"
     )
 
     for transcript_exons in transcript_alignments.values():
@@ -165,5 +155,3 @@ if __name__ == "__main__":
             exons_se_i=exons_se,
         )
         esw.write(es)
-    output_file.close()
-    os.rename(exonset_outfile + ".tmp", exonset_outfile)
