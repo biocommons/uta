@@ -1,3 +1,4 @@
+import gzip
 import subprocess
 import unittest
 from tempfile import NamedTemporaryFile
@@ -157,9 +158,20 @@ class TestGFFParsing(unittest.TestCase):
         )
 
     def test_parse_gff_file(self):
-        # Test parsing the entire GFF file
+        # Test parsing the entire uncompressed GFF file
         expected_result = {"rna-NR_046018.2": self.gff_records}
-        parsed_result = parse_gff_file(self.temp_gff.name)
+        parsed_result = parse_gff_file([self.temp_gff.name])
+        self.assertEqual(parsed_result, expected_result)
+
+    def test_parse_gff_file_accepts_gzipped_files(self):
+        # Create a gzipped version of the temp_gff file
+        with gzip.open(self.temp_gff.name + '.gz', 'wb') as f_out:
+            with open(self.temp_gff.name, 'rb') as f_in:
+                f_out.write(f_in.read())
+
+        # Test parsing the gzipped GFF file
+        expected_result = {"rna-NR_046018.2": self.gff_records}
+        parsed_result = parse_gff_file([self.temp_gff.name + '.gz'])
         self.assertEqual(parsed_result, expected_result)
 
     def test_get_zero_based_exon_ranges(self):
@@ -169,7 +181,7 @@ class TestGFFParsing(unittest.TestCase):
 
     def test_script_output(self):
         # Run the script from the command line
-        input_gff_file = os.path.join(CURRENT_DIR, "data", f"genomic_100.gff")
+        input_gff_file = os.path.join(CURRENT_DIR, "data", f"genomic_100.gff.gz")
         script_path = os.path.join(BASE_DIR, "sbin", "ncbi_parse_genomic_gff.py")
 
         command = ["python", script_path, input_gff_file]
