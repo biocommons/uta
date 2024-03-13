@@ -1,14 +1,14 @@
+import gzip
+import os
 import subprocess
 import unittest
 from tempfile import NamedTemporaryFile
-import os
-import gzip
 
 from sbin.ncbi_parse_genomic_gff import (
+    get_zero_based_exon_ranges,
     GFFRecord,
     parse_gff_file,
     parse_gff_record,
-    get_zero_based_exon_ranges,
 )
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,8 +33,8 @@ def sample_line(**params):
 
 class TestGFFParsing(unittest.TestCase):
     def setUp(self):
-        with NamedTemporaryFile(suffix=".gz", delete=False) as temp_gff:
-            with gzip.open(temp_gff.name, "wt") as f:
+        with NamedTemporaryFile(delete=False) as temp_gff:
+            with open(temp_gff.name, "wt") as f:
                 f.write(
                     "NC_000001.10\tBestRefSeq\texon\t11874\t12227\t.\t+\t.\tID=exon-NR_046018.2-1;Parent=rna-NR_046018.2;transcript_id=NR_046018.2\n"
                 )
@@ -158,9 +158,20 @@ class TestGFFParsing(unittest.TestCase):
         )
 
     def test_parse_gff_file(self):
-        # Test parsing the entire GFF file
+        # Test parsing the entire uncompressed GFF file
         expected_result = {"rna-NR_046018.2": self.gff_records}
-        parsed_result = parse_gff_file(self.temp_gff.name)
+        parsed_result = parse_gff_file([self.temp_gff.name])
+        self.assertEqual(parsed_result, expected_result)
+
+    def test_parse_gff_file_accepts_gzipped_files(self):
+        # Create a gzipped version of the temp_gff file
+        with gzip.open(self.temp_gff.name + ".gz", "wb") as f_out:
+            with open(self.temp_gff.name, "rb") as f_in:
+                f_out.write(f_in.read())
+
+        # Test parsing the gzipped GFF file
+        expected_result = {"rna-NR_046018.2": self.gff_records}
+        parsed_result = parse_gff_file([self.temp_gff.name + ".gz"])
         self.assertEqual(parsed_result, expected_result)
 
     def test_get_zero_based_exon_ranges(self):
@@ -170,33 +181,23 @@ class TestGFFParsing(unittest.TestCase):
 
     def test_script_output(self):
         # Run the script from the command line
-        file_prefix = "genomic_100"
-        input_gff_file = os.path.join(CURRENT_DIR, "data", f"{file_prefix}.gff.gz")
-
+        input_gff_file = os.path.join(CURRENT_DIR, "data", f"genomic_100.gff.gz")
         script_path = os.path.join(BASE_DIR, "sbin", "ncbi_parse_genomic_gff.py")
-        expected_output_file = os.path.join(
-            CURRENT_DIR, "data", f"expected_{file_prefix}.exonset.gz"
+
+        command = ["python", script_path, input_gff_file]
+        completed_process = subprocess.run(
+            command, check=True, capture_output=True, text=True
         )
-        output_file = os.path.join(os.getcwd(), f"{file_prefix}.exonset.gz")
-
-        command = ["python", script_path, input_gff_file, "--prefix", file_prefix]
-        subprocess.run(command, check=True)
-
-        # Compare the generated output file with the expected file
-        self.assertTrue(os.path.isfile(output_file), "Output file not generated.")
-        with gzip.open(expected_output_file, "rb") as expected_file, gzip.open(
-            output_file, "rb"
-        ) as actual_file:
+        stdout_content = completed_process.stdout
+        expected_file_path = os.path.join(
+            CURRENT_DIR, "data", "expected_genomic_100.exonset"
+        )
+        with open(expected_file_path, "r") as expected_file:
             expected_content = expected_file.read()
-            actual_content = actual_file.read()
-            self.assertEqual(
-                expected_content,
-                actual_content,
-                "Output file content doesn't match expected.",
-            )
 
-        # Clean up temporary files if needed
-        os.remove(output_file)
+        assert (
+            stdout_content == expected_content
+        ), "Output content doesn't match expected."
 
 
 if __name__ == "__main__":

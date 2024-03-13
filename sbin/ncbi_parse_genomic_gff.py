@@ -24,14 +24,25 @@ due merely to concatenation of adjacent spans.
 import argparse
 import gzip
 import logging.config
-import os
+import sys
 from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import List, Optional
 
 import pkg_resources
 
 from uta.formats.exonset import ExonSet, ExonSetWriter
+
+
+@contextmanager
+def open_file(filename):
+    if filename.endswith(".gz"):
+        with gzip.open(filename, "rt") as f:
+            yield f
+    else:
+        with open(filename) as f:
+            yield f
 
 
 @dataclass
@@ -102,18 +113,19 @@ def _get_exon_number_from_id(alignment_id: str) -> int:
     return int(alignment_id.split("-")[-1])
 
 
-def parse_gff_file(file_path: str) -> dict[str, List[GFFRecord]]:
+def parse_gff_file(file_paths: List[str]) -> dict[str, List[GFFRecord]]:
     tx_data = defaultdict(list)
-    with gzip.open(file_path, "rt") as f:
-        for line in f:
-            if line.startswith("#"):
-                continue
-            try:
-                record = parse_gff_record(line)
-            except ValueError as e:
-                raise Exception(f"Failed at line :{line} with error: {e}")
-            if record:
-                tx_data[record.parent_id].append(record)
+    for file_path in file_paths:
+        with open_file(file_path) as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                try:
+                    record = parse_gff_record(line)
+                except ValueError as e:
+                    raise Exception(f"Failed at line :{line} with error: {e}")
+                if record:
+                    tx_data[record.parent_id].append(record)
     return {k: _sort_exons(v) for k, v in tx_data.items()}
 
 
@@ -132,26 +144,15 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(description="Parse GFF file.")
-    parser.add_argument(
-        "gff_file", type=argparse.FileType("rb"), help="Path to the gzipped GFF file"
-    )
-    parser.add_argument(
-        "--prefix",
-        "-p",
-        type=str,
-        default="ncbi-gff",
-        help="Output filename (default: ncbi-gff)",
-    )
+    parser.add_argument("gff_files", nargs="+", type=str, help="Path to GFF file(s)")
     args = parser.parse_args()
 
-    gff_infile = args.gff_file
-    exonset_outfile = args.prefix + ".exonset.gz"
-    output_file = gzip.open(exonset_outfile + ".tmp", "wt")
-    esw = ExonSetWriter(output_file)
+    gff_files = args.gff_files
+    esw = ExonSetWriter(sys.stdout)
 
-    transcript_alignments = parse_gff_file(gff_infile)
+    transcript_alignments = parse_gff_file(gff_files)
     logger.info(
-        f"read {len(transcript_alignments)} transcript alignments from {gff_infile.name}"
+        f"read {len(transcript_alignments)} transcript alignments from file(s): {', '.join(gff_files)}"
     )
 
     for transcript_exons in transcript_alignments.values():
@@ -165,5 +166,3 @@ if __name__ == "__main__":
             exons_se_i=exons_se,
         )
         esw.write(es)
-    output_file.close()
-    os.rename(exonset_outfile + ".tmp", exonset_outfile)
