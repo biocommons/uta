@@ -44,7 +44,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger()
 
-    url = "postgresql://uta_admin@localhost/uta_dev"
+    url = "postgresql://uta_admin@localhost/uta"
     tables = ["associated_accessions", "exon", "exon_aln", "exon_set",
               "gene", "meta", "origin", "seq", "seq_anno", "transcript",]
 
