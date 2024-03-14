@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """Write exonsets from NCBI GFF alignments, as obtained from
 ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions
 This service appeared in April 2015 and is due to update weekly.

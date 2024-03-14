@@ -42,13 +42,13 @@ def align_exons(session, opts, cf):
 
     def _get_cursor(con):
         cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-        cur.execute(text("set role {admin_role};".format(
-            admin_role=cf.get("uta", "admin_role"))))
-        cur.execute(text("set search_path = " + usam.schema_name))
+        cur.execute("set role {admin_role};".format(
+            admin_role=cf.get("uta", "admin_role")))
+        cur.execute("set search_path = " + usam.schema_name)
         return cur
 
     def align(s1, s2):
-        score, cigar = utaa.algorithms.needleman_wunsch_gotoh_align(s1.encode("ascii"),
+        score, cigar = utaa.align.algorithms.needleman_wunsch_gotoh_align(s1.encode("ascii"),
                                                                     s2.encode("ascii"),
                                                                     extended_cigar=True)
         tx_aseq, alt_aseq = utaa.algorithms.cigar_alignment(

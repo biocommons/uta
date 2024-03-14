@@ -32,7 +32,7 @@ def parse_args(argv):
                     required=True)
     ap.add_argument("--conf",
                     default=[
-                        pkg_resources.resource_filename("uta", "../etc/global.conf")]
+                        pkg_resources.resource_filename("uta", "../../etc/global.conf")]
                     )
 
     opts = ap.parse_args(argv)
@@ -50,9 +50,9 @@ if __name__ == "__main__":
 
     opts = parse_args(sys.argv[1:])
 
-    cf = ConfigParser.SafeConfigParser()
+    cf = ConfigParser.ConfigParser()
     for conf_fn in opts.conf:
-        cf.readfp(open(conf_fn))
+        cf.read_file(open(conf_fn))
         logger.info("loaded " + conf_fn)
 
     in_fn = opts.FILES[0]
