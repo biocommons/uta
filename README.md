@@ -203,8 +203,8 @@ you will not need to install PostgreSQL or any of its dependencies.
     (code) version used to build the instance.
 
         $ psql -h localhost -U anonymous -d uta -c "select * from $uta_v.meta"
-        
-              key       |                               value                                
+
+              key       |                               value
         ----------------+--------------------------------------------------------------------
          schema_version | 1.1
          created on     | 2015-08-21T10:53:50.666152
@@ -213,7 +213,7 @@ you will not need to install PostgreSQL or any of its dependencies.
          (4 rows)
 
 6.  (Optional) To configure [hgvs](https://github.com/biocommons/hgvs)
-    to use this local installation, consult the 
+    to use this local installation, consult the
     [hgvs documentation](https://hgvs.readthedocs.io/en/latest/installation.html#local-installation-of-uta-optional)
 
 ### Installing from database dumps
@@ -243,7 +243,7 @@ the installation environment.*
     uta_admin are likely to ease installation.
 
         $ createuser -U postgres uta_admin
-        $ createdb -U postgres -O uta_admin uta 
+        $ createdb -U postgres -O uta_admin uta
 
 3.  Restore the database.
 
@@ -275,7 +275,7 @@ To develop UTA, follow these steps.
 ### Docker
 
 1. Clone UTA and build docker image:
-        
+
         $ git clone git@github.com:biocommons/uta.git
         $ cd uta
         $ docker build -t uta .
@@ -294,13 +294,13 @@ To run local build of UTA you can follow these steps...
 
 1. Pick a UTA version as the base (ex. "uta_20210129b")
 
-2. Setup local UTA Postgresql database Docker container by following the steps above 
-   (`Installing with Docker`). __NOTE__...It takes about 5 minutes before the local 
+2. Setup local UTA Postgresql database Docker container by following the steps above
+   (`Installing with Docker`). __NOTE__...It takes about 5 minutes before the local
    database is ready.
 
 3. Setup local SeqRepo Docker volume. This can be done by running the following two
-   commands. __NOTE__...this step does require around ~13Gb of local disk space and 
-   takes roughly 30 minutes to complete. You need to wait until the `Docker run` 
+   commands. __NOTE__...this step does require around ~13Gb of local disk space and
+   takes roughly 30 minutes to complete. You need to wait until the `Docker run`
    command completes before moving to the next step.
 
         $ docker pull biocommons/seqrepo
@@ -321,7 +321,7 @@ To run local build of UTA you can follow these steps...
            --volumes-from seqrepo \
            --network=host uta-build:latest
 
-6. Once in the container you can run this script to create new schema, process input files, 
+6. Once in the container you can run this script to create new schema, process input files,
    update the database, and dump a new artifact.
 
         $ bash etc/scripts/run-uta-build.sh <previous UTA version> <seqrepo data release>
@@ -350,3 +350,9 @@ To run local build of UTA you can follow these steps...
                      ├── human.1.protein.faa.gz
                      ├── human.1.rna.fna.gz
                      └── human.1.rna.gbff.gz
+
+## Updating UTA
+
+To update UTA and SeqRepo, run `update.sh` from the `update` directory.
+
+The only dependencies of the script are bash and docker.

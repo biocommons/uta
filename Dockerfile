@@ -14,11 +14,7 @@ RUN python -m pip install --upgrade pip
 RUN pip install --upgrade setuptools
 RUN pip install pysam
 
-ENV APP_HOME="/opt/repos/uta/"
-
-RUN mkdir -p ${APP_HOME}
-
-COPY . ${APP_HOME}
-WORKDIR ${APP_HOME}
-
+WORKDIR /opt/repos/uta/
+COPY pyproject.toml .
 RUN pip install -e .[dev]
+COPY . .

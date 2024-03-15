@@ -9,7 +9,7 @@
 
 # Overwrite pg_hba.conf, including whatever edits might have been made
 # by the postgres image
-cat <<EOF >"$PGDATA/pg_hba.conf" 
+cat <<EOF >"$PGDATA/pg_hba.conf"
 # allow the anonymous user to access uta without password
 # These lines must occur before more stringent authentication methods
 host   all   anonymous     0.0.0.0/0      trust
@@ -58,16 +58,16 @@ gzip -cdq < "${UTA_PGD_FN}" \
 cat <<EOF
 =======================================================================
 =======================================================================
-== 
+==
 == $UTA_VERSION installed from
 == $UTA_PGD_URL
-== 
+==
 == You may now connect to uta like this:
-== 
+==
 == $  psql -h localhost -p <port> -U anonymous -d uta
-== 
+==
 == No password is required.
-== 
+==
 =======================================================================
 =======================================================================
 

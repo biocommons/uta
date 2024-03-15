@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  seqrepo:
+    container_name: seqrepo
+    image: ubuntu:latest
+    command: echo 'Start SeqRepo, which is required for UTA update'
+    network_mode: host
+  uta:
+    container_name: uta
+    image: uta:${previous_uta_version}
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test: pg_isready && psql -h localhost -U anonymous -d uta -c "select * from ${previous_uta_version}.meta"
+      interval: 10s
+      retries: 60
+    network_mode: host
+  uta-update:
+    container_name: uta-update
+    image: uta-update:latest
+    command: etc/scripts/run-uta-build.sh ${previous_uta_version}
+    depends_on:
+      previous-uta:
+        condition: service_healthy
+      # seqrepo:
+      #   condition: service_healthy
+    volumes:
+      - ./ncbi:/temp
+    network_mode: host
