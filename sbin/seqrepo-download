@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+# This script downloads SeqRepo into the given directory.
+# Note: pulling data takes ~30 minutes and requires ~13 GB.
+# Note: a container called seqrepo will be left behind.
+# The name of the container can be changed by providing a third argument.
+
+set -e
+
+SEQREPO_VERSION=$1
+OUTPUT_DIR=$2
+# optional:
+SEQREPO_CONTAINER_NAME=$3
+
+if [ -z "$SEQREPO_VERSION" ] || [ -z "$OUTPUT_DIR" ]
+then
+    echo 'Usage: sbin/seqrepo-download <seqrepo_version> <output_dir>'
+    exit 1
+else
+    echo "SeqRepo data for version $SEQREPO_VERSION will be available in $OUTPUT_DIR"
+fi
+
+# Name of seqrepo container
+if [ -z "$SEQREPO_CONTAINER_NAME" ]
+then
+    SEQREPO_CONTAINER_NAME=seqrepo
+fi
+
+if [[ $OUTPUT_DIR != /* ]]
+then
+    echo 'Output directory must be an absolute path'
+    exit 1
+fi
+
+if [ ! -d "$OUTPUT_DIR" ]; then
+    echo "Directory $OUTPUT_DIR does not exist."
+    exit 1
+fi
+
+# Pull seqrepo image
+docker pull biocommons/seqrepo:$SEQREPO_VERSION
+
+# Download seqrepo data using seqrepo image
+if docker ps -aq -f name=$SEQREPO_CONTAINER_NAME
+then
+    echo "Container called $SEQREPO_CONTAINER_NAME already exists. Skipping seqrepo data download."
+else
+    docker run --name seqrepo biocommons/seqrepo:$SEQREPO_VERSION
+fi
+
+# Copy seqrepo data into a local directory
+echo "Copying seqrepo data into $OUTPUT_DIR ..."
+docker run -it -v $OUTPUT_DIR:/output-dir --volumes-from $SEQREPO_CONTAINER_NAME:ro ubuntu bash -c 'cp -R /usr/local/share/seqrepo/* /output-dir'

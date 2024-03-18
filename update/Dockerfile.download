@@ -1,9 +1,0 @@
-FROM debian:stable-slim
-
-RUN apt-get -y update
-RUN apt-get -y install rsync
-
-WORKDIR /download_ncbi
-VOLUME [ "/data/ncbi" ]
-COPY download.sh ./
-CMD ./download.sh /data/ncbi

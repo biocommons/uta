@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+# This script downloads the files needed for a UTA+SeqRepo update into to the given directory.
 
 set -e
 
@@ -8,6 +10,14 @@ DOWNLOAD_PATHS=(
     'gene/DATA/gene2accession.gz'
     'refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz'
 )
+
+if [ -z "$DOWNLOAD_DIR" ]
+then
+    echo 'Usage: sbin/ncbi-download <download_dir>'
+    exit 1
+else
+    echo "Downloading files to $DOWNLOAD_DIR"
+fi
 
 for DOWNLOAD_PATH in "${DOWNLOAD_PATHS[@]}"
 do

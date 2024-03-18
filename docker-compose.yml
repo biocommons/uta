@@ -1,0 +1,26 @@
+# docker compose file for the UTA update procedure
+
+version: '3'
+
+services:
+  uta:
+    container_name: uta
+    image: biocommons/uta:${UTA_VERSION}
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test: psql -h localhost -U anonymous -d uta -c "select * from ${UTA_VERSION}.meta"
+      interval: 10s
+      retries: 60
+    network_mode: host
+  uta-update:
+    image: uta-update
+    command: etc/scripts/run-uta-build.sh ${UTA_VERSION} ${SEQREPO_VERSION} /ncbi-dir /workdir
+    depends_on:
+      uta:
+        condition: service_healthy
+    volumes:
+      - ${NCBI_DIR}:/ncbi-dir
+      - ${SEQREPO_DIR}:/usr/local/share/seqrepo
+      - ${WORKING_DIR}:/workdir
+    network_mode: host
