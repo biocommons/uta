@@ -60,7 +60,7 @@ if [ ! -d "$WORKING_DIR" ]; then
 fi
 
 # Build the UTA image.
-docker build -t uta-update .
+docker build --target uta -t uta-update .
 
 # Bring up a UTA database and run the UTA update procedure.
 # docker compose doesn't respect the container name specified in the compose file, so container name is specified here
