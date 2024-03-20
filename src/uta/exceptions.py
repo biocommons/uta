@@ -17,6 +17,10 @@ class InvalidIntervalError(UTAError):
 class InvalidHGVSVariantError(UTAError):
     pass
 
+
+class EutilsDownloadError(Exception):
+    pass
+
 # <LICENSE>
 # Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
 ##
