@@ -9,8 +9,8 @@ See uta.formats for a description of those file formats.
 In a nutshell, this means that you'll get data like this:
 
 ncbi.txinfo.gz:
-origin  ac  hgnc    cds_se_i    exons_se_i
-NCBI RefSeq NM_053283.2 DCD 62,395  0,120;120,159;159,261;261,351;351,517
+origin  ac  gene_id gene_symbol    cds_se_i    exons_se_i
+NCBI RefSeq NM_053283.2 117159 DCD 62,395  0,120;120,159;159,261;261,351;351,517
 
 ncbi.exonsets.gz:
 tx_ac   alt_ac  method  strand  exons_se_i
@@ -72,11 +72,20 @@ class SeqRecordFacade(Bio.SeqRecord.SeqRecord):
         return self._sr.id
 
     @property
-    def hgnc(self):
+    def gene_symbol(self):
         genes = [f for f in self._sr.features if f.type == "gene"][
             0].qualifiers["gene"]
         assert len(genes) == 1
         return genes[0]
+
+    @property
+    def gene_id(self):
+        # db_xref="GeneID:1234"
+        db_xrefs = [f for f in self._sr.features if f.type == "gene"][
+            0].qualifiers["db_xref"]
+        gene_ids = [x.partition(":")[2] for x in db_xrefs if x.startswith("GeneID:")]
+        assert len(gene_ids) == 1
+        return gene_ids[0]
 
     @property
     def cds_se_i(self):
@@ -149,14 +158,15 @@ if __name__ == "__main__":
             cds_se_i = srf.cds_se_i
             ti = TxInfo(ac=srf.id,
                         origin=opts.origin,
-                        hgnc=srf.hgnc,
+                        gene_id=srf.gene_id,
+                        gene_symbol=srf.gene_symbol,
                         cds_se_i=None if cds_se_i is None else "{},{}".format(
                             *cds_se_i),
                         exons_se_i=";".join(
                             ["{},{}".format(*ese) for ese in srf.exons_se_i])
                         )
             tiw.write(ti)
-            genes.add(srf.hgnc)
+            genes.add(srf.gene_symbol)
         logger.info("{ng} genes in {fn} ({c})".format(ng=len(genes), fn=fn, c=prefixes))
         total_genes ^= genes
         all_prefixes += prefixes

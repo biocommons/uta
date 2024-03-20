@@ -34,6 +34,7 @@ if __name__ == "__main__":
             continue
         gi = GeneInfo(
             tax_id=rec["tax_id"],
+            gene_symbol=rec["symbol"],
             gene_id=rec["geneid"],
             hgnc=rec["symbol_from_nomenclature_authority"],
             maploc=rec["map_location"],

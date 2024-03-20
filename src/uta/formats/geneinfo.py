@@ -5,7 +5,7 @@ default_sep = ','
 
 
 class GeneInfo(recordtype.recordtype('GeneInfo',
-                                     ['gene_id', 'tax_id', 'hgnc', 'maploc', 'aliases', 'type', 'summary', 'descr', 'xrefs'])):
+                                     ['gene_id', 'gene_symbol', 'tax_id', 'hgnc', 'maploc', 'aliases', 'type', 'summary', 'descr', 'xrefs'])):
     pass
 
 

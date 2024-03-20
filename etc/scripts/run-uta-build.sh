@@ -61,7 +61,6 @@ sbin/ncbi_parse_genomic_gff.py "$GFF_files" | gzip -c > "$loading_dir/gff.exonse
 sbin/exonset-to-seqinfo -o NCBI "$loading_dir/gff.exonsets.gz" | gzip -c > "$loading_dir/seqinfo.gz" 2>&1 | \
   tee "$logs_dir/exonset-to-seqinfo.log"
 
-
 ### update the uta database
 # genes
 uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-geneinfo "$loading_dir/genes.geneinfo.gz" 2>&1 | \
@@ -82,6 +81,10 @@ uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$load
 ### run diff
 sbin/uta-diff "$source_uta_v" "$loading_uta_v"
 
+
+# exon alignments
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$loading_dir/ncbi-gff.exonset.gz" 2>&1 | \
+  tee "$logs_dir/load-exonset.log"
 
 ### psql_dump
 pg_dump -U uta_admin -h localhost -d uta -t "$loading_uta_v.gene" | gzip -c > "$dumps_dir/uta.pgd.gz"

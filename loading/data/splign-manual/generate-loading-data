@@ -61,11 +61,12 @@ def parse_splign(fn, txdata):
     try:
         txd = txdata[tx_ac]
     except KeyError:
-        raise KeyError(f"{tx_ac}: no cds or hgnc info in {txdata_fn}")
+        raise KeyError(f"{tx_ac}: no cds or gene_symbol info in {txdata_fn}")
 
-    hgnc = txd["hgnc"]
-    if hgnc is None:
-        _logger.warn(f"No HGNC symbol in {txdata_fn} for {tx_ac}")
+    gene_symbol = txd["hgnc"]
+    gene_id = txd.get("gene_id")
+    if gene_symbol is None:
+        _logger.warning(f"No gene symbol in {txdata_fn} for {tx_ac}")
 
     cds = txd["cds"]
     if cds is None:
@@ -79,7 +80,8 @@ def parse_splign(fn, txdata):
     txinfo = uta.formats.txinfo.TxInfo(
         origin=origin,
         ac=tx_ac,
-        hgnc=hgnc,
+        gene_id=gene_id,
+        gene_symbol=gene_symbol,
         cds_se_i=cds_se_i,
         exons_se_i=tx_exons_str)
     exonset = uta.formats.exonset.ExonSet(

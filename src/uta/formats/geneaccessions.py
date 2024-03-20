@@ -3,7 +3,7 @@ import recordtype
 
 
 class GeneAccessions(recordtype.recordtype('GeneAccessions',
-                                           ['hgnc', 'tx_ac', 'gene_id', 'pro_ac', 'origin'])):
+                                           ['gene_symbol', 'tx_ac', 'gene_id', 'pro_ac', 'origin'])):
     pass
 
 

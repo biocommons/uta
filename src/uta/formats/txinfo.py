@@ -3,7 +3,7 @@ import recordtype
 
 
 class TxInfo(recordtype.recordtype('TxInfo',
-                                   ['origin', 'ac', 'hgnc', 'cds_se_i', 'exons_se_i'])):
+                                   ['origin', 'ac', 'gene_id', 'gene_symbol', 'cds_se_i', 'exons_se_i'])):
     pass
 
 
