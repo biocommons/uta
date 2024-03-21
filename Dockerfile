@@ -24,5 +24,8 @@ RUN pip install -e .[dev]
 
 # UTA test image
 FROM uta as uta-test
+RUN DEBIAN_FRONTEND=noninteractive apt-get -yq install postgresql
 COPY tests ./tests
 RUN pip install -e .[test]
+RUN useradd postgres-testing
+USER postgres-testing

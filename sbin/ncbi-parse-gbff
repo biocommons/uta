@@ -28,11 +28,8 @@ import argparse
 from collections import Counter
 import gzip
 import io
-import itertools
 import logging
 import logging.config
-import os
-import pprint
 import pkg_resources
 import re
 import sys
@@ -41,9 +38,7 @@ import Bio.SeqIO
 import Bio.SeqRecord
 from bioutils.digests import seq_md5
 
-from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter
-from uta.formats.geneaccessions import GeneAccessionsReader
 
 origin = "NCBI"
 
@@ -116,6 +111,7 @@ def gbff_filter(it):
             if line.startswith(delim):
                 emit = False
 
+
 def gbff_block_reader(it):
     """yield strings, each representing a full genbank record"""
     delim = "//"
@@ -130,6 +126,7 @@ def gbff_block_reader(it):
         if line.startswith(delim):
             yield SeqRecordFacade(Bio.SeqIO.read(io.StringIO(emit), "gb"))
             emit = None
+
 
 if __name__ == "__main__":
     logging_conf_fn = pkg_resources.resource_filename(

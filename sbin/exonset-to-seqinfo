@@ -16,7 +16,7 @@ from bioutils.digests import seq_md5
 from biocommons.seqrepo import SeqRepo
 # from multifastadb import MultiFastaDB
 
-from uta.formats.exonset import ExonSet, ExonSetReader
+from uta.formats.exonset import ExonSetReader
 from uta.formats.seqinfo import SeqInfo, SeqInfoWriter
 
 

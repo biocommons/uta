@@ -24,7 +24,7 @@ default_db_url = os.environ.get("UTA_DB_URL", public_db_url)
 
 def connect(db_url=default_db_url):
     """
-    Connect to a UTA database instance and return a UTA0 interface instance.
+    Connect to a UTA database instance and return a sqlalchemy Session.
 
     When called with an explicit db_url argument, that db_url is used for connecting.
 
