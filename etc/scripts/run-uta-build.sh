@@ -75,16 +75,10 @@ uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$load
   tee "$logs_dir/load-exonsets.log"
 
 # align exons
-#uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf align-exons 2>&1 | tee "$logs_dir/align-exons.log"
-
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf align-exons 2>&1 | tee "$logs_dir/align-exons.log"
 
 ### run diff
 sbin/uta-diff "$source_uta_v" "$loading_uta_v"
-
-
-# exon alignments
-uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$loading_dir/ncbi-gff.exonset.gz" 2>&1 | \
-  tee "$logs_dir/load-exonset.log"
 
 ### psql_dump
 pg_dump -U uta_admin -h localhost -d uta -t "$loading_uta_v.gene" | gzip -c > "$dumps_dir/uta.pgd.gz"

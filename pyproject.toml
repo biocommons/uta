@@ -53,7 +53,7 @@ dependencies = [
   "pytz",
   "recordtype",
   "sqlalchemy",
-  "uta-align>=0.3.0a4",
+  "uta-align>=0.3",
 ]
 
 [project.optional-dependencies]

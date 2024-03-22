@@ -341,5 +341,5 @@ Run `sbin/uta-update`. Requires bash and docker.
 
 Example:
 ```
-sbin/uta-update $(pwd)/ncbi-data $(pwd)/seqrepo-data uta_20210129b 2021-01-29
+sbin/uta-update $(pwd)/ncbi-data $(pwd)/seqrepo-data $(pwd)/uta-build uta_20210129b 2024-02-20
 ```

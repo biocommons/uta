@@ -13,12 +13,11 @@ from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
 from bioutils.digests import seq_md5
 from bioutils.sequences import reverse_complement
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import text
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import text
 import psycopg2.extras
 import six
-import uta_align as utaa
+from uta_align.align.algorithms import cigar_alignment, needleman_wunsch_gotoh_align
 
 from uta.lru_cache import lru_cache
 
@@ -48,10 +47,10 @@ def align_exons(session, opts, cf):
         return cur
 
     def align(s1, s2):
-        score, cigar = utaa.align.algorithms.needleman_wunsch_gotoh_align(s1.encode("ascii"),
-                                                                    s2.encode("ascii"),
-                                                                    extended_cigar=True)
-        tx_aseq, alt_aseq = utaa.algorithms.cigar_alignment(
+        score, cigar = needleman_wunsch_gotoh_align(s1.encode("ascii"),
+                                                    s2.encode("ascii"),
+                                                    extended_cigar=True)
+        tx_aseq, alt_aseq = cigar_alignment(
             tx_seq, alt_seq, cigar, hide_match=False)
         return tx_aseq.decode("ascii"), alt_aseq.decode("ascii"), cigar.to_string().decode("ascii")
 
