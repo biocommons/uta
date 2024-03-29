@@ -57,7 +57,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["coverage", "testing.postgresql"]
+test = [
+  "coverage",
+  "parameterized",
+  "testing.postgresql",
+]
 
 [project.urls]  # Optional
 "Homepage" = "https://github.com/biocommons/uta"
