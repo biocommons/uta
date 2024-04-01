@@ -7,12 +7,14 @@ import hashlib
 import itertools
 import logging
 import time
+from typing import Any
 
 from biocommons.seqrepo import SeqRepo
 from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
 from bioutils.digests import seq_md5
 from bioutils.sequences import reverse_complement
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import text
 import psycopg2.extras
@@ -240,6 +242,47 @@ def grant_permissions(session, opts, cf):
     session.commit()
 
 
+def load_assoc_ac(session, opts, cf):
+    """
+    Insert rows into `associated_accessions` table in the UTA database,
+    using data from a file written by sbin/assoc-acs-merge.
+    """
+    logger.info("load_assoc_ac")
+
+    admin_role = cf.get("uta", "admin_role")
+    session.execute(text(f"set role {admin_role};"))
+    session.execute(text(f"set search_path = {usam.schema_name};"))
+    fname = opts["FILE"]
+
+    with gzip.open(fname, "rt") as fhandle:
+        for file_row in csv.DictReader(fhandle, delimiter="\t"):
+            row = {
+                "origin": file_row["origin"],
+                "pro_ac": file_row["pro_ac"],
+                "tx_ac": file_row["tx_ac"],
+            }
+            aa, created = _get_or_insert(
+                session=session,
+                table=usam.AssociatedAccessions,
+                row=row,
+                row_identifier=('origin', 'tx_ac', 'pro_ac'),
+            )
+            if created:
+                # If committing on every insert is too slow, we can
+                # look into committing in batches like load_txinfo does.
+                session.commit()
+                logger.info(f"Added: {aa.tx_ac}, {aa.pro_ac}, {aa.origin}")
+            else:
+                logger.info(f"Already exists: {file_row}")
+                # All fields should should match when unique identifiers match.
+                # Discrepancies should be investigated.
+                existing_row = {
+                    "origin": aa.origin,
+                    "pro_ac": aa.pro_ac,
+                    "tx_ac": aa.tx_ac,
+                }
+
+
 def load_exonset(session, opts, cf):
     # exonsets and associated exons are loaded together
 
@@ -265,7 +308,7 @@ def load_exonset(session, opts, cf):
             logger.exception(e)
             session.rollback()
             n_errors += 1
-        finally:        
+        finally:
             (no) = (n is not None, o is not None)
             if no == (True, False):
                 n_new += 1
@@ -305,7 +348,7 @@ def load_geneinfo(session, opts, cf):
 
 def load_ncbi_geneinfo(session, opts, cf):
     """
-    import data as downloaded (by you) from 
+    import data as downloaded (by you) from
     ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
     """
 
@@ -475,7 +518,7 @@ def load_seqinfo(session, opts, cf):
     for md5, si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
                                           key=lambda si: si.md5):
         sis = list(si_iter)
-    
+
         # if sequence doesn't exist in sequence table, make it
         # this is to satisfy a FK dependency, which should be reconsidered
         si = sis[0]
@@ -688,8 +731,6 @@ def load_txinfo(session, opts, cf):
                 i_ti=i_ti, n_rows=n_rows,
                 n_new=n_new, n_unchanged=n_unchanged, n_cds_changed=n_cds_changed, n_exons_changed=n_exons_changed,
                 p=(i_ti + 1) / n_rows * 100))
-            
-
 
 
 def refresh_matviews(session, opts, cf):
@@ -740,6 +781,34 @@ def _get_seqrepo(cf):
 _get_seqfetcher = _get_seqrepo
 
 
+def _get_or_insert(
+    session: Session,
+    table: type[usam.Base],
+    row: dict[str, Any],
+    row_identifier: str | tuple[str, ...],
+) -> tuple[usam.Base, bool]:
+    """
+    Returns a sqlalchemy model of the inserted or fetched row.
+
+    `session` is a sqlalchemy session.
+    `table` is the database table in which to insert `row`.
+    `row` is the a list of key-value pairs to insert into the table.
+    `row_identifier` is a map of key-value pairs which define a match between `row` and an existing row in the table.
+
+    sqlalchemy.orm.exc.MultipleResultsFound may be raised if `row_identifier` does not uniquely identify a row.
+    KeyError may be raised if `row_identifier` refers to columns not present as keys in `row`.
+    sqlalchemy.exc.IntegrityError (raised from psycopg2.errors.ForeignKeyViolation) may be raised if a foreign key reference does not exist
+    """
+    row_filter = {ri: row[ri] for ri in row_identifier}
+    try:
+        row_instance = session.query(table).filter_by(**row_filter).one()
+        created = False
+    except NoResultFound:
+        row_instance = table(**row)
+        session.add(row_instance)
+        created = True
+    return row_instance, created
+
 
 def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
 
@@ -749,7 +818,7 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
     (new, None) -- no prior record; new was inserted
     (None, old) -- prior record and unchaged; nothing was inserted
     (new, old)  -- prior record existed and was changed
-    
+
     """
 
     key = (tx_ac, alt_ac, method)

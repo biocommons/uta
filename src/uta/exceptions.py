@@ -21,6 +21,7 @@ class InvalidHGVSVariantError(UTAError):
 class EutilsDownloadError(Exception):
     pass
 
+
 # <LICENSE>
 # Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
 ##

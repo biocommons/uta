@@ -38,7 +38,6 @@ class GeneInfoReader(csv.DictReader):
         return GeneInfo(**d)
 
 
-
 if __name__ == '__main__':
     tmpfn = '/tmp/exonset'
 

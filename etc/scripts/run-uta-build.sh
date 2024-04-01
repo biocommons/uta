@@ -47,6 +47,9 @@ sbin/ncbi-parse-geneinfo $ncbi_dir/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gen
 sbin/ncbi-parse-gene2refseq $ncbi_dir/gene/DATA/gene2accession.gz | gzip -c > "$loading_dir/assocacs.gz" 2>&1 | \
   tee "$logs_dir/ncbi-fetch-assoc-acs"
 
+sbin/assoc-acs-merge "$loading_dir/assocacs.gz" | gzip -c > "$loading_dir/assocacs.cleaned.gz" 2>&1 | \
+  tee "$logs_dir/assoc-acs-merge"
+
 # parse transcript info from GBFF input files
 GBFF_files=$(ls $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz)
 sbin/ncbi-parse-gbff "$GBFF_files" | gzip -c > "$loading_dir/gbff.txinfo.gz" 2>&1 | \
@@ -65,6 +68,9 @@ sbin/exonset-to-seqinfo -o NCBI "$loading_dir/gff.exonsets.gz" | gzip -c > "$loa
 # genes
 uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-geneinfo "$loading_dir/genes.geneinfo.gz" 2>&1 | \
   tee "$logs_dir/load-geneinfo.log"
+
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-assoc-ac "$loading_dir/assocacs.cleaned.gz" 2>&1 | \
+  tee "$logs_dir/load-assoc-ac.log"
 
 # transcript info
 uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-txinfo "$loading_dir/gbff.txinfo.gz" 2>&1 | \

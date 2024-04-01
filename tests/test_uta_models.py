@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 import sqlalchemy
@@ -16,6 +17,7 @@ transcripts = {
         'g_strand': -1,
         'g_starts_i': [26721603, 26627221], 		'g_ends_i': [26722922, 26628183],
         'g_cds_start_i': 26627665, 			'g_cds_end_i': 26722486,
+        'pro_ac': 'NP_000671.2',
     },
     'NM_033302.2': {
         'seq': 'gaattccgaatcatgtgcagaatgctgaatcttcccccagccaggacgaataagacagcgcggaaaagcagattctcgtaattctggaattgcatgttgcaaggagtctcctggatcttcgcacccagcttcgggtagggagggagtccgggtcccgggctaggccagcccggcaggtggagagggtccccggcagccccgcgcgcccctggccatgtctttaatgccctgccccttcatgtggccttctgagggttcccagggctggccagggttgtttcccacccgcgcgcgcgctctcacccccagccaaacccacctggcagggctccctccagccgagaccttttgattcccggctcccgcgctcccgcctccgcgccagcccgggaggtggccctggacagccggacctcgcccggccccggctgggaccatggtgtttctctcgggaaatgcttccgacagctccaactgcacccaaccgccggcaccggtgaacatttccaaggccattctgctcggggtgatcttggggggcctcattcttttcggggtgctgggtaacatcctagtgatcctctccgtagcctgtcaccgacacctgcactcagtcacgcactactacatcgtcaacctggcggtggccgacctcctgctcacctccacggtgctgcccttctccgccatcttcgaggtcctaggctactgggccttcggcagggtcttctgcaacatctgggcggcagtggatgtgctgtgctgcaccgcgtccatcatgggcctctgcatcatctccatcgaccgctacatcggcgtgagctacccgctgcgctacccaaccatcgtcacccagaggaggggtctcatggctctgctctgcgtctgggcactctccctggtcatatccattggacccctgttcggctggaggcagccggcccccgaggacgagaccatctgccagatcaacgaggagccgggctacgtgctcttctcagcgctgggctccttctacctgcctctggccatcatcctggtcatgtactgccgcgtctacgtggtggccaagagggagagccggggcctcaagtctggcctcaagaccgacaagtcggactcggagcaagtgacgctccgcatccatcggaaaaacgccccggcaggaggcagcgggatggccagcgccaagaccaagacgcacttctcagtgaggctcctcaagttctcccgggagaagaaagcggccaaaacgctgggcatcgtggtcggctgcttcgtcctctgctggctgccttttttcttagtcatgcccattgggtctttcttccctgatttcaagccctctgaaacagtttttaaaatagtattttggctcggatatctaaacagctgcatcaaccccatcatatacccatgctccagccaagagttcaaaaaggcctttcagaatgtcttgagaatccagtgtctctgcagaaagcagtcttccaaacatgccctgggctacaccctgcacccgcccagccaggccgtggaagggcaacacaaggacatggtgcgcatccccgtgggatcaagagagaccttctacaggatctccaagacggatggcgtttgtgaatggaaatttttctcttccatgccccgtggatctgccaggattacagtgtccaaagaccaatcctcctgtaccacagcccggggacacacacccatgacatgaagccagcttcccgtccacgactgttgtccttactgcccaaggaaggggagcatgaaacccaccactggtcctgcgacccactgtctttggaatccaccccaggagcccaggagccttgcctgacacttggatttacttctttatcaagcatccatctgactaaggcacaaatccaacatgttactgttactgatacaggaaaaacagtaacttaaggaatgatcatgaatgcaaagggaaagaggaaaagagccttcagggacaaatagctcgattttttgtaaatcagtttcatacaacctccctcccccatttcattcttaaaagttaattgagaatcatcagccacgtgtagggtgtgag',
@@ -24,6 +26,7 @@ transcripts = {
         'g_strand': -1,
         'g_starts_i': [26721603, 26627797, 26613912], 	'g_ends_i': [26722922, 26628183, 26614296],
         'g_cds_start_i': 26614275, 			'g_cds_end_i': 26722486,
+        'pro_ac': 'NP_150645.2',
     },
     'NM_033303.3': {
         'seq': 'gaattccgaatcatgtgcagaatgctgaatcttcccccagccaggacgaataagacagcgcggaaaagcagattctcgtaattctggaattgcatgttgcaaggagtctcctggatcttcgcacccagcttcgggtagggagggagtccgggtcccgggctaggccagcccggcaggtggagagggtccccggcagccccgcgcgcccctggccatgtctttaatgccctgccccttcatgtggccttctgagggttcccagggctggccagggttgtttcccacccgcgcgcgcgctctcacccccagccaaacccacctggcagggctccctccagccgagaccttttgattcccggctcccgcgctcccgcctccgcgccagcccgggaggtggccctggacagccggacctcgcccggccccggctgggaccatggtgtttctctcgggaaatgcttccgacagctccaactgcacccaaccgccggcaccggtgaacatttccaaggccattctgctcggggtgatcttggggggcctcattcttttcggggtgctgggtaacatcctagtgatcctctccgtagcctgtcaccgacacctgcactcagtcacgcactactacatcgtcaacctggcggtggccgacctcctgctcacctccacggtgctgcccttctccgccatcttcgaggtcctaggctactgggccttcggcagggtcttctgcaacatctgggcggcagtggatgtgctgtgctgcaccgcgtccatcatgggcctctgcatcatctccatcgaccgctacatcggcgtgagctacccgctgcgctacccaaccatcgtcacccagaggaggggtctcatggctctgctctgcgtctgggcactctccctggtcatatccattggacccctgttcggctggaggcagccggcccccgaggacgagaccatctgccagatcaacgaggagccgggctacgtgctcttctcagcgctgggctccttctacctgcctctggccatcatcctggtcatgtactgccgcgtctacgtggtggccaagagggagagccggggcctcaagtctggcctcaagaccgacaagtcggactcggagcaagtgacgctccgcatccatcggaaaaacgccccggcaggaggcagcgggatggccagcgccaagaccaagacgcacttctcagtgaggctcctcaagttctcccgggagaagaaagcggccaaaacgctgggcatcgtggtcggctgcttcgtcctctgctggctgccttttttcttagtcatgcccattgggtctttcttccctgatttcaagccctctgaaacagtttttaaaatagtattttggctcggatatctaaacagctgcatcaaccccatcatatacccatgctccagccaagagttcaaaaaggcctttcagaatgtcttgagaatccagtgtctctgcagaaagcagtcttccaaacatgccctgggctacaccctgcacccgcccagccaggccgtggaagggcaacacaaggacatggtgcgcatccccgtgggatcaagagagaccttctacaggatctccaagacggatggcgtttgtgaatggaaatttttctcttccatgccccgtggatctgccaggattacagtgtccaaagaccaatcctcctgtaccacagcccggacgaagtctcgctctgtcaccaggctggagtgcagtggcatgatcttggctcactgcaacctccgcctcccgggttcaagagattctcctgcctcagcctcccaagcagctgggactacagggatgtgccaccaggccgacgccaccaggcccagctaatttttgtatttttagtagagacggggtttcaccatgttggccaggatgatctcgatctcttgacctcatgatctgcctgcctcagcctcccaaagtgctgggattacaggcgtgagccaccgtgcccggcccaactattttttttttttatcttttttaacagtgcaatcctttctgtggatgaaatcttgctcagaagctcaatatgcaaaagaaagaaaaacagcagggctggacggatgttgggagtggggtaagaccccaaccactcagaaccacccccccaacacacacacacattctctccatggtgactggtgaggggcctctagagggtacatagtacaccatggagcacggtttaagcaccactggactacacattcttctgtggcagttatcttaccttcccatagacacccagcccatagccattggtt',
@@ -32,6 +35,7 @@ transcripts = {
         'g_strand': -1,
         'g_starts_i': [26721603, 26627797, 26605666], 	'g_ends_i': [26722922, 26628183, 26606265],
         'g_cds_start_i': 26606106, 			'g_cds_end_i': 26722486,
+        'pro_ac': 'NP_150646.3',
     },
     'NM_033304.2': {
         'seq': 'gaattccgaatcatgtgcagaatgctgaatcttcccccagccaggacgaataagacagcgcggaaaagcagattctcgtaattctggaattgcatgttgcaaggagtctcctggatcttcgcacccagcttcgggtagggagggagtccgggtcccgggctaggccagcccggcaggtggagagggtccccggcagccccgcgcgcccctggccatgtctttaatgccctgccccttcatgtggccttctgagggttcccagggctggccagggttgtttcccacccgcgcgcgcgctctcacccccagccaaacccacctggcagggctccctccagccgagaccttttgattcccggctcccgcgctcccgcctccgcgccagcccgggaggtggccctggacagccggacctcgcccggccccggctgggaccatggtgtttctctcgggaaatgcttccgacagctccaactgcacccaaccgccggcaccggtgaacatttccaaggccattctgctcggggtgatcttggggggcctcattcttttcggggtgctgggtaacatcctagtgatcctctccgtagcctgtcaccgacacctgcactcagtcacgcactactacatcgtcaacctggcggtggccgacctcctgctcacctccacggtgctgcccttctccgccatcttcgaggtcctaggctactgggccttcggcagggtcttctgcaacatctgggcggcagtggatgtgctgtgctgcaccgcgtccatcatgggcctctgcatcatctccatcgaccgctacatcggcgtgagctacccgctgcgctacccaaccatcgtcacccagaggaggggtctcatggctctgctctgcgtctgggcactctccctggtcatatccattggacccctgttcggctggaggcagccggcccccgaggacgagaccatctgccagatcaacgaggagccgggctacgtgctcttctcagcgctgggctccttctacctgcctctggccatcatcctggtcatgtactgccgcgtctacgtggtggccaagagggagagccggggcctcaagtctggcctcaagaccgacaagtcggactcggagcaagtgacgctccgcatccatcggaaaaacgccccggcaggaggcagcgggatggccagcgccaagaccaagacgcacttctcagtgaggctcctcaagttctcccgggagaagaaagcggccaaaacgctgggcatcgtggtcggctgcttcgtcctctgctggctgccttttttcttagtcatgcccattgggtctttcttccctgatttcaagccctctgaaacagtttttaaaatagtattttggctcggatatctaaacagctgcatcaaccccatcatatacccatgctccagccaagagttcaaaaaggcctttcagaatgtcttgagaatccagtgtctctgcagaaagcagtcttccaaacatgccctgggctacaccctgcacccgcccagccaggccgtggaagggcaacacaaggacatggtgcgcatccccgtgggatcaagagagaccttctacaggatctccaagacggatggcgtttgtgaatggaaatttttctcttccatgccccgtggatctgccaggattacagtgtccaaagaccaatcctcctgtaccacagcccggaggggaatggattgtagatatttcaccaagaattgcagagagcatatcaagcatgtgaattttatgatgccaccgtggagaaagggttcagaatgctgatctccaggtagctggagacctaggcagtctgcaaatgaggagtcagctggaagctatggctatgtattatgtgacatcgcttgttcctaagtgaaaactggatatcccaaccttctggcccagtaggtttcatggttaagacctggtagtgagaacattttaggaactatttgcttgggcaggcaatttttcactct',
@@ -40,6 +44,7 @@ transcripts = {
         'g_strand': -1,
         'g_starts_i': [26721603, 26627797, 26623370], 	'g_ends_i': [26722922, 26628183, 26623666],
         'g_cds_start_i': 26623567, 			'g_cds_end_i': 26722486,
+        'pro_ac': 'NP_150647.2',
     },
 }
 
@@ -64,7 +69,8 @@ class TestUtaModels(unittest.TestCase):
         # http://www.ncbi.nlm.nih.gov/nuccore/NM_033304.2
 
         o = usam.Origin(
-            name='Testing (originally NCBI, via Eutils)',
+            name='NCBI',
+            descr='Testing (originally NCBI, via Eutils)',
             url='http://bogus.com/',
             url_ac_fmt='http://bogus.com/{ac}',
         )
@@ -122,6 +128,13 @@ class TestUtaModels(unittest.TestCase):
             )
             cls.session.add(t)
 
+            p = usam.AssociatedAccessions(
+                tx_ac=ac,
+                pro_ac=tx_info['pro_ac'],
+                origin=o.name,
+            )
+            cls.session.add(p)
+
             # ExonSet and Exons on Transcript seq
             t_es = usam.ExonSet(
                 tx_ac=ac,
@@ -174,7 +187,7 @@ class TestUtaModels(unittest.TestCase):
         self.assertEqual(len(all_origins), 1)
 
         o = all_origins[0]
-        self.assertRegex(o.name, 'Testing')
+        self.assertEqual(o.name, 'NCBI')
         self.assertEqual(o.url, 'http://bogus.com/')
         self.assertEqual(o.url_ac_fmt, 'http://bogus.com/{ac}')
 
@@ -205,14 +218,14 @@ class TestUtaModels(unittest.TestCase):
             usam.SeqAnno.ac == 'NC_000008.10').one()
         self.assertEqual(n.ac, u'NC_000008.10')
         # self.assertTrue(len(n.exon_sets),2)
-        self.assertRegex(n.origin.name, '^Testing')
+        self.assertEqual(n.origin.name, 'NCBI')
         #self.assertEqual(len(n.transcripts), 0)
 
         n = self.session.query(usam.SeqAnno).filter(
             usam.SeqAnno.ac == 'NM_000680.2').one()
         self.assertEqual(n.ac, u'NM_000680.2')
         # self.assertTrue(len(n.exon_sets),1)
-        self.assertRegex(n.origin.name, '^Testing')
+        self.assertEqual(n.origin.name, 'NCBI')
 
         n = self.session.query(usam.Seq).join(usam.Seq.aliases).filter(
             usam.SeqAnno.ac == 'NM_000680.2').one()
@@ -256,6 +269,34 @@ class TestUtaModels(unittest.TestCase):
         #es = [ es for es in t.exon_sets if es.is_primary ][0]
         #self.assertEqual( (es.exons[0].start_i,es.exons[0].end_i) , (0,1319) )
         #self.assertEqual( (es.exons[1].start_i,es.exons[1].end_i) , (1319,2281) )
+
+    def test_associated_accessions(self):
+        all_aa = self.session.query(usam.AssociatedAccessions).all()
+        self.assertEqual(len(all_aa), 4)
+        # check values in one row:
+        aa = self.session.query(usam.AssociatedAccessions).filter_by(tx_ac='NM_000680.2').one()
+        self.assertIsInstance(aa.associated_accession_id, int)
+        self.assertIsInstance(aa.added, datetime.datetime)
+        self.assertEqual(aa.tx_ac, 'NM_000680.2')
+        self.assertEqual(aa.pro_ac, 'NP_000671.2')
+        self.assertEqual(aa.origin, 'NCBI')
+
+    def test_associated_accessions_transcript_not_in_database(self):
+        """
+        Should create row in associated_accessions even for transcripts not in database.
+        This is only the case until associated_accessions.tx_ac is converted to a transcript foreign key.
+        """
+        p = usam.AssociatedAccessions(
+            tx_ac='dummy_transcript',
+            pro_ac='dummy_protein',
+            origin='dummy_origin',
+        )
+        self.session.add(p)
+        self.session.commit()
+        aa = self.session.query(usam.AssociatedAccessions).filter_by(tx_ac='dummy_transcript').one()
+        self.assertEqual(aa.tx_ac, 'dummy_transcript')
+        self.assertEqual(aa.pro_ac, 'dummy_protein')
+        self.assertEqual(aa.origin, 'dummy_origin')
 
 
 if __name__ == '__main__':

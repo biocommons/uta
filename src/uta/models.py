@@ -6,6 +6,8 @@ import hashlib
 
 import sqlalchemy as sa
 import sqlalchemy.orm as sao
+import sqlalchemy.types
+import sqlalchemy.sql.functions
 from sqlalchemy.ext.declarative import declarative_base
 
 
@@ -218,6 +220,26 @@ class ExonAln(Base):
         "Exon", backref="alt_aln", foreign_keys=[alt_exon_id])
 
     # methods:
+
+
+class AssociatedAccessions(Base):
+    __tablename__ = "associated_accessions"
+    __table_args__ = (
+        sa.UniqueConstraint("origin", "tx_ac", "pro_ac", name="unique_pair_in_origin"),
+        sa.Index("associated_accessions_pro_ac", "pro_ac"),
+        sa.Index("associated_accessions_tx_ac", "tx_ac"),
+    )
+
+    # columns:
+    associated_accession_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    tx_ac = sa.Column(sa.Text, nullable=False)
+    pro_ac = sa.Column(sa.Text, nullable=False)
+    origin = sa.Column(sa.Text, nullable=False)
+    added = sa.Column(
+        sqlalchemy.types.TIMESTAMP,
+        server_default=sqlalchemy.sql.functions.now(),
+        nullable=False,
+    )
 
 
 # <LICENSE>
