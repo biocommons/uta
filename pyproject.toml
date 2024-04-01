@@ -47,6 +47,8 @@ dependencies = [
   "configparser",
   "docopt",
   "eutils>=0.3.2",
+  "importlib_resources",
+  "more_itertools",
   "nose",
   "prettytable",
   "psycopg2-binary",
