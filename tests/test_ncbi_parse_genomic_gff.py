@@ -7,7 +7,7 @@ from tempfile import NamedTemporaryFile
 from sbin.ncbi_parse_genomic_gff import (
     get_zero_based_exon_ranges,
     GFFRecord,
-    parse_gff_file,
+    parse_gff_files,
     parse_gff_record,
 )
 
@@ -160,7 +160,7 @@ class TestGFFParsing(unittest.TestCase):
     def test_parse_gff_file(self):
         # Test parsing the entire uncompressed GFF file
         expected_result = {"rna-NR_046018.2": self.gff_records}
-        parsed_result = parse_gff_file([self.temp_gff.name])
+        parsed_result = parse_gff_files([self.temp_gff.name])
         self.assertEqual(parsed_result, expected_result)
 
     def test_parse_gff_file_accepts_gzipped_files(self):
@@ -171,7 +171,7 @@ class TestGFFParsing(unittest.TestCase):
 
         # Test parsing the gzipped GFF file
         expected_result = {"rna-NR_046018.2": self.gff_records}
-        parsed_result = parse_gff_file([self.temp_gff.name + ".gz"])
+        parsed_result = parse_gff_files([self.temp_gff.name + ".gz"])
         self.assertEqual(parsed_result, expected_result)
 
     def test_get_zero_based_exon_ranges(self):
