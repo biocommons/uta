@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 
-"""write SeqInfo files from fasta"""
+"""Writes SeqInfo files from fasta to stdout. Writes transcript accessions that are missing from
+SeqRepo to a file called exonset_missing_accessions.txt in the same directory as the input files."""
 
 import argparse
-import configparser as ConfigParser
 import gzip
 import itertools
-import logging
 import logging.config
-import pkg_resources
+import os
 import re
 import sys
 
-from bioutils.digests import seq_md5
+import configparser as ConfigParser
+import pkg_resources
 from biocommons.seqrepo import SeqRepo
-# from multifastadb import MultiFastaDB
+from bioutils.digests import seq_md5
 
 from uta.formats.exonset import ExonSetReader
 from uta.formats.seqinfo import SeqInfo, SeqInfoWriter
@@ -49,6 +49,8 @@ if __name__ == "__main__":
     ac_re = re.compile("[NX][CGMPR]_")
 
     opts = parse_args(sys.argv[1:])
+    input_dir = os.path.dirname(opts.FILES[0])
+    missing_accessions_file_path = os.path.join(input_dir, "exonset_missing_accessions.txt")
 
     cf = ConfigParser.ConfigParser()
     for conf_fn in opts.conf:
@@ -72,25 +74,27 @@ if __name__ == "__main__":
     # this is just a fancy way to make a set of all tx_ac and alt_ac accessions
     acs = sorted(
         set(itertools.chain.from_iterable((es.tx_ac, es.alt_ac) for es in esr)))
+    missing_acs_count = 0
+    with open(missing_accessions_file_path, "w") as f:
+        f.write("tx_ac\n")
+        for ac in acs:
+            try:
+                seq = str(sr[ac])
+            except KeyError:
+                logging.warning("Sequence not found: " + ac)
+                missing_acs_count += 1
+                f.write(ac + "\n")
+                continue
 
-    acs_not_found = set()
-    for ac in acs:
-        try:
-            seq = str(sr[ac])
-        except KeyError:
-            logging.warning("Sequence not found: " + ac)
-            acs_not_found.update([ac])
-            continue
+            si = SeqInfo(
+                ac=ac,
+                descr=None,
+                len=len(seq),
+                md5=seq_md5(seq),
+                origin=opts.origin,
+                seq=None,
+            )
+            siw.write(si)
 
-        si = SeqInfo(
-            ac=ac,
-            descr=None,
-            len=len(seq),
-            md5=seq_md5(seq),
-            origin=opts.origin,
-            seq=None,
-        )
-        siw.write(si)
-
-    if acs_not_found:
-        raise RuntimeError("Sequences for {} accessions not found".format(len(acs_not_found)))
+    # Log the number of missing accessions written to the file
+    logging.info(f"{missing_acs_count} accessions were missing from Seqrepo. See {missing_accessions_file_path}.")
