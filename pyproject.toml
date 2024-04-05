@@ -39,6 +39,7 @@ classifiers = [
 ]
 
 dependencies = [
+  "alembic",
   "attrs",
   "biocommons.seqrepo",
   "biopython>=1.69",

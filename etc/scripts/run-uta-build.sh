@@ -19,7 +19,7 @@ then
 fi
 
 # set local variables and create working directories
-loading_uta_v="uta_1_1"
+loading_uta_v="uta"
 loading_dir="$working_dir/loading"
 dumps_dir="$working_dir/dumps"
 logs_dir="$working_dir/logs"
@@ -30,6 +30,10 @@ done
 ## Drop loading schema, and recreate
 etc/scripts/delete-schema.sh "$loading_uta_v"
 etc/scripts/create-new-schema.sh "$source_uta_v" "$loading_uta_v"
+
+## for now set up Alembic for schema migrations
+alembic -c etc/alembic.ini stamp edadb97f6502
+alembic -c etc/alembic.ini upgrade head
 
 ## Load SeqRepo with new sequences
 seqrepo load -n NCBI -i "$seqrepo_data_release" \

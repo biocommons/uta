@@ -9,6 +9,7 @@ import sqlalchemy.orm as sao
 import sqlalchemy.types
 import sqlalchemy.sql.functions
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.dialects import postgresql
 
 
 ############################################################################
@@ -18,11 +19,9 @@ from sqlalchemy.ext.declarative import declarative_base
 schema_version = "1.1"
 use_schema = True
 if use_schema:
-    schema_name = "uta_" + schema_version.replace(".","_")
-    schema_name_dot = schema_name + "."
+    schema_name = "uta"
 else:
     schema_name = None
-    schema_name_dot = ""
 
 
 ############################################################################
@@ -210,8 +209,8 @@ class ExonAln(Base):
     cigar = sa.Column(sa.Text, nullable=False)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)
-    tx_aseq = sa.Column(sa.Text, nullable=False)
-    alt_aseq = sa.Column(sa.Text, nullable=False)
+    tx_aseq = sa.Column(sa.Text, nullable=True)
+    alt_aseq = sa.Column(sa.Text, nullable=True)
 
     # relationships:
     tx_exon = sao.relationship(
@@ -225,9 +224,10 @@ class ExonAln(Base):
 class AssociatedAccessions(Base):
     __tablename__ = "associated_accessions"
     __table_args__ = (
-        sa.UniqueConstraint("origin", "tx_ac", "pro_ac", name="unique_pair_in_origin"),
+        sa.Index("unique_pair_in_origin", "origin", "tx_ac", "pro_ac", unique=True),
         sa.Index("associated_accessions_pro_ac", "pro_ac"),
         sa.Index("associated_accessions_tx_ac", "tx_ac"),
+        {"comment": "transcript-protein accession pairs associated in source databases"},
     )
 
     # columns:
@@ -236,7 +236,7 @@ class AssociatedAccessions(Base):
     pro_ac = sa.Column(sa.Text, nullable=False)
     origin = sa.Column(sa.Text, nullable=False)
     added = sa.Column(
-        sqlalchemy.types.TIMESTAMP,
+        postgresql.TIMESTAMP(timezone=True),
         server_default=sqlalchemy.sql.functions.now(),
         nullable=False,
     )
