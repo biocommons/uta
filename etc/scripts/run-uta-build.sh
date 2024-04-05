@@ -64,8 +64,12 @@ GFF_files=$(ls $ncbi_dir/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_as
 sbin/ncbi_parse_genomic_gff.py "$GFF_files" | gzip -c > "$loading_dir/gff.exonsets.gz" 2>&1 | \
   tee "$logs_dir/ncbi-parse-genomic-gff.log"
 
+sbin/filter_exonset_transcripts.py --tx-info "$loading_dir/gbff.txinfo.gz" --exonsets "$loading_dir/gff.exonsets.gz" \
+ --missing-ids "$loading_dir/filtered_tx_acs.txt" | gzip -c > "$loading_dir/gff.filtered_exonsets.gz" 2>&1 | \
+ tee "$logs_dir/filter_exonset_transcripts.log"
+
 # generate seqinfo files from exonsets
-sbin/exonset-to-seqinfo -o NCBI "$loading_dir/gff.exonsets.gz" | gzip -c > "$loading_dir/seqinfo.gz" 2>&1 | \
+sbin/exonset-to-seqinfo -o NCBI "$loading_dir/gff.filtered_exonsets.gz" | gzip -c > "$loading_dir/seqinfo.gz" 2>&1 | \
   tee "$logs_dir/exonset-to-seqinfo.log"
 
 ### update the uta database
@@ -81,7 +85,7 @@ uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-txinfo "$loadi
   tee "$logs_dir/load-txinfo.log"
 
 # gff exon sets
-uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$loading_dir/gff.exonsets.gz" 2>&1 | \
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$loading_dir/gff.filtered_exonsets.gz" 2>&1 | \
   tee "$logs_dir/load-exonsets.log"
 
 # align exons

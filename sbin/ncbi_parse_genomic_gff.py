@@ -24,27 +24,16 @@ due merely to concatenation of adjacent spans.
 """
 
 import argparse
-import gzip
 import logging.config
 import sys
 from collections import defaultdict
-from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import List, Optional
 
 import pkg_resources
 
 from uta.formats.exonset import ExonSet, ExonSetWriter
-
-
-@contextmanager
-def open_file(filename):
-    if filename.endswith(".gz"):
-        with gzip.open(filename, "rt") as f:
-            yield f
-    else:
-        with open(filename) as f:
-            yield f
+from uta.tools.file_utils import open_file
 
 
 @dataclass
@@ -115,7 +104,7 @@ def _get_exon_number_from_id(alignment_id: str) -> int:
     return int(alignment_id.split("-")[-1])
 
 
-def parse_gff_file(file_paths: List[str]) -> dict[str, List[GFFRecord]]:
+def parse_gff_files(file_paths: List[str]) -> dict[str, List[GFFRecord]]:
     tx_data = defaultdict(list)
     for file_path in file_paths:
         with open_file(file_path) as f:
@@ -152,7 +141,7 @@ if __name__ == "__main__":
     gff_files = args.gff_files
     esw = ExonSetWriter(sys.stdout)
 
-    transcript_alignments = parse_gff_file(gff_files)
+    transcript_alignments = parse_gff_files(gff_files)
     logger.info(
         f"read {len(transcript_alignments)} transcript alignments from file(s): {', '.join(gff_files)}"
     )
