@@ -130,6 +130,7 @@ class Transcript(Base):
     cds_md5 = sa.Column(sa.Text, index=True)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)
+    codon_table = sa.Column(sa.Integer, nullable=False, server_default='1')  # 1 = standard, 2 = mitochondrial
 
     # relationships:
     origin = sao.relationship("Origin", backref="transcripts")
