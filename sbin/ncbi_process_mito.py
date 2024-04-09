@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Download mito fasta and gbff file. Use BioPython to parse the features in the Mitochondrial genbank file to get
 the attributes of a region of the genome that correspond to genes along with their attributes. Output gene/tx/alignment
@@ -52,6 +54,7 @@ details to intermediate file needed to update UTA database and SeqRepo.
 """
 import argparse
 import dataclasses
+import gzip
 import importlib_resources
 import logging
 import logging.config
@@ -83,7 +86,7 @@ class MitoGeneData:
     alt_ac: str
     alt_start: int
     alt_end: int
-    strand: str
+    strand: int
     origin: str = "NCBI"
     alignment_method: str = "splign"
     transl_table: Optional[str] = None
@@ -166,6 +169,7 @@ def parse_nomenclature_value(gb_feature: SeqFeature) -> Dict[str, str]:
 def get_mito_genes(gbff_filepath: str):
     logger.info(f"processing NCBI GBFF file from {gbff_filepath}")
     with open(gbff_filepath) as fh:
+        # Bio.SeqIO.parse(fh, "gb") returns an empty iterator for .fna files and does not fail
         for record in Bio.SeqIO.parse(fh, "gb"):
             for feature in record.features:
                 xrefs = parse_db_xrefs(feature)
@@ -200,9 +204,7 @@ def get_mito_genes(gbff_filepath: str):
                     # retrieve sequence, and reverse compliment if on reverse strand
                     ac = f"{record.id}_{feature.location.start:05}_{feature.location.end:05}"
                     feature_seq = record.seq[feature_start:feature_end]
-                    strand = "+"
                     if feature.location.strand == -1:
-                        strand = "-"
                         feature_seq = feature_seq.reverse_complement()
 
                     if feature.type == "CDS":
@@ -225,7 +227,7 @@ def get_mito_genes(gbff_filepath: str):
                         alt_ac=record.id,
                         alt_start=feature_start,
                         alt_end=feature_end,
-                        strand=strand,
+                        strand=feature.location.strand,
                         transl_table=transl_table,
                         transl_except=transl_except,
                         pro_ac=pro_ac,
@@ -242,7 +244,7 @@ def main(ncbi_accession: str, output_dir: str):
     logger.info(f"found {len(mito_genes)} genes from parsing {input_files['gbff']}")
 
     # write gene accessions
-    with open(f"{output_dir}/{ncbi_accession}.assocacs", "w") as o_file:
+    with gzip.open(f"{output_dir}/assocacs.gz", "wt") as o_file:
         gaw = GeneAccessionsWriter(o_file)
         for mg in mito_genes:
             if mg.pro_ac is not None:
@@ -253,7 +255,7 @@ def main(ncbi_accession: str, output_dir: str):
                 )
 
     # write sequence information
-    with open(f"{output_dir}/{ncbi_accession}.seqinfo", "w") as o_file:
+    with gzip.open(f"{output_dir}/seqinfo.gz", "wt") as o_file:
         siw = SeqInfoWriter(o_file)
         for mg in mito_genes:
             siw.write(
@@ -279,7 +281,7 @@ def main(ncbi_accession: str, output_dir: str):
                 )
 
     # write out transcript sequence fasta files.
-    with open(f"{output_dir}/{ncbi_accession}.rna.fna", "w") as o_file:
+    with gzip.open(f"{output_dir}/{ncbi_accession}.rna.fna.gz", "wt") as o_file:
         for mg in mito_genes:
             record = SeqRecord(
                 Seq(mg.tx_seq),
@@ -289,7 +291,7 @@ def main(ncbi_accession: str, output_dir: str):
             o_file.write(record.format("fasta"))
 
     # write out protein sequence fasta files.
-    with open(f"{output_dir}/{ncbi_accession}.protein.faa", "w") as o_file:
+    with gzip.open(f"{output_dir}/{ncbi_accession}.protein.faa.gz", "wt") as o_file:
         for mg in mito_genes:
             if mg.pro_ac is not None:
                 record = SeqRecord(
@@ -300,7 +302,7 @@ def main(ncbi_accession: str, output_dir: str):
                 o_file.write(record.format("fasta"))
 
     # write transcript information
-    with open(f"{output_dir}/{ncbi_accession}.txinfo", "w") as o_file:
+    with gzip.open(f"{output_dir}/txinfo.gz", "wt") as o_file:
         tiw = TxInfoWriter(o_file)
         for mg in mito_genes:
             tiw.write(
@@ -315,7 +317,7 @@ def main(ncbi_accession: str, output_dir: str):
             )
 
     # write exonset
-    with open(f"{output_dir}/{ncbi_accession}.exonset", "w") as o_file:
+    with gzip.open(f"{output_dir}/exonsets.gz", "wt") as o_file:
         esw = ExonSetWriter(o_file)
         for mg in mito_genes:
             esw.write(
@@ -331,5 +333,4 @@ def main(ncbi_accession: str, output_dir: str):
 
 if __name__ == "__main__":
     args = parse_args()
-
     main(args.accession, args.output_dir)

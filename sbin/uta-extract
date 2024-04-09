@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# Extract data from NCBI files into intermediate files.
+
+set -e
+
+ncbi_dir=$1
+working_dir=$2
+log_dir=$3
+
+if [ -z "$ncbi_dir" ] || [ -z "$working_dir" ] || [ -z "$log_dir" ]
+then
+    echo 'Usage: sbin/uta-extract <ncbi_dir> <working_dir> <log_dir>'
+    exit 1
+fi
+
+# genes
+sbin/ncbi-parse-geneinfo $ncbi_dir/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz | \
+    gzip -c > "$working_dir/geneinfo.gz" 2>&1 | tee "$log_dir/ncbi-parse-geneinfo.log"
+
+# transcript protein associations
+sbin/ncbi-parse-gene2refseq $ncbi_dir/gene/DATA/gene2accession.gz | gzip -c > "$working_dir/assocacs.gz" 2>&1 | \
+    tee "$log_dir/ncbi-fetch-assoc-acs.log"
+
+# parse transcript info from GBFF input files
+GBFF_files=$(ls $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz)
+sbin/ncbi-parse-gbff "$GBFF_files" | gzip -c > "$working_dir/txinfo.gz" 2>&1 | \
+    tee "$log_dir/ncbi-parse-gbff.log"
+
+# parse alignments from GFF input files
+GFF_files=$(ls $ncbi_dir/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405*/GCF_*_genomic.gff.gz)
+sbin/ncbi_parse_genomic_gff.py "$GFF_files" | gzip -c > "$working_dir/unfiltered_exonsets.gz" 2>&1 | \
+    tee "$log_dir/ncbi-parse-genomic-gff.log"
+
+# filter transcripts
+sbin/filter_exonset_transcripts.py --tx-info "$working_dir/txinfo.gz" --exonsets "$working_dir/unfiltered_exonsets.gz" \
+    --missing-ids "$working_dir/filtered_tx_acs.txt" | gzip -c > "$working_dir/exonsets.gz" 2>&1 | \
+    tee "$log_dir/filter_exonset_transcripts.log"
+
+# move fasta files into same dir
+ln $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.rna.fna.gz $working_dir/
+ln $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.protein.faa.gz $working_dir/
+ln $ncbi_dir/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405*/GCF_*_genomic.fna.gz $working_dir/

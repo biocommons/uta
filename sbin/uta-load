@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+# This script updates UTA and SeqRepo using NCBI files.
+# source_uta_v is the UTA version before the update.
+# ncbi_dir is where the script looks for NCBI data files.
+# working_dir stores intermediate data files and the final database dump.
+# log_dir stores log files.
+# skip_load_genes, if truthy, will skip the gene loading step
+
+# Note that the uta loading code uses the seqrepo location defined in the conf files, under [sequences].seqrepo.
+
+set -euxo pipefail
+
+source_uta_v=$1
+ncbi_dir=$2
+working_dir=$3
+log_dir=$4
+skip_load_genes=$5
+
+if [ -z "$source_uta_v" ] || [ -z "$ncbi_dir" ] || [ -z "$working_dir" ] || [ -z "$log_dir" ]
+then
+    echo 'Usage: uta-load <source_uta_v> <ncbi_dir> <working_dir> <log_dir>'
+    exit 1
+fi
+
+# set local variables and create working directories
+loading_uta_v="uta"
+mkdir -p "$log_dir"
+
+## Drop loading schema, and recreate
+etc/scripts/delete-schema.sh "$loading_uta_v"
+etc/scripts/create-new-schema.sh "$source_uta_v" "$loading_uta_v"
+
+## for now set up Alembic for schema migrations
+alembic -c etc/alembic.ini stamp edadb97f6502
+alembic -c etc/alembic.ini upgrade head
+
+# generate seqinfo files from exonsets (this step requires seqrepo)
+sbin/exonset-to-seqinfo -o NCBI "$working_dir/exonsets.gz" | gzip -c > "$working_dir/seqinfo.gz" 2>&1 | \
+    tee "$log_dir/exonset-to-seqinfo.log"
+
+# Filter out columns from assocacs file.
+sbin/assoc-acs-merge "$working_dir/assocacs.gz" | gzip -c > "$working_dir/assoc-ac.gz" 2>&1 | \
+    tee "$log_dir/assoc-acs-merge.log"
+
+# Load genes into gene table.
+if [ "$skip_load_genes" = "true" ]
+then
+    echo "Skipping load-geneinfo"
+else
+    uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-geneinfo "$working_dir/geneinfo.gz" 2>&1 | \
+        tee "$log_dir/load-geneinfo.log"
+fi
+
+# Load accessions into associated_accessions table.
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-assoc-ac "$working_dir/assoc-ac.gz" 2>&1 | \
+    tee "$log_dir/load-assoc-ac.log"
+
+# Load transcript info into transcript and exon_set tables.
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-txinfo "$working_dir/txinfo.gz" 2>&1 | \
+    tee "$log_dir/load-txinfo.log"
+
+# Load exon sets into into exon_set and exon tables.
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$working_dir/exonsets.gz" 2>&1 | \
+    tee "$log_dir/load-exonsets.log"
+
+# Create cigar strings for all rows in tx_alt_exon_pairs_v view and update exon_aln table.
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf align-exons 2>&1 | \
+    tee "$log_dir/align-exons.log"
+
+# Load seqinfo?
+
+### run diff
+sbin/uta-diff "$source_uta_v" "$loading_uta_v"
+
+### psql_dump
+pg_dump -U uta_admin -h localhost -d uta -t "$loading_uta_v.gene" | gzip -c > "$working_dir/uta.pgd.gz"

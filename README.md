@@ -289,59 +289,76 @@ To develop UTA, follow these steps.
 4. Testing
 
         $ docker build --target uta-test -t uta-test .
-        $ docker run -it --rm uta-test python -m unittest
+        $ docker run --rm uta-test python -m unittest
 
 ## UTA update procedure
 
-### 1. Download files from NCBI
+Requires docker.
 
-Run `sbin/ncbi-download-docker`. Requires bash and docker.
+### 0. Setup
 
-Example:
+Make directories:
 ```
-sbin/ncbi-download-docker $(pwd)/ncbi-data
-```
-
-The specified directory will have the following structure:
-
-    ├── gene
-    │   └── DATA
-    │       ├── GENE_INFO
-    │       │   └── Mammalia
-    │       │       └── Homo_sapiens.gene_info.gz
-    │       └── gene2accession.gz
-    ├── genomes
-    │   └── refseq
-    │       └── vertebrate_mammalian
-    │           └── Homo_sapiens
-    │               └── all_assembly_versions
-    │                   └── GCF_000001405.25_GRCh37.p13
-    │                       ├── GCF_000001405.25_GRCh37.p13_genomic.fna.gz
-    │                       └── GCF_000001405.25_GRCh37.p13_genomic.gff.gz
-    └── refseq
-        └── H_sapiens
-            └── mRNA_Prot
-                ├── human.1.protein.faa.gz
-                ├── human.1.rna.fna.gz
-                └── human.1.rna.gbff.gz
-
-### 2. Download SeqRepo data
-
-Run `sbin/seqrepo-download`. Requires bash and docker.
-
-Example:
-```
-sbin/seqrepo-download 2024-02-20 $(pwd)/seqrepo-data
+mkdir -p $(pwd)/ncbi-data
+mkdir -p $(pwd)/output/artifacts
+mkdir -p $(pwd)/output/logs
 ```
 
-### 3. Update UTA and SeqRepo
-
-Run `sbin/uta-update`. Requires bash and docker.
-
-Example:
+Set variables:
 ```
-sbin/uta-update $(pwd)/ncbi-data $(pwd)/seqrepo-data $(pwd)/uta-build uta_20210129b 2024-02-20
+export UTA_ETL_OLD_SEQREPO_VERSION=2024-02-20
+export UTA_ETL_OLD_UTA_VERSION=uta_20210129b
+export UTA_ETL_NCBI_DIR=./ncbi-data
+export UTA_ETL_SEQREPO_DIR=./seqrepo-data
+export UTA_ETL_WORK_DIR=./output/artifacts
+export UTA_ETL_LOG_DIR=./output/logs
 ```
+
+Build the UTA image:
+```
+docker build --target uta -t uta-update .
+```
+
+### 1. Download SeqRepo data
+```
+docker pull biocommons/seqrepo:$UTA_ETL_OLD_SEQREPO_VERSION
+
+# download seqrepo. can skip if container already exists.
+docker run --name seqrepo biocommons/seqrepo:$UTA_ETL_OLD_SEQREPO_VERSION
+
+# copy seqrepo data into a local directory
+docker run -v $UTA_ETL_SEQREPO_DIR:/output-dir --volumes-from seqrepo ubuntu bash -c 'cp -R /usr/local/share/seqrepo/* /output-dir'
+
+# allow seqrepo to be modified
+docker run -it -v $UTA_ETL_SEQREPO_DIR:/output-dir ubuntu bash -c 'chmod -R +w /output-dir'
+```
+
+Note: pulling data takes ~30 minutes and requires ~13 GB.
+Note: a container called seqrepo will be left behind.
+
+### 2. Extract and transform data from NCBI
+
+Download files from NCBI, extract into intermediate files, and load into UTA and SeqRepo.
+
+See 2A for nuclear transcripts and 2B for mitochondrial transcripts.
+
+#### 2A. Nuclear transcripts
+```
+docker compose run ncbi-download
+docker compose run uta-extract
+docker compose run seqrepo-load
+UTA_ETL_SKIP_GENE_LOAD=false docker compose run uta-load
+```
+
+#### 2B. Mitochondrial transcripts
+```
+docker compose run mito-extract
+docker compose run seqrepo-load
+UTA_ETL_SKIP_GENE_LOAD=true docker compose run uta-load
+```
+
+UTA has updated and the database has been dumped into a pgd file in `UTA_ETL_WORK_DIR`. SeqRepo has been updated in place.
+
 
 ## Migrations
 UTA uses alembic to manage database migrations. To auto-generate a migration:
@@ -353,7 +370,7 @@ Adjust the upgrade and downgrade function definitions. To apply the migration:
 ```
 alembic -c etc/alembic.ini upgrade head
 ```
-To reverse a migration, use `downgrade` with the number of steps to reverse. For example, to reverse the last: 
+To reverse a migration, use `downgrade` with the number of steps to reverse. For example, to reverse the last:
 ```
 alembic -c etc/alembic.ini downgrade -1
 ```

@@ -1,6 +1,29 @@
 #!/usr/bin/env bash
 
 # This script downloads the files needed for a UTA+SeqRepo update into to the given directory.
+#
+# DONWLOAD_DIR will have the following structure:
+#
+#    ├── gene
+#    │   └── DATA
+#    │       ├── GENE_INFO
+#    │       │   └── Mammalia
+#    │       │       └── Homo_sapiens.gene_info.gz
+#    │       └── gene2accession.gz
+#    ├── genomes
+#    │   └── refseq
+#    │       └── vertebrate_mammalian
+#    │           └── Homo_sapiens
+#    │               └── all_assembly_versions
+#    │                   └── GCF_000001405.25_GRCh37.p13
+#    │                       ├── GCF_000001405.25_GRCh37.p13_genomic.fna.gz
+#    │                       └── GCF_000001405.25_GRCh37.p13_genomic.gff.gz
+#    └── refseq
+#        └── H_sapiens
+#            └── mRNA_Prot
+#                ├── human.1.protein.faa.gz
+#                ├── human.1.rna.fna.gz
+#                └── human.1.rna.gbff.gz
 
 set -e
 
@@ -26,6 +49,7 @@ do
     DOWNLOAD_MODULE="${DOWNLOAD_PATH%%/*}"
     DOWNLOAD_SRC="ftp.ncbi.nlm.nih.gov::$DOWNLOAD_PATH"
     DOWNLOAD_DST="$DOWNLOAD_DIR/$DOWNLOAD_MODULE"
+    mkdir -p $DOWNLOAD_DST
     echo "Downloading $DOWNLOAD_SRC to $DOWNLOAD_DST"
     rsync --no-motd -DHPRprtv "$DOWNLOAD_SRC" "$DOWNLOAD_DST"
 done
