@@ -64,11 +64,13 @@ uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-txinfo "$worki
 uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-exonset "$working_dir/exonsets.gz" 2>&1 | \
     tee "$log_dir/load-exonsets.log"
 
+# Load seqinfo into the seq and seqanno tables.
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-seqinfo "$loading_dir/seqinfo.gz" 2>&1 | \
+    tee "$logs_dir/load-seqinfo.log"
+
 # Create cigar strings for all rows in tx_alt_exon_pairs_v view and update exon_aln table.
 uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf align-exons 2>&1 | \
     tee "$log_dir/align-exons.log"
-
-# Load seqinfo?
 
 ### run diff
 sbin/uta-diff "$source_uta_v" "$loading_uta_v"
