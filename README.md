@@ -357,6 +357,19 @@ docker compose run seqrepo-load
 UTA_ETL_SKIP_GENE_LOAD=true docker compose run uta-load
 ```
 
+#### 2C. Manual splign transcripts
+To load splign-manual transcripts, the workflow expects an input txdata.yaml file and splign alignments. Define this path 
+using the environment variable $UTA_SPLIGN_MANUAL_DIR. These file paths should exist:
+- `$UTA_SPLIGN_MANUAL_DIR/splign-manual/txdata.yaml`
+- `$UTA_SPLIGN_MANUAL_DIR/splign-manual/alignments/*.splign`
+
+[txdata.yaml](loading/data/splign-manual/txdata.yaml) defines the transcripts and their metadata. The [alignments dir](loading/data/splign-manual/alignments) contains the splign alignments.
+To run the workflow:
+```
+export UTA_SPLIGN_MANUAL_DIR=$(pwd)/loading/data/splign-manual/
+docker compose run splign-manual
+```
+
 UTA has updated and the database has been dumped into a pgd file in `UTA_ETL_WORK_DIR`. SeqRepo has been updated in place.
 
 

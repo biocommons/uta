@@ -50,7 +50,7 @@ For a given RefSeq transcript (e.g., NM_000996.3), do the following:
    - Click on the gene id to go to the gene page (e.g., `6165`)
    - N.B. Strand is inferred from the orientation of aligned exons.
 
-1. Enter the gene and CDS info in txdata.yaml
+1. Enter the gene, geneID, and CDS info in txdata.yaml
 
 1. Get the chromosome and coordinates from the gene page
    - From the "Genomic Context" section, note the chromosomal

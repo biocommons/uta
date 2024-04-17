@@ -66,7 +66,7 @@ if __name__ == "__main__":
     print("""UTA comparison: url={url}, s1={s1}, s2={s2}
 t: time taken (seconds)
 n1, n2: total number of rows in schemas s1 and s2
-nu1, nu2, c: number of rows unique to s1, unique to s2, and common to both
+nu1, nu2, nc: number of rows unique to s1, unique to s2, and common to both
 cols: cols used for comparison
 """.format(url=url, s1=s1, s2=s2))
     print(pt)

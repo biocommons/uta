@@ -161,7 +161,7 @@ def analyze(session, opts, cf):
     ]
     for cmd in cmds:
         logger.info(cmd)
-        session.execute(cmd)
+        session.execute(text(cmd))
     session.commit()
 
 
@@ -214,31 +214,31 @@ def grant_permissions(session, opts, cf):
 
     sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(
         schema=schema)
-    rows = list(session.execute(sql))
+    rows = list(session.execute(text(sql)))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
     cmds += ["alter table {fqrn} owner to uta_admin".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
 
     sql = "select concat(schemaname,'.',viewname) as fqrn from pg_views where schemaname='{schema}'".format(
         schema=schema)
-    rows = list(session.execute(sql))
+    rows = list(session.execute(text(sql)))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
     cmds += ["alter view {fqrn} owner to uta_admin".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
 
     sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
         schema=schema)
-    rows = list(session.execute(sql))
+    rows = list(session.execute(text(sql)))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
     cmds += ["alter materialized view {fqrn} owner to uta_admin".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
 
     for cmd in sorted(cmds):
         logger.info(cmd)
-        session.execute(cmd)
+        session.execute(text(cmd))
     session.commit()
 
 
@@ -761,7 +761,7 @@ def refresh_matviews(session, opts, cf):
 
     for cmd in cmds:
         logger.info(cmd)
-        session.execute(cmd)
+        session.execute(text(cmd))
     session.commit()
 
 

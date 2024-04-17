@@ -6,6 +6,7 @@ import argparse
 import csv
 import gzip
 import logging
+import os
 import sys
 
 import yaml
@@ -20,7 +21,6 @@ method = "splign-manual"
 
 txinfo_fn = "txinfo.gz"
 exonset_fn = "exonset.gz"
-txdata_fn = "txdata.yaml"
 
 
 def parse_args(argv):
@@ -30,6 +30,16 @@ def parse_args(argv):
     ap.add_argument(
         "FILES",
         nargs="*"
+        )
+    ap.add_argument(
+        "--txdata",
+        required=True,
+        help="Path to txdata.yaml"
+        )
+    ap.add_argument(
+        "--output-dir",
+        required=True,
+        help="Path to output directory"
         )
     opts = ap.parse_args(argv)
     return opts
@@ -61,16 +71,19 @@ def parse_splign(fn, txdata):
     try:
         txd = txdata[tx_ac]
     except KeyError:
-        raise KeyError(f"{tx_ac}: no cds or gene_symbol info in {txdata_fn}")
+        raise KeyError(f"{tx_ac}: no cds or gene_symbol info in txdata")
 
     gene_symbol = txd["hgnc"]
-    gene_id = txd.get("gene_id")
-    if gene_symbol is None:
-        _logger.warning(f"No gene symbol in {txdata_fn} for {tx_ac}")
+
+    gene_id = txd["gene_id"]
+    if gene_id is None:
+        msg = f"No gene id in txdata for {tx_ac}"
+        _logger.error(msg)
+        raise ValueError(msg)
 
     cds = txd["cds"]
     if cds is None:
-        _logger.warning(f"No CDS info {txdata_fn} for {tx_ac}; will be non-coding transcript")
+        _logger.warning(f"No CDS info txdata for {tx_ac}; will be non-coding transcript")
         cds_se_i = None
     else:
         cds = [int(i) for i in txd["cds"].split(",")]
@@ -99,10 +112,10 @@ if __name__ == "__main__":
 
     opts = parse_args(sys.argv[1:])
 
-    txdata = yaml.load(open(txdata_fn), Loader=yaml.SafeLoader)
+    txdata = yaml.load(open(opts.txdata), Loader=yaml.SafeLoader)
 
-    txinfo_out = uta.formats.txinfo.TxInfoWriter(gzip.open(txinfo_fn, "wt"))
-    exonset_out = uta.formats.exonset.ExonSetWriter(gzip.open(exonset_fn, "wt"))
+    txinfo_out = uta.formats.txinfo.TxInfoWriter(gzip.open(os.path.join(opts.output_dir, txinfo_fn), "wt"))
+    exonset_out = uta.formats.exonset.ExonSetWriter(gzip.open(os.path.join(opts.output_dir, exonset_fn), "wt"))
     
     for fn in opts.FILES:
         _logger.info("# " + fn)

@@ -60,3 +60,15 @@ services:
       - ${UTA_ETL_LOG_DIR}:/mito-extract/logs
     working_dir: /opt/repos/uta
     network_mode: host
+  splign-manual:
+    image: uta-update
+    command: sbin/uta-splign-manual 2024-02-20 ${UTA_ETL_OLD_UTA_VERSION} /uta-splign-manual/input /uta-splign-manual/work /uta-splign-manual/logs
+    depends_on:
+      uta:
+        condition: service_healthy
+    volumes:
+      - ${UTA_ETL_SEQREPO_DIR}:/usr/local/share/seqrepo
+      - ${UTA_SPLIGN_MANUAL_DIR}:/uta-splign-manual/input
+      - ${UTA_ETL_WORK_DIR}:/uta-splign-manual/work
+      - ${UTA_ETL_LOG_DIR}:/uta-splign-manual/logs
+    network_mode: host
