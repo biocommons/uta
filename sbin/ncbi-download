@@ -2,7 +2,7 @@
 
 # This script downloads the files needed for a UTA+SeqRepo update into to the given directory.
 #
-# DONWLOAD_DIR will have the following structure:
+# DOWNLOAD_DIR will have the following structure:
 #
 #    ├── gene
 #    │   └── DATA
