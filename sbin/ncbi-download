@@ -2,48 +2,22 @@
 
 # This script downloads the files needed for a UTA+SeqRepo update into to the given directory.
 #
-# DOWNLOAD_DIR will have the following structure:
-#
-#    ├── gene
-#    │   └── DATA
-#    │       ├── GENE_INFO
-#    │       │   └── Mammalia
-#    │       │       └── Homo_sapiens.gene_info.gz
-#    │       └── gene2accession.gz
-#    ├── genomes
-#    │   └── refseq
-#    │       └── vertebrate_mammalian
-#    │           └── Homo_sapiens
-#    │               └── all_assembly_versions
-#    │                   └── GCF_000001405.25_GRCh37.p13
-#    │                       ├── GCF_000001405.25_GRCh37.p13_genomic.fna.gz
-#    │                       └── GCF_000001405.25_GRCh37.p13_genomic.gff.gz
-#    └── refseq
-#        └── H_sapiens
-#            └── mRNA_Prot
-#                ├── human.1.protein.faa.gz
-#                ├── human.1.rna.fna.gz
-#                └── human.1.rna.gbff.gz
+# DESTINATION_DIR will have a directory structure matching the source.
 
 set -e
 
-DOWNLOAD_DIR=$1
-DOWNLOAD_PATHS=(
-    'gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz'
-    'gene/DATA/gene2accession.gz'
-    'refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz'
-)
+FILE_PATH_CONFIG=$1
+DOWNLOAD_DIR=$2
 
-if [ -z "$DOWNLOAD_DIR" ]
+if [ -z "$FILE_PATH_CONFIG" ] || [ -z "$DOWNLOAD_DIR" ]
 then
-    echo 'Usage: sbin/ncbi-download <download_dir>'
+    echo 'Usage: sbin/ncbi-download <file path config> <download_dir> '
     exit 1
 else
     echo "Downloading files to $DOWNLOAD_DIR"
 fi
 
-for DOWNLOAD_PATH in "${DOWNLOAD_PATHS[@]}"
-do
+grep -v -e '^#' -e '^$' "$FILE_PATH_CONFIG" | while read -r DOWNLOAD_PATH; do
     # each top-level directory in NCBI is an rsync module.
     # bash parameter expansion removes all content after first slash.
     DOWNLOAD_MODULE="${DOWNLOAD_PATH%%/*}"
