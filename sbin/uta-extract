@@ -38,6 +38,6 @@ sbin/filter_exonset_transcripts.py --tx-info "$working_dir/txinfo.gz" --exonsets
     tee "$log_dir/filter_exonset_transcripts.log"
 
 # move fasta files into same dir
-ln $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.rna.fna.gz $working_dir/
-ln $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.protein.faa.gz $working_dir/
-ln $ncbi_dir/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405*/GCF_*_genomic.fna.gz $working_dir/
+cp -f $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.rna.fna.gz $working_dir/
+cp -f $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.protein.faa.gz $working_dir/
+cp -f $ncbi_dir/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405*/GCF_*_genomic.fna.gz $working_dir/

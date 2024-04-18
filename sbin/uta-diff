@@ -14,7 +14,7 @@ cmp_cols = collections.defaultdict(lambda: ['*'])
 cmp_cols.update({
     "associated_accessions": "tx_ac pro_ac origin".split(),
     "exon_aln": "exon_aln_id tx_exon_id alt_exon_id cigar added".split(),
-    "gene": "hgnc".split(),
+    "gene": "gene_id".split(),
     "transcript": "ac".split(),
     })
 

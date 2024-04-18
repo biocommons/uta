@@ -21,5 +21,4 @@ pg_dump -U uta_admin -h localhost -d uta -n "$source_uta_v" | \
 # create new schema
 gzip -cdq $dumps_dir/"$source_uta_v".pgd.gz | \
  sbin/pg-dump-schema-rename "$source_uta_v" "$dest_uta_v" | \
- sbin/pg-dump-schema-rename "uta_1_1" "$dest_uta_v" | \
  psql -U uta_admin -h localhost -d uta -aeE

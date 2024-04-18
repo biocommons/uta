@@ -77,7 +77,9 @@ class TestUtaModels(unittest.TestCase):
         cls.session.add(o)
 
         g = usam.Gene(
+            gene_id='148',
             hgnc='ADRA1A',
+            symbol='ADRA1A',
             maploc='8p21.2',
             descr='adrenoceptor alpha 1A',
             summary='''Alpha-1-adrenergic receptors (alpha-1-ARs) are
@@ -121,7 +123,7 @@ class TestUtaModels(unittest.TestCase):
             t = usam.Transcript(
                 ac=ac,
                 origin=o,
-                hgnc=g.hgnc,
+                gene_id=g.gene_id,
                 cds_start_i=tx_info['t_cds_start_i'],
                 cds_end_i=tx_info['t_cds_end_i'],
                 cds_md5='d41d8cd98f00b204e9800998ecf8427e',

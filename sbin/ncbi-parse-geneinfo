@@ -30,8 +30,6 @@ if __name__ == "__main__":
     giw = GeneInfoWriter(sys.stdout)
 
     for rec in gi_in:
-        if rec["symbol_from_nomenclature_authority"] == "-":
-            continue
         gi = GeneInfo(
             tax_id=rec["tax_id"],
             gene_symbol=rec["symbol"],

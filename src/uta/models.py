@@ -98,13 +98,17 @@ class Gene(Base):
     __tablename__ = "gene"
 
     # columns:
-    hgnc = sa.Column(sa.Text, primary_key=True)
+    gene_id = sa.Column(sa.Text, primary_key=True)
+    hgnc = sa.Column(sa.Text, nullable=False, index=True)
+    symbol = sa.Column(sa.Text, nullable=False, index=True)
     maploc = sa.Column(sa.Text)
     descr = sa.Column(sa.Text)
     summary = sa.Column(sa.Text)
     aliases = sa.Column(sa.Text)
     added = sa.Column(
         sa.DateTime, nullable=False, default=datetime.datetime.now())
+    type = sa.Column(sa.Text)
+    xrefs = sa.Column(sa.Text)
 
     # methods:
 
@@ -124,9 +128,9 @@ class Transcript(Base):
     ac = sa.Column(sa.Text, primary_key=True)
     origin_id = sa.Column(
         sa.Integer, sa.ForeignKey("origin.origin_id", onupdate="CASCADE", ondelete="CASCADE"), nullable=False, index=True)
-    hgnc = sa.Column(sa.Text)  # , sa.ForeignKey("gene.hgnc"))
-    cds_start_i = sa.Column(sa.Integer) #, nullable=False)
-    cds_end_i = sa.Column(sa.Integer) #, nullable=False)
+    gene_id = sa.Column(sa.Text, sa.ForeignKey("gene.gene_id"), nullable=False, index=True)
+    cds_start_i = sa.Column(sa.Integer)
+    cds_end_i = sa.Column(sa.Integer)
     cds_md5 = sa.Column(sa.Text, index=True)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)
