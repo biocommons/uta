@@ -5,7 +5,7 @@ version: '3'
 services:
   ncbi-download:
     image: uta-update
-    command: sbin/ncbi-download /ncbi-dir
+    command: sbin/ncbi-download etc/ncbi-files.txt /ncbi-dir
     volumes:
       - .:/opt/repos/uta
       - ${UTA_ETL_NCBI_DIR}:/ncbi-dir
