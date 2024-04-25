@@ -4,7 +4,7 @@ FROM ubuntu:22.04 as uta
 ARG python_version="3.10"
 
 # list and install dependencies
-ARG dependencies="python${python_version} python3-dev python3-pip rsync git postgresql-client-14"
+ARG dependencies="python${python_version} python3-dev python3-pip rsync git postgresql-client-14 tabix"
 
 RUN apt-get update && apt-get install -y $dependencies && apt-get clean
 
