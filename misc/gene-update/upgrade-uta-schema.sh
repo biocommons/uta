@@ -44,8 +44,8 @@ alembic -c etc/alembic.ini upgrade 595a586e6de7
 # run data migration to back fill gene_id
 python misc/gene-update/backfill_gene_id.py \
   postgresql://uta_admin:@localhost/uta \
-  /workdir/backfill/gene_update.tsv \
-  /workdir/backfill/transcript_update.tsv
+  misc/gene-update/gene_update.tsv.gz \
+  misc/gene-update/transcript_update.tsv.gz
 
 # run Alembic migrations to add constraints and update existing views
 alembic -c etc/alembic.ini upgrade head

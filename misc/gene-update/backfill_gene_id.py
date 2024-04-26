@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 import uta
 from uta.models import Gene, Transcript
+from uta.tools.file_utils import open_file
 
 
 logger = None
@@ -22,7 +23,7 @@ def backfill_gene(uta_session: Session, gene_update_file: str) -> None:
     now_ts = datetime.now()
     i = 0
     new_genes = []
-    with open(gene_update_file) as f:
+    with open_file(gene_update_file) as f:
         for line in f:
             if line.startswith("gene_id"):
                 continue
@@ -70,7 +71,7 @@ def backfill_transcript(uta_session: Session, transcript_update_file: str) -> No
     tx_ac_to_gene_id = {}
 
     logger.info(f"Reading transcript to gene id mappings from {transcript_update_file}")
-    with open(transcript_update_file) as f:
+    with open_file(transcript_update_file) as f:
         for line in f:
             if line.startswith("origin"):
                 continue
