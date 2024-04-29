@@ -1,6 +1,6 @@
 import os
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, PropertyMock, patch
 
 from Bio import SeqIO
 from parameterized import param, parameterized
@@ -93,6 +93,35 @@ class TestSeqRecordFacade(unittest.TestCase):
     def test_validate_features_by_type_invalid(self, test_name, features):
         with self.assertRaises(SeqRecordFeatureError):
             SeqRecordFacade.validate_features_by_type(features)
+
+    def test_cds_feature(self):
+        with patch('uta.parsers.seqrecord.SeqRecordFacade.features_by_type', new_callable=PropertyMock) as mock_features_by_type:
+            # no CDS feature
+            mock_features_by_type.return_value = {}
+            srf = SeqRecordFacade(seqrecord=Mock())
+            self.assertIsNone(srf.cds_feature)
+            # one CDS feature
+            dummy_cds_feature = Mock()
+            mock_features_by_type.return_value = {'CDS': [dummy_cds_feature]}
+            srf = SeqRecordFacade(seqrecord=Mock())
+            self.assertIs(srf.cds_feature, dummy_cds_feature)
+
+    def test_transl_except(self):
+        with patch('uta.parsers.seqrecord.SeqRecordFacade.cds_feature', new_callable=PropertyMock) as mock_cds_feature:
+            # no CDS feature
+            mock_cds_feature.return_value = None
+            srf = SeqRecordFacade(seqrecord=Mock())
+            self.assertIsNone(srf.transl_except)
+
+            # one CDS feature without transl_except
+            mock_cds_feature.return_value = Mock(qualifiers={})
+            srf = SeqRecordFacade(seqrecord=Mock())
+            self.assertIsNone(srf.transl_except)
+
+            # one CDS feature with transl_except
+            mock_cds_feature.return_value = Mock(qualifiers={'transl_except': ['(pos:333..335,aa:Sec)', '(pos:1017,aa:TERM)']})
+            srf = SeqRecordFacade(seqrecord=Mock())
+            self.assertEqual(srf.transl_except, ['(pos:333..335,aa:Sec)', '(pos:1017,aa:TERM)'])
 
 
 if __name__ == '__main__':

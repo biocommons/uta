@@ -18,6 +18,10 @@ transcripts = {
         'g_starts_i': [26721603, 26627221], 		'g_ends_i': [26722922, 26628183],
         'g_cds_start_i': 26627665, 			'g_cds_end_i': 26722486,
         'pro_ac': 'NP_000671.2',
+        'translation_exceptions': [
+            {'start_position': 333, 'end_position': 335, 'amino_acid': 'Sec'},
+            {'start_position': 589, 'end_position': 589, 'amino_acid': 'TERM'},
+        ],
     },
     'NM_033302.2': {
         'seq': 'gaattccgaatcatgtgcagaatgctgaatcttcccccagccaggacgaataagacagcgcggaaaagcagattctcgtaattctggaattgcatgttgcaaggagtctcctggatcttcgcacccagcttcgggtagggagggagtccgggtcccgggctaggccagcccggcaggtggagagggtccccggcagccccgcgcgcccctggccatgtctttaatgccctgccccttcatgtggccttctgagggttcccagggctggccagggttgtttcccacccgcgcgcgcgctctcacccccagccaaacccacctggcagggctccctccagccgagaccttttgattcccggctcccgcgctcccgcctccgcgccagcccgggaggtggccctggacagccggacctcgcccggccccggctgggaccatggtgtttctctcgggaaatgcttccgacagctccaactgcacccaaccgccggcaccggtgaacatttccaaggccattctgctcggggtgatcttggggggcctcattcttttcggggtgctgggtaacatcctagtgatcctctccgtagcctgtcaccgacacctgcactcagtcacgcactactacatcgtcaacctggcggtggccgacctcctgctcacctccacggtgctgcccttctccgccatcttcgaggtcctaggctactgggccttcggcagggtcttctgcaacatctgggcggcagtggatgtgctgtgctgcaccgcgtccatcatgggcctctgcatcatctccatcgaccgctacatcggcgtgagctacccgctgcgctacccaaccatcgtcacccagaggaggggtctcatggctctgctctgcgtctgggcactctccctggtcatatccattggacccctgttcggctggaggcagccggcccccgaggacgagaccatctgccagatcaacgaggagccgggctacgtgctcttctcagcgctgggctccttctacctgcctctggccatcatcctggtcatgtactgccgcgtctacgtggtggccaagagggagagccggggcctcaagtctggcctcaagaccgacaagtcggactcggagcaagtgacgctccgcatccatcggaaaaacgccccggcaggaggcagcgggatggccagcgccaagaccaagacgcacttctcagtgaggctcctcaagttctcccgggagaagaaagcggccaaaacgctgggcatcgtggtcggctgcttcgtcctctgctggctgccttttttcttagtcatgcccattgggtctttcttccctgatttcaagccctctgaaacagtttttaaaatagtattttggctcggatatctaaacagctgcatcaaccccatcatatacccatgctccagccaagagttcaaaaaggcctttcagaatgtcttgagaatccagtgtctctgcagaaagcagtcttccaaacatgccctgggctacaccctgcacccgcccagccaggccgtggaagggcaacacaaggacatggtgcgcatccccgtgggatcaagagagaccttctacaggatctccaagacggatggcgtttgtgaatggaaatttttctcttccatgccccgtggatctgccaggattacagtgtccaaagaccaatcctcctgtaccacagcccggggacacacacccatgacatgaagccagcttcccgtccacgactgttgtccttactgcccaaggaaggggagcatgaaacccaccactggtcctgcgacccactgtctttggaatccaccccaggagcccaggagccttgcctgacacttggatttacttctttatcaagcatccatctgactaaggcacaaatccaacatgttactgttactgatacaggaaaaacagtaacttaaggaatgatcatgaatgcaaagggaaagaggaaaagagccttcagggacaaatagctcgattttttgtaaatcagtttcatacaacctccctcccccatttcattcttaaaagttaattgagaatcatcagccacgtgtagggtgtgag',
@@ -129,6 +133,11 @@ class TestUtaModels(unittest.TestCase):
                 cds_md5='d41d8cd98f00b204e9800998ecf8427e',
             )
             cls.session.add(t)
+
+            if 'translation_exceptions' in tx_info:
+                for te in tx_info['translation_exceptions']:
+                    te = usam.TranslationException(tx_ac=ac, **te)
+                    cls.session.add(te)
 
             p = usam.AssociatedAccessions(
                 tx_ac=ac,
@@ -299,6 +308,35 @@ class TestUtaModels(unittest.TestCase):
         self.assertEqual(aa.tx_ac, 'dummy_transcript')
         self.assertEqual(aa.pro_ac, 'dummy_protein')
         self.assertEqual(aa.origin, 'dummy_origin')
+
+    def test_translation_exception(self):
+        """
+        Should create rows in translation_exception table.
+        """
+        translation_exceptions = self.session.query(usam.TranslationException).filter_by(tx_ac='NM_000680.2').all()
+        self.assertEqual(len(translation_exceptions), 2)
+
+    def test_translation_exception_start_not_greater_than_end(self):
+        """
+        Should not create row in translation_exception table if start is greater than end.
+        """
+        te = usam.TranslationException(
+            tx_ac='NM_033302.2',
+            start_position=100,
+            end_position=99,
+            amino_acid='dummy_aa',
+        )
+        self.session.add(te)
+
+        with self.assertRaises(sqlalchemy.exc.IntegrityError):
+            self.session.commit()
+
+        # allow session to be used after failure
+        self.session.rollback()
+
+        # translation exception should not exist because transaction failed
+        translation_exceptions = self.session.query(usam.TranslationException).filter_by(tx_ac='NM_033302.2').all()
+        self.assertEqual(translation_exceptions, [])
 
 
 if __name__ == '__main__':

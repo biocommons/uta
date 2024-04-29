@@ -113,15 +113,15 @@ if __name__ == "__main__":
                 skipped_ids.add(srf.id)
                 continue
             cds_se_i = srf.cds_se_i
-            ti = TxInfo(ac=srf.id,
-                        origin=opts.origin,
-                        gene_id=srf.gene_id,
-                        gene_symbol=srf.gene_symbol,
-                        cds_se_i=None if cds_se_i is None else "{},{}".format(
-                            *cds_se_i),
-                        exons_se_i=";".join(
-                            ["{},{}".format(*ese) for ese in srf.exons_se_i])
-                        )
+            ti = TxInfo(
+                ac=srf.id,
+                origin=opts.origin,
+                gene_id=srf.gene_id,
+                gene_symbol=srf.gene_symbol,
+                cds_se_i=None if cds_se_i is None else "{},{}".format(*cds_se_i),
+                exons_se_i=";".join(["{},{}".format(*ese) for ese in srf.exons_se_i]),
+                transl_except=TxInfo.serialize_transl_except(srf.transl_except),
+            )
             tiw.write(ti)
             genes.add(srf.gene_symbol)
         logger.info("{ng} genes in {fn} ({c})".format(ng=len(genes), fn=fn, c=prefixes))

@@ -269,7 +269,7 @@ class TestNcbiProcessMito(unittest.TestCase):
             "alt_end": 4262,
             "strand": 1,
             "transl_table": "2",
-            "transl_except": "(pos:4261..4262,aa:TERM)",
+            "transl_except": ["(pos:4261..4262,aa:TERM)"],
             "pro_ac": "YP_003024026.1",
             "pro_seq": "MPMANLLLLIVPILIAMAFLMLTERKILGYMQLRKGPNVVGPYGLLQPFADAMKLFTKEPLKPATSTITLYITAPTLALTIALLLWTPLPMPN"
             "PLVNLNLGLLFILATSSLAVYSILWSGWASNSNYALIGALRAVAQTISYEVTLAIILLSTLLMSGSFNLSTLITTQEHLWLLLPSWPLAMMWFISTLAETNRTP"

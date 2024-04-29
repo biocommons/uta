@@ -96,7 +96,9 @@ def parse_splign(fn, txdata):
         gene_id=gene_id,
         gene_symbol=gene_symbol,
         cds_se_i=cds_se_i,
-        exons_se_i=tx_exons_str)
+        exons_se_i=tx_exons_str,
+        transl_except=None,
+    )
     exonset = uta.formats.exonset.ExonSet(
         tx_ac=tx_ac,
         alt_ac=alt_ac,
@@ -116,7 +118,7 @@ if __name__ == "__main__":
 
     txinfo_out = uta.formats.txinfo.TxInfoWriter(gzip.open(os.path.join(opts.output_dir, txinfo_fn), "wt"))
     exonset_out = uta.formats.exonset.ExonSetWriter(gzip.open(os.path.join(opts.output_dir, exonset_fn), "wt"))
-    
+
     for fn in opts.FILES:
         _logger.info("# " + fn)
         txinfo, exonset = parse_splign(fn, txdata)

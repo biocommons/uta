@@ -1,6 +1,7 @@
 import configparser
 import signal
 import unittest
+from unittest.mock import Mock, patch
 
 import sqlalchemy as sa
 import testing.postgresql
@@ -132,3 +133,97 @@ class TestUtaLoading(unittest.TestCase):
             },
         ]
         self.assertEqual(aa_list, expected_aa_list)
+
+    def test_load_txinfo(self):
+        """
+        Loading file tests/data/txinfo.gz should create transcript, exon_set, exon, and translation_exception records in the database.
+        """
+
+        # insert origins referenced in data file
+        o1 = usam.Origin(
+            name='NCBI',
+            url='http://bogus.com/ncbi',
+            url_ac_fmt='http://bogus.com/ncbi/{ac}',
+        )
+        self.session.add(o1)
+
+        # insert genes required for transcripts
+        g1 = usam.Gene(
+            gene_id='140606',
+            hgnc='SELENOM',
+            symbol='SELENOM',
+            maploc='22q12.2',
+            descr='selenoprotein M',
+            summary='selenoprotein M',
+            aliases='SELM,SEPM',
+            type='protein-coding',
+            xrefs='MIM:610918,HGNC:HGNC:30397,Ensembl:ENSG00000198832,AllianceGenome:HGNC:30397',
+        )
+        self.session.add(g1)
+
+        self.session.commit()
+
+        cf = configparser.ConfigParser()
+        cf.add_section('uta')
+        cf.set('uta', 'admin_role', 'uta_admin')
+
+        with patch('uta.loading._get_seqfetcher', return_value=Mock(fetch=Mock(return_value='FAKESEQUENCE'))):
+            ul.load_txinfo(self.session, {'FILE': 'tests/data/txinfo.gz'}, cf)
+
+        transcript = self.session.query(usam.Transcript).filter(usam.Transcript.ac == 'NM_080430.4').one()
+        self.assertEqual(
+            {
+                'ac': transcript.ac,
+                'gene_id': transcript.gene_id,
+                'cds_start_i': transcript.cds_start_i,
+                'cds_end_i': transcript.cds_end_i,
+                'codon_table': transcript.codon_table,
+            },
+            {
+                'ac': 'NM_080430.4',
+                'gene_id': '140606',
+                'cds_start_i': 63,
+                'cds_end_i': 501,
+                'codon_table': 1,
+            },
+        )
+
+        exon_set = self.session.query(usam.ExonSet).filter(usam.ExonSet.tx_ac == 'NM_080430.4').one()
+        exons = self.session.query(usam.Exon).filter(usam.Exon.exon_set_id == exon_set.exon_set_id).all()
+        self.assertEqual(len(exons), 5)
+
+        translation_exception = self.session.query(usam.TranslationException).filter(usam.TranslationException.tx_ac == 'NM_080430.4').one()
+        self.assertEqual(
+            {
+                'tx_ac': translation_exception.tx_ac,
+                'start_position': translation_exception.start_position,
+                'end_position': translation_exception.end_position,
+                'amino_acid': translation_exception.amino_acid,
+            },
+            {
+                'tx_ac': 'NM_080430.4',
+                'start_position': 204,
+                'end_position': 207,
+                'amino_acid': 'Sec',
+            },
+        )
+
+
+class TestUtaLoadingFunctions(unittest.TestCase):
+    def test__create_translation_exceptions(self):
+        transl_except_list = ['(pos:333..335,aa:Sec)', '(pos:1017,aa:TERM)']
+        translation_exceptions = ul._create_translation_exceptions(transcript='dummy_tx', transl_except_list=transl_except_list)
+        self.assertEqual(translation_exceptions, [
+            {
+                'tx_ac': 'dummy_tx',
+                'start_position': 332,
+                'end_position': 335,
+                'amino_acid': 'Sec',
+            },
+            {
+                'tx_ac': 'dummy_tx',
+                'start_position': 1016,
+                'end_position': 1017,
+                'amino_acid': 'TERM',
+            },
+        ])

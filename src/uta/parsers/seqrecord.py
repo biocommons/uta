@@ -1,6 +1,6 @@
 from collections import defaultdict
 from functools import cached_property
-from typing import Union
+from typing import List, Optional
 
 import Bio.SeqRecord
 from Bio.SeqFeature import SeqFeature
@@ -32,8 +32,19 @@ class SeqRecordFacade:
             raise SeqRecordFeatureError("Expected exactly one `gene` feature")
 
     @cached_property
+    def cds_feature(self) -> Optional[SeqFeature]:
+        """
+        Returns the CDS feature for any coding transcript, None for any non-coding transcript.
+        """
+        cds_features = self.features_by_type.get("CDS")
+        if cds_features is None:
+            return None
+        else:
+            return cds_features[0]
+
+    @cached_property
     def gene_feature(self) -> SeqFeature:
-        """Returns the gene feature, which is assumed to exist for all transcripts. """
+        """Returns the gene feature, which should exist for all transcripts."""
         return self.features_by_type.get("gene")[0]
 
     @property
@@ -67,3 +78,10 @@ class SeqRecordFacade:
         else:
             exons = [self.gene_feature]
         return [(f.location.start.real, f.location.end.real) for f in exons]
+
+    @property
+    def transl_except(self) -> Optional[List[str]]:
+        if self.cds_feature is None:
+            return None
+        else:
+            return self.cds_feature.qualifiers.get("transl_except")

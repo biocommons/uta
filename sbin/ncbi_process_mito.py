@@ -58,14 +58,14 @@ import gzip
 import importlib_resources
 import logging
 import logging.config
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from Bio.Seq import Seq
 import Bio.SeqIO
 from Bio.SeqFeature import SeqFeature
 from Bio.SeqRecord import SeqRecord
 from bioutils.digests import seq_md5
-from more_itertools import first, one
+from more_itertools import one
 
 from uta.formats.geneaccessions import GeneAccessions, GeneAccessionsWriter
 from uta.formats.seqinfo import SeqInfo, SeqInfoWriter
@@ -90,7 +90,7 @@ class MitoGeneData:
     origin: str = "NCBI"
     alignment_method: str = "splign"
     transl_table: Optional[str] = None
-    transl_except: Optional[str] = None
+    transl_except: Optional[List[str]] = None
     pro_ac: Optional[str] = None
     pro_seq: Optional[str] = None
 
@@ -195,11 +195,6 @@ def get_mito_genes(gbff_filepath: str):
                     assert int(xrefs["GeneID"]) == gene_id
                     assert feature_start == feature.location.start
                     assert feature_end == feature.location.end
-                    # if feature type not CDS, set defaults
-                    pro_ac = None
-                    pro_seq = None
-                    transl_table = None
-                    transl_except = None
 
                     # retrieve sequence, and reverse compliment if on reverse strand
                     ac = f"{record.id}_{feature.location.start:05}_{feature.location.end:05}"
@@ -212,8 +207,12 @@ def get_mito_genes(gbff_filepath: str):
                         pro_ac = one(feature.qualifiers["protein_id"])
                         pro_seq = str(one(feature.qualifiers["translation"]))
                         transl_table = one(feature.qualifiers["transl_table"])
-                        if "transl_except" in feature.qualifiers:
-                            transl_except = one(feature.qualifiers["transl_except"])
+                        transl_except = feature.qualifiers.get("transl_except")
+                    else:
+                        pro_ac = None
+                        pro_seq = None
+                        transl_table = None
+                        transl_except = None
 
                     # yield gene data
                     yield MitoGeneData(
@@ -313,6 +312,7 @@ def main(ncbi_accession: str, output_dir: str):
                     mg.gene_symbol,
                     mg.cds_se_i(),
                     mg.exons_se_i(),
+                    TxInfo.serialize_transl_except(mg.transl_except),
                 )
             )
 

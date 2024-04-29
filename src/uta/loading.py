@@ -7,7 +7,7 @@ import hashlib
 import itertools
 import logging
 import time
-from typing import Any
+from typing import Any, Dict, List
 
 from biocommons.seqrepo import SeqRepo
 from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
@@ -681,9 +681,17 @@ def load_txinfo(session, opts, cf):
                 cds_md5=cds_md5,
             )
             session.add(u_tx)
+
+            if ti.transl_except:
+                # if transl_except exists, it looks like this:
+                # (pos:333..335,aa:Sec);(pos:1017,aa:TERM)
+                transl_except_list = ti.transl_except.split(';')
+                te_list = _create_translation_exceptions(transcript=ti.ac, transl_except_list=transl_except_list)
+                for te in te_list:
+                    session.add(usam.TranslationException(**te))
+
         if u_tx.gene_id != ti.gene_id:
-            raise Exception("{ti.ac}: GeneID changed from {u_tx.gene_id} to {ti.gene_id}".format(
-                u_tx=u_tx, ti=ti))
+            raise Exception("{ti.ac}: GeneID changed from {u_tx.gene_id} to {ti.gene_id}".format(u_tx=u_tx, ti=ti))
 
         # state: transcript now exists, either existing or freshly-created
 
@@ -707,6 +715,40 @@ def load_txinfo(session, opts, cf):
                 i_ti=i_ti, n_rows=n_rows,
                 n_new=n_new, n_unchanged=n_unchanged, n_cds_changed=n_cds_changed, n_exons_changed=n_exons_changed,
                 p=(i_ti + 1) / n_rows * 100))
+
+
+def _create_translation_exceptions(transcript: str, transl_except_list: List[str]) -> List[Dict]:
+    """
+    Create TranslationException object data where start and end positions are 0-based, from transl_except data that is 1-based.
+    For example, [(pos:333..335,aa:Sec), (pos:1017,aa:TERM)] should result in start and end positions [(332, 335), (1016, 1017)]
+    """
+    result = []
+
+    for te in transl_except_list:
+        # remove parens
+        te = te.replace('(','').replace(')','')
+
+        # extract positions
+        pos_str, aa_str = te.split(',')
+        pos_str = pos_str.removeprefix('pos:')
+        if '..' in pos_str:
+            start_position, _, end_position = pos_str.partition('..')
+        else:
+            start_position = end_position = pos_str
+
+        # extract amino acid
+        amino_acid = aa_str.removeprefix('aa:')
+
+        result.append(
+            {
+                'tx_ac': transcript,
+                'start_position': int(start_position) - 1,
+                'end_position': int(end_position),
+                'amino_acid': amino_acid,
+            }
+        )
+
+    return result
 
 
 def refresh_matviews(session, opts, cf):

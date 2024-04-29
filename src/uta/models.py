@@ -140,6 +140,30 @@ class Transcript(Base):
     origin = sao.relationship("Origin", backref="transcripts")
 
 
+class TranslationException(Base):
+    """
+    Represents `transl_except` annotations on CDS features in transcript records from NCBI.
+
+    Examples:
+    /transl_except=(pos:333..335,aa:Sec)
+    /transl_except=(pos:1017,aa:TERM)
+    """
+
+    __tablename__ = "translation_exception"
+    __table_args__ = (
+        sa.CheckConstraint("start_position <= end_position", "start_less_than_or_equal_to_end"),
+    )
+
+    translation_exception_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    tx_ac = sa.Column(sa.Text, sa.ForeignKey("transcript.ac", onupdate="CASCADE", ondelete="CASCADE"), nullable=False)
+    start_position = sa.Column(sa.Integer, nullable=False)
+    end_position = sa.Column(sa.Integer, nullable=False)
+    amino_acid = sa.Column(sa.Text, nullable=False)
+
+    # relationships:
+    transcript = sao.relationship("Transcript", backref="translation_exceptions")
+
+
 class ExonSet(Base):
     __tablename__ = "exon_set"
     __table_args__ = (

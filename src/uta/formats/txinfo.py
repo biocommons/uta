@@ -1,10 +1,23 @@
 import csv
 import recordtype
+from typing import List, Optional
 
 
-class TxInfo(recordtype.recordtype('TxInfo',
-                                   ['origin', 'ac', 'gene_id', 'gene_symbol', 'cds_se_i', 'exons_se_i'])):
-    pass
+# transl_except should be a semicolon-separated list:
+# (pos:333..335,aa:Sec);(pos:1017,aa:TERM)
+class TxInfo(
+    recordtype.recordtype(
+        'TxInfo',
+        ['origin', 'ac', 'gene_id', 'gene_symbol', 'cds_se_i', 'exons_se_i', 'transl_except'],
+)):
+
+    @staticmethod
+    def serialize_transl_except(transl_except_list: Optional[List[str]]) -> Optional[str]:
+        """Helper for formatting transl_except list as a string."""
+        if transl_except_list is None:
+            return None
+        else:
+            return ";".join(transl_except_list)
 
 
 class TxInfoWriter(csv.DictWriter):
