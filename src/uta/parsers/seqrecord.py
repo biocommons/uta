@@ -11,7 +11,6 @@ class SeqRecordFeatureError(Exception):
 
 
 class SeqRecordFacade:
-
     def __init__(self, seqrecord: Bio.SeqRecord.SeqRecord):
         self._sr = seqrecord
 
@@ -20,32 +19,38 @@ class SeqRecordFacade:
         result = defaultdict(list)
         for feat in self._sr.features:
             result[feat.type].append(feat)
-        self.validate_features_by_type(result)
         return result
-
-    @staticmethod
-    def validate_features_by_type(features: dict[str, list]) -> None:
-        """Raise exceptions if feature mapping is invalid."""
-        if "CDS" in features and len(features["CDS"]) > 1:
-            raise SeqRecordFeatureError("Expected one `CDS` feature at most")
-        if "gene" not in features or len(features["gene"]) != 1:
-            raise SeqRecordFeatureError("Expected exactly one `gene` feature")
 
     @cached_property
     def cds_feature(self) -> Optional[SeqFeature]:
         """
         Returns the CDS feature for any coding transcript, None for any non-coding transcript.
+        Some NCBI records will contain multiple CDS features. In these one CDS describes a protein
+        with accession and protein sequence, they other CDS features describes a pseudogene. This method
+        will preferentially choose the CDS feature with a protein sequence.
         """
         cds_features = self.features_by_type.get("CDS")
         if cds_features is None:
             return None
         else:
-            return cds_features[0]
+            # Prefer CDS with protein accession and translated sequence.
+            translated_cds_features = [
+                f
+                for f in cds_features
+                if all([key in f.qualifiers for key in ("protein_id", "translation")])
+            ]
+            if len(translated_cds_features) != 1:
+                raise SeqRecordFeatureError("Expected one `CDS` feature at most")
+            return translated_cds_features[0]
 
     @cached_property
     def gene_feature(self) -> SeqFeature:
         """Returns the gene feature, which should exist for all transcripts."""
-        return self.features_by_type.get("gene")[0]
+        gene_features = self.features_by_type.get("gene")
+        if gene_features is None or len(gene_features) != 1:
+            raise SeqRecordFeatureError(f"Expected exactly one `gene` feature, for {self.id} found {len(gene_features)}")
+
+        return gene_features[0]
 
     @property
     def id(self):
@@ -56,6 +61,38 @@ class SeqRecordFacade:
         return self.gene_feature.qualifiers["gene"][0]
 
     @property
+    def gene_synonyms(self):
+        if "gene_synonym" in self.gene_feature.qualifiers:
+            return [gs.strip() for gs in self.gene_feature.qualifiers["gene_synonym"][0].split(";")]
+        else:
+            return []
+
+    @property
+    def gene_type(self):
+        if self.cds_feature:
+            return "protein-coding"
+        elif "ncRNA" in self.features_by_type:
+            return "ncRNA"
+        elif "pseudo" in self.features_by_type:
+            return "pseudo"
+        elif "rRNA" in self.features_by_type:
+            return "rRNA"
+        elif "snoRNA" in self.features_by_type:
+            return "snoRNA"
+        elif "tRNA" in self.features_by_type:
+            return "tRNA"
+        elif "scRNA" in self.features_by_type:
+            return "scRNA"
+        elif "snRNA" in self.features_by_type:
+            return "snRNA"
+        elif "misc_RNA" in self.features_by_type:
+            return "misc_RNA"
+        elif "other" in self.features_by_type:
+            return "other"
+        else:
+            return "unknown"
+
+    @property
     def gene_id(self):
         # db_xref="GeneID:1234"
         db_xrefs = self.gene_feature.qualifiers["db_xref"]
@@ -64,10 +101,43 @@ class SeqRecordFacade:
         return gene_ids[0]
 
     @property
+    def db_xrefs(self):
+        """
+         gene            1..4577
+                 /gene="A2M"
+                 /gene_synonym="DKFZp779B086; FWP007; S863-7"
+                 /db_xref="GeneID:2"
+                 /db_xref="HPRD:00072"
+                 /db_xref="MIM:103950"
+        """
+        db_xrefs = self.gene_feature.qualifiers["db_xref"]
+        return [xref for xref in db_xrefs]
+
+    @property
     def cds_se_i(self):
-        if self.features_by_type.get("CDS"):
-            cds_feature = self.features_by_type.get("CDS")[0]
-            return (cds_feature.location.start.real, cds_feature.location.end.real)
+        if self.cds_feature is not None:
+            return self.cds_feature.location.start.real, self.cds_feature.location.end.real
+        else:
+            return None
+
+    @property
+    def cds_product(self):
+        if self.cds_feature is not None:
+            return self.cds_feature.qualifiers["product"][0]
+        else:
+            return None
+
+    @property
+    def cds_protein_id(self):
+        if self.cds_feature is not None:
+            return self.cds_feature.qualifiers["protein_id"][0]
+        else:
+            return None
+
+    @property
+    def cds_translation(self):
+        if self.cds_feature is not None:
+            return str(self.cds_feature.qualifiers["translation"][0])
         else:
             return None
 
@@ -85,3 +155,7 @@ class SeqRecordFacade:
             return None
         else:
             return self.cds_feature.qualifiers.get("transl_except")
+
+    @property
+    def feature_seq(self):
+        return str(self._sr.seq)

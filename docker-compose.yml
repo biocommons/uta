@@ -16,7 +16,15 @@ services:
     command: sbin/uta-extract /ncbi-dir /uta-extract/work /uta-extract/logs
     volumes:
       - ${UTA_ETL_NCBI_DIR}:/ncbi-dir
-      - ${UTA_ETL_SEQREPO_DIR}:/usr/local/share/seqrepo
+      - ${UTA_ETL_WORK_DIR}:/uta-extract/work
+      - ${UTA_ETL_LOG_DIR}:/uta-extract/logs
+    working_dir: /opt/repos/uta
+    network_mode: host
+  uta-extract-historical:
+    image: uta-update
+    command: sbin/uta-extract-historical /ncbi-dir /uta-extract/work /uta-extract/logs
+    volumes:
+      - ${UTA_ETL_NCBI_DIR}:/ncbi-dir
       - ${UTA_ETL_WORK_DIR}:/uta-extract/work
       - ${UTA_ETL_LOG_DIR}:/uta-extract/logs
     working_dir: /opt/repos/uta
