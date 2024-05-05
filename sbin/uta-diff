@@ -15,6 +15,7 @@ cmp_cols.update({
     "associated_accessions": "tx_ac pro_ac origin".split(),
     "exon_aln": "exon_aln_id tx_exon_id alt_exon_id cigar added".split(),
     "gene": "gene_id".split(),
+    "seq_anno": "seq_anno_id seq_id origin_id ac added".split(),
     "transcript": "ac".split(),
     })
 
@@ -41,7 +42,7 @@ def cmp1(con, tbl, s1, s2):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger()
 
     url = "postgresql://uta_admin@localhost/uta"

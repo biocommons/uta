@@ -523,6 +523,7 @@ def load_seqinfo(session, opts, cf):
                     session.merge(u_seqanno)
             else:
                 # create the new annotation
+                logger.debug("creating seq_anno({si.origin},{si.ac},{si.md5})".format(si=si))
                 u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
                                          ac=si.ac, descr=si.descr)
                 session.add(u_seqanno)
@@ -533,6 +534,7 @@ def load_seqinfo(session, opts, cf):
             logger.info("{n_created} annotations created/{i_md5} sequences seen ({p:.1f}%)/{n_rows} sequences total".format(
                 n_created=n_created, i_md5=i_md5, n_rows=n_rows, md5=md5, p=i_md5 / n_rows * 100))
             session.commit()
+    session.commit()
 
 
 def load_sequences(session, opts, cf):

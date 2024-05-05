@@ -58,7 +58,7 @@ import gzip
 import importlib_resources
 import logging
 import logging.config
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from Bio.Seq import Seq
 import Bio.SeqIO
@@ -68,6 +68,7 @@ from bioutils.digests import seq_md5
 from more_itertools import one
 
 from uta.formats.geneaccessions import GeneAccessions, GeneAccessionsWriter
+from uta.formats.geneinfo import GeneInfo, GeneInfoWriter
 from uta.formats.seqinfo import SeqInfo, SeqInfoWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter
 from uta.formats.exonset import ExonSet, ExonSetWriter
@@ -79,6 +80,9 @@ class MitoGeneData:
     gene_id: int
     gene_symbol: str
     name: str
+    synonym: str
+    xrefs: List[str]
+    type: str
     tx_ac: str
     tx_seq: str
     tx_start: int
@@ -110,7 +114,7 @@ logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("accession", type=str)
     parser.add_argument("--output-dir", "-o", default=".", type=str)
@@ -166,7 +170,7 @@ def parse_nomenclature_value(gb_feature: SeqFeature) -> Dict[str, str]:
     return nomenclature_results
 
 
-def get_mito_genes(gbff_filepath: str):
+def get_mito_genes(gbff_filepath: str) -> Iterable[MitoGeneData]:
     logger.info(f"processing NCBI GBFF file from {gbff_filepath}")
     with open(gbff_filepath) as fh:
         # Bio.SeqIO.parse(fh, "gb") returns an empty iterator for .fna files and does not fail
@@ -199,11 +203,14 @@ def get_mito_genes(gbff_filepath: str):
                     # retrieve sequence, and reverse compliment if on reverse strand
                     ac = f"{record.id}_{feature.location.start:05}_{feature.location.end:05}"
                     feature_seq = record.seq[feature_start:feature_end]
+                    gene_synonym = feature.qualifiers.get("gene_synonym", "")
+                    type = feature.type
                     if feature.location.strand == -1:
                         feature_seq = feature_seq.reverse_complement()
 
                     if feature.type == "CDS":
                         # override defaults for CDS features
+                        type = "protein-coding"
                         pro_ac = one(feature.qualifiers["protein_id"])
                         pro_seq = str(one(feature.qualifiers["translation"]))
                         transl_table = one(feature.qualifiers["transl_table"])
@@ -219,6 +226,9 @@ def get_mito_genes(gbff_filepath: str):
                         gene_id=gene_id,
                         gene_symbol=hgnc,
                         name=name,
+                        synonym=gene_synonym,
+                        xrefs=[f"{k}:{v}" for k, v in xrefs.items()],
+                        type=type,
                         tx_ac=ac,
                         tx_seq=str(feature_seq),
                         tx_start=0,
@@ -234,7 +244,7 @@ def get_mito_genes(gbff_filepath: str):
                     )
 
 
-def main(ncbi_accession: str, output_dir: str):
+def main(ncbi_accession: str, output_dir: str) -> None:
     # get input files
     input_files = download_mito_files(output_dir=output_dir, accession=ncbi_accession)
 
@@ -242,7 +252,26 @@ def main(ncbi_accession: str, output_dir: str):
     mito_genes = [mg for mf in input_files.values() for mg in get_mito_genes(mf)]
     logger.info(f"found {len(mito_genes)} genes from parsing {input_files['gbff']}")
 
-    # write gene accessions
+    # write gene information
+    with gzip.open(f"{output_dir}/geneinfo.gz", "wt") as o_file:
+        giw = GeneInfoWriter(o_file)
+        for mg in mito_genes:
+            giw.write(
+                GeneInfo(
+                    mg.gene_id,
+                    mg.gene_symbol,
+                    9606,
+                    mg.gene_symbol,
+                    "",
+                    mg.synonym,
+                    mg.type,
+                    mg.name,
+                    mg.name,
+                    mg.xrefs,
+                )
+            )
+
+    # write gene accession associations
     with gzip.open(f"{output_dir}/assocacs.gz", "wt") as o_file:
         gaw = GeneAccessionsWriter(o_file)
         for mg in mito_genes:

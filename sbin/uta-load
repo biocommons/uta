@@ -5,7 +5,6 @@
 # ncbi_dir is where the script looks for NCBI data files.
 # working_dir stores intermediate data files and the final database dump.
 # log_dir stores log files.
-# skip_load_genes, if truthy, will skip the gene loading step
 
 # Note that the uta loading code uses the seqrepo location defined in the conf files, under [sequences].seqrepo.
 
@@ -15,7 +14,6 @@ source_uta_v=$1
 ncbi_dir=$2
 working_dir=$3
 log_dir=$4
-skip_load_genes=$5
 
 if [ -z "$source_uta_v" ] || [ -z "$ncbi_dir" ] || [ -z "$working_dir" ] || [ -z "$log_dir" ]
 then
@@ -43,13 +41,8 @@ sbin/assoc-acs-merge "$working_dir/assocacs.gz" | gzip -c > "$working_dir/assoc-
     tee "$log_dir/assoc-acs-merge.log"
 
 # Load genes into gene table.
-if [ "$skip_load_genes" = "true" ]
-then
-    echo "Skipping load-geneinfo"
-else
-    uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-geneinfo "$working_dir/geneinfo.gz" 2>&1 | \
-        tee "$log_dir/load-geneinfo.log"
-fi
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-geneinfo "$working_dir/geneinfo.gz" 2>&1 | \
+    tee "$log_dir/load-geneinfo.log"
 
 # Load accessions into associated_accessions table.
 uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf load-assoc-ac "$working_dir/assoc-ac.gz" 2>&1 | \
@@ -73,6 +66,3 @@ uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf align-exons 2>&1 | 
 
 ### run diff
 sbin/uta-diff "$source_uta_v" "$loading_uta_v"
-
-### psql_dump
-pg_dump -U uta_admin -h localhost -d uta -t "$loading_uta_v.gene" | gzip -c > "$working_dir/uta.pgd.gz"
