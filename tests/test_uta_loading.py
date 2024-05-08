@@ -208,6 +208,174 @@ class TestUtaLoading(unittest.TestCase):
             },
         )
 
+    def test_load_exonset_with_exon_structure_mismatch(self):
+        """
+        Loading the test file tests/data/exonsets-mm-exons.gz should not raise an exception, exon alignments without
+        a mismatch should load, those with a mismatch should be skipped and logged as such. The input file has
+        alignments for 4 transcripts against NC_000001.11, but only 2 of them have the correct number of exons.
+        We only expect the alignmets for NM_000911.4 and NM_001005277.1 to be loaded.
+        """
+        # setup
+        # insert origins referenced in data file
+        o1 = usam.Origin(
+            name="NCBI",
+            url="http://bogus.com/ncbi",
+            url_ac_fmt="http://bogus.com/ncbi/{ac}",
+        )
+        self.session.add(o1)
+        self.session.flush()
+
+        for gene_data in [
+            {
+                "gene_id": "3352",
+                "hgnc": "HTR1D",
+                "symbol": "HTR1D",
+                "type": "protein-coding",
+            },
+            {
+                "gene_id": "4985",
+                "hgnc": "OPRD1",
+                "symbol": "OPRD1",
+                "type": "protein-coding",
+            },
+            {
+                "gene_id": "81399",
+                "hgnc": "OR4F16",
+                "symbol": "OR4F16",
+                "type": "protein-coding",
+            },
+            {
+                "gene_id": "79501",
+                "hgnc": "OR4F5",
+                "symbol": "OR4F5",
+                "type": "protein-coding",
+            },
+        ]:
+            gene = usam.Gene(**gene_data)
+            self.session.add(gene)
+
+        for tx_data in [
+            {
+                "ac": "NM_000864.5",
+                "origin_id": o1.origin_id,
+                "gene_id": "3352",
+                "cds_start_i": 994,
+                "cds_end_i": 2128,
+                "cds_md5": "a",
+            },
+            {
+                "ac": "NM_000911.4",
+                "origin_id": o1.origin_id,
+                "gene_id": "4985",
+                "cds_start_i": 214,
+                "cds_end_i": 1333,
+                "cds_md5": "b",
+            },
+            {
+                "ac": "NM_001005277.1",
+                "origin_id": o1.origin_id,
+                "gene_id": "81399",
+                "cds_start_i": 0,
+                "cds_end_i": 939,
+                "cds_md5": "c",
+            },
+            {
+                "ac": "NM_001005484.2",
+                "origin_id": o1.origin_id,
+                "gene_id": "79501",
+                "cds_start_i": 60,
+                "cds_end_i": 1041,
+                "cds_md5": "d",
+            },
+        ]:
+            tx = usam.Transcript(**tx_data)
+            self.session.add(tx)
+            es = usam.ExonSet(
+                tx_ac=tx.ac,
+                alt_ac=tx.ac,
+                alt_strand=1,
+                alt_aln_method="transcript",
+            )
+            self.session.add(es)
+            self.session.flush()
+
+        for exon_data in [
+            ("NM_000864.5", 1, 0, 3319),  # exons for NM_000864.5 are 0,212;212,3319
+            ("NM_000911.4", 1, 0, 441),
+            ("NM_000911.4", 2, 441, 791),
+            ("NM_000911.4", 3, 791, 9317),
+            ("NM_001005277.1", 1, 0, 939),
+            ("NM_001005484.2", 1, 0, 15),
+            ("NM_001005484.2", 2, 15, 69),
+            (
+                "NM_001005484.2",
+                3,
+                69,
+                1041,
+            ),  # exons for NM_001005484.2 are 0,15;15,69;69,2618
+            ("NM_001005484.2", 4, 1041, 2618),
+        ]:
+            es = (
+                self.session.query(usam.ExonSet)
+                .filter(
+                    usam.ExonSet.tx_ac == exon_data[0], usam.ExonSet.alt_ac == exon_data[0]
+                )
+                .one()
+            )
+            exon = usam.Exon(
+                exon_set_id=es.exon_set_id,
+                start_i=exon_data[2],
+                end_i=exon_data[3],
+                ord=exon_data[1],
+            )
+            self.session.add(exon)
+        self.session.commit()
+
+        cf = configparser.ConfigParser()
+        cf.add_section("uta")
+        cf.set("uta", "admin_role", "uta_admin")
+
+        # load data from test exonsets file.
+        with patch(
+            "uta.loading._get_seqfetcher",
+            return_value=Mock(fetch=Mock(return_value="FAKESEQUENCE")),
+        ), patch("uta.loading.logger") as mock_logger:
+            ul.load_exonset(self.session, {"FILE": "tests/data/exonsets.mm-exons.gz"}, cf)
+
+            assert mock_logger.warning.called_with(
+                "Exon structure mismatch: 4 exons in transcript NM_001005484.2; 3 in alignment NC_000001.11"
+            )
+            assert mock_logger.warning.called_with(
+                "Exon structure mismatch: 1 exons in transcript NM_000864.5; 2 in alignment NC_000001.11"
+            )
+
+        # check that the exons for NM_000864.5 and NM_001005484.2 were not loaded,
+        # and NM_000911.4 and NM_001005277.1 were loaded
+        for tx_ac, expected_exon_count in [("NM_000911.4", 3), ("NM_001005277.1", 1)]:
+            exon_set = (
+                self.session.query(usam.ExonSet)
+                .filter(
+                    usam.ExonSet.tx_ac == tx_ac,
+                    usam.ExonSet.alt_ac == "NC_000001.11",
+                    usam.ExonSet.alt_aln_method == "splign",
+                )
+                .one()
+            )
+            exons = (
+                self.session.query(usam.Exon)
+                .filter(usam.Exon.exon_set_id == exon_set.exon_set_id)
+                .all()
+            )
+            self.assertEqual(len(exons), expected_exon_count)
+
+        for tx_ac in ["NM_000864.5", "NM_001005484.2"]:
+            with self.assertRaises(sa.orm.exc.NoResultFound):
+                self.session.query(usam.ExonSet).filter(
+                    usam.ExonSet.tx_ac == tx_ac,
+                    usam.ExonSet.alt_ac == "NC_000001.11",
+                    usam.ExonSet.alt_aln_method == "splign",
+                ).one()
+
 
 class TestUtaLoadingFunctions(unittest.TestCase):
     def test__create_translation_exceptions(self):
