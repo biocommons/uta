@@ -28,10 +28,10 @@ def filter_exonset(exonset_file, transcript_ids, missing_ids_file):
             if exonset.tx_ac in transcript_ids:
                 esw.write(exonset)
             else:
-                logger.warning(f"Exon set transcript {exonset.tx_ac} not found in txinfo file. Filtering out.")
+                logger.debug(f"Exon set transcript {exonset.tx_ac} not found in txinfo file. Filtering out.")
                 writer_missing.writerow([exonset.tx_ac])
                 missing_acs.add(exonset.tx_ac)
-    logger.info(f"Filtered out exon sets for {len(missing_acs)} transcript(s): {','.join(missing_acs)}")
+    logger.info(f"Filtered out exon sets for {len(missing_acs)} transcript(s)")
 
 
 def main():

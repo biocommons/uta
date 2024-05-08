@@ -17,6 +17,7 @@ RUN pip install pysam
 WORKDIR /opt/repos/uta/
 COPY pyproject.toml ./
 COPY etc ./etc
+COPY misc ./misc
 COPY sbin ./sbin
 COPY src ./src
 RUN pip install -e .[dev]

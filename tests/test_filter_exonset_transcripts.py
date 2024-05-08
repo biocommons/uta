@@ -38,8 +38,8 @@ class TestFilterExonsetTranscripts(unittest.TestCase):
             contents = f.read()
         self.assertEqual(contents, 'NR_046571.1\n')
 
-        mock_logger.warning.assert_called_with('Exon set transcript NR_046571.1 not found in txinfo file. Filtering out.')
-        mock_logger.info.assert_called_with('Filtered out exon sets for 1 transcript(s): NR_046571.1')
+        mock_logger.debug.assert_called_with('Exon set transcript NR_046571.1 not found in txinfo file. Filtering out.')
+        mock_logger.info.assert_called_with('Filtered out exon sets for 1 transcript(s)')
 
 
 if __name__ == "__main__":

@@ -16,11 +16,6 @@
 #    │                       └── GCF_000001405.25_GRCh37.p13_genomic.gff.gz
 #    └── refseq
 #        └── H_sapiens
-#            ├── historical
-#            │   └── GRCh38
-#            │       └── GCF_000001405.40-RS_2023_03_historical
-#            │           ├── GCF_000001405.40-RS_2023_03_knownrefseq_alns.gff.gz
-#            │           └── GCF_000001405.40-RS_2023_03_knownrefseq_rna.gbff.gz
 #            └── mRNA_Prot
 #                ├── human.1.protein.faa.gz
 #                ├── human.1.rna.fna.gz
@@ -35,10 +30,6 @@ gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
 refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz
 refseq/H_sapiens/mRNA_Prot/human.*.rna.fna.gz
 refseq/H_sapiens/mRNA_Prot/human.*.protein.faa.gz
-
-## Historical RefSeq alignments
-refseq/H_sapiens/historical/GRCh38/GCF_000001405.40-RS_2023_03_historical/GCF_000001405.40-RS_2023_03_knownrefseq_alns.gff.gz
-refseq/H_sapiens/historical/GRCh38/GCF_000001405.40-RS_2023_03_historical/GCF_000001405.40-RS_2023_03_knownrefseq_rna.gbff.gz
 
 ## Genome build and alignment data
 # Build 37

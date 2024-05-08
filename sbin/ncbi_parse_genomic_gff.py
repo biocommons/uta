@@ -24,13 +24,12 @@ due merely to concatenation of adjacent spans.
 """
 
 import argparse
+import importlib_resources
 import logging.config
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, Optional
-
-import pkg_resources
 
 from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.tools.file_utils import open_file
@@ -129,7 +128,7 @@ def get_zero_based_exon_ranges(transcript_exons: List[GFFRecord]) -> str:
 
 
 if __name__ == "__main__":
-    logging_conf_fn = pkg_resources.resource_filename("uta", "etc/logging.conf")
+    logging_conf_fn = importlib_resources.files("uta").joinpath("etc/logging.conf")
     logging.config.fileConfig(logging_conf_fn)
     logging.getLogger().setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
