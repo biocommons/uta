@@ -44,6 +44,15 @@ class TestGFFParsing(unittest.TestCase):
                 f.write(
                     "NC_000001.10\tBestRefSeq\texon\t13221\t14409\t.\t+\t.\tID=exon-NR_046018.2-3;Parent=rna-NR_046018.2;transcript_id=NR_046018.2\n"
                 )
+                f.write(
+                    "NC_000001.11\tBestRefSeq\texon\t15874\t16227\t.\t+\t.\tID=exon-NR_046018.2-1;Parent=rna-NR_046018.2;transcript_id=NR_046018.2\n"
+                )
+                f.write(
+                    "NC_000001.11\tBestRefSeq\texon\t16613\t16721\t.\t+\t.\tID=exon-NR_046018.2-2;Parent=rna-NR_046018.2;transcript_id=NR_046018.2\n"
+                )
+                f.write(
+                    "NC_000001.11\tBestRefSeq\texon\t17221\t18409\t.\t+\t.\tID=exon-NR_046018.2-3;Parent=rna-NR_046018.2;transcript_id=NR_046018.2\n"
+                )
             temp_gff.seek(0)
         self.temp_gff = temp_gff
         self.gff_records = [
@@ -74,6 +83,33 @@ class TestGFFParsing(unittest.TestCase):
                 parent_id="rna-NR_046018.2",
                 transcript_id="NR_046018.2",
             ),
+            GFFRecord(
+                seqid="NC_000001.11",
+                start=15874,
+                end=16227,
+                strand="+",
+                exon_number=1,
+                parent_id="rna-NR_046018.2",
+                transcript_id="NR_046018.2",
+            ),
+            GFFRecord(
+                seqid="NC_000001.11",
+                start=16613,
+                end=16721,
+                strand="+",
+                exon_number=2,
+                parent_id="rna-NR_046018.2",
+                transcript_id="NR_046018.2",
+            ),
+            GFFRecord(
+                seqid="NC_000001.11",
+                start=17221,
+                end=18409,
+                strand="+",
+                exon_number=3,
+                parent_id="rna-NR_046018.2",
+                transcript_id="NR_046018.2",
+            ),
         ]
 
     def tearDown(self):
@@ -93,6 +129,7 @@ class TestGFFParsing(unittest.TestCase):
         )
         parsed_record = parse_gff_record(line)
         self.assertEqual(parsed_record, expected_record)
+        self.assertEqual(parsed_record.key, f"{expected_record.transcript_id}:{expected_record.seqid}")
 
     def test_parse_gff_record_skips_non_exon_records(self):
         # We exclude non-exon records
@@ -102,7 +139,7 @@ class TestGFFParsing(unittest.TestCase):
         self.assertEqual(parsed_record, expected_record)
 
     def test_parse_gff_record_skips_missing_transcript_id(self):
-        # We exclude alignments missing transcript_id
+        # We exclude alignments missing a parent field
         line = sample_line(
             attributes_str="ID=exon-NR_046018.2-1;transcript_id=NR_046018.2"
         )  # parent missing from attributes
@@ -111,7 +148,7 @@ class TestGFFParsing(unittest.TestCase):
         self.assertEqual(parsed_record, expected_record)
 
     def test_parse_gff_record_skips_missing_parent_field(self):
-        # We exclude alignments missing a parent field
+        # We exclude alignments missing transcript_id
         line = sample_line(
             attributes_str="ID=exon-NR_046018.2-1;Parent=rna-NR_046018.2"
         )  # transcript_id missing from attributes
@@ -159,7 +196,10 @@ class TestGFFParsing(unittest.TestCase):
 
     def test_parse_gff_file(self):
         # Test parsing the entire uncompressed GFF file
-        expected_result = {"rna-NR_046018.2": self.gff_records}
+        expected_result = {
+            "NR_046018.2:NC_000001.10": self.gff_records[:3],
+            "NR_046018.2:NC_000001.11": self.gff_records[3:],
+        }
         parsed_result = parse_gff_files([self.temp_gff.name])
         self.assertEqual(parsed_result, expected_result)
 
@@ -170,13 +210,16 @@ class TestGFFParsing(unittest.TestCase):
                 f_out.write(f_in.read())
 
         # Test parsing the gzipped GFF file
-        expected_result = {"rna-NR_046018.2": self.gff_records}
+        expected_result = {
+            "NR_046018.2:NC_000001.10": self.gff_records[:3],
+            "NR_046018.2:NC_000001.11": self.gff_records[3:],
+        }
         parsed_result = parse_gff_files([self.temp_gff.name + ".gz"])
         self.assertEqual(parsed_result, expected_result)
 
     def test_get_zero_based_exon_ranges(self):
         # Test converting exon ranges to 0-based half-open format yields expected values
-        exon_ranges = get_zero_based_exon_ranges(self.gff_records)
+        exon_ranges = get_zero_based_exon_ranges(self.gff_records[:3])
         assert exon_ranges == "11873,12227;12612,12721;13220,14409"
 
     def test_script_output(self):

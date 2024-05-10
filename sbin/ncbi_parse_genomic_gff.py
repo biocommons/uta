@@ -45,6 +45,10 @@ class GFFRecord:
     parent_id: str
     transcript_id: str
 
+    @property
+    def key(self) -> str:
+        return f"{self.transcript_id}:{self.seqid}"
+
 
 def _sort_exons(exons: List[GFFRecord]) -> List[GFFRecord]:
     return sorted(exons, key=lambda e: e.exon_number)
@@ -115,7 +119,7 @@ def parse_gff_files(file_paths: List[str]) -> dict[str, List[GFFRecord]]:
                 except ValueError as e:
                     raise Exception(f"Failed at line :{line} with error: {e}")
                 if record:
-                    tx_data[record.parent_id].append(record)
+                    tx_data[record.key].append(record)
     return {k: _sort_exons(v) for k, v in tx_data.items()}
 
 
