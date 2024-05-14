@@ -28,9 +28,20 @@ sbin/ncbi-parse-gbff "$GBFF_files" | gzip -c > "$working_dir/txinfo.gz" 2>&1 | \
     tee "$log_dir/ncbi-parse-gbff.log"
 
 # parse alignments from GFF input files
-GFF_files=$(ls $ncbi_dir/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405*/GCF_*_genomic.gff.gz)
-sbin/ncbi_parse_genomic_gff.py "$GFF_files" | gzip -c > "$working_dir/unfiltered_exonsets.gz" 2>&1 | \
+# Due to NCBI's handling of transcripts with "frameshifting insertions and deletions with micro-introns" we
+# need to parse out the cDNA_match alignment and use them preferentially over exons from genome GFF files.
+# The cDNA_match records include the indels and do not have micro-introns.
+mapfile -t GFF_FILES < <(find "$ncbi_dir/genomes" -type f -name "GCF_*_genomic.gff.gz")
+sbin/ncbi-parse-gff "${GFF_FILES[@]}" | gzip -c > "$working_dir/cdna_match.exonsets.gz" 2>&1 | \
+    tee "$log_dir/ncbi_parse_gff.log"
+
+# extract exon blocks from GFF files
+sbin/ncbi_parse_genomic_gff.py "${GFF_FILES[@]}" | gzip -c > "$working_dir/exon_block.exonsets.gz" 2>&1 | \
     tee "$log_dir/ncbi-parse-genomic-gff.log"
+
+# coalesce exonsets
+sbin/coalesce_exonsets.py "$working_dir/cdna_match.exonsets.gz" "$working_dir/exon_block.exonsets.gz" | \
+    gzip -c > "$working_dir/unfiltered_exonsets.gz" 2>&1 | tee "$log_dir/coalesce_exonsets.log"
 
 # filter transcripts
 sbin/filter_exonset_transcripts.py --tx-info "$working_dir/txinfo.gz" --exonsets "$working_dir/unfiltered_exonsets.gz" \

@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 
-"""Write exonsets and txinfo files from NCBI GFF alignments, as obtained from
-ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/alignments/
+"""Write exonsets files from NCBI GFF alignments, as obtained from
+ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_*/
 This service appeared in April 2015 and is due to update weekly.
 
 See uta.formats for a description of those file formats.
 
 In a nutshell, this means that you'll get data like this:
-
-ncbi.txinfo.gz:
-origin  ac  hgnc    cds_se_i    exons_se_i
-NCBI RefSeq NM_053283.2 DCD 62,395  0,120;120,159;159,261;261,351;351,517
 
 ncbi.exonsets.gz:
 tx_ac   alt_ac  method  strand  exons_se_i
@@ -35,12 +31,12 @@ from __future__ import division
 import argparse
 import collections
 import gzip
+import importlib_resources
 import io
 import itertools
 import logging.config
 import os
 import pprint
-import pkg_resources
 import re
 import sys
 
@@ -50,6 +46,7 @@ import prettytable
 from uta.formats.exonset import ExonSet, ExonSetWriter
 from uta.formats.txinfo import TxInfo, TxInfoWriter, TxInfoReader
 from uta.formats.geneaccessions import GeneAccessionsReader
+from uta.tools.file_utils import open_file
 
 origin = "NCBI"
 
@@ -138,23 +135,22 @@ class TranscriptAlignment(object):
         return self.exon_alignments[0].pct_identity_ungap
 
 
-def parse_args(argv):
+def parse_args():
     ap = argparse.ArgumentParser(
         description=__doc__,
     )
-    ap.add_argument("in_fn")
+    ap.add_argument("GFF_files", nargs="+",
+                    help="NCBI GFF files to process")
     ap.add_argument("--origin", "-o",
                     default=origin)
     ap.add_argument("--prefix", "-p",
                     default="ncbi-gff")
-    ap.add_argument("--geneacs", "-G")
-    ap.add_argument("--txinfo", "-T", required=False)
     ap.add_argument("--strict-coverage",         "-C", type=float, default=95.0)
     ap.add_argument("--min-coverage",            "-c", type=float, default=85.0)
     ap.add_argument("--strict-pct-identity-gap", "-I", type=float, default=95.0)
     ap.add_argument("--min-pct-identity-gap",    "-i", type=float, default=85.0)
 
-    opts = ap.parse_args(argv)
+    opts = ap.parse_args()
 
     assert opts.strict_coverage > opts.min_coverage
     assert opts.strict_pct_identity_gap > opts.min_pct_identity_gap
@@ -165,24 +161,28 @@ def parse_args(argv):
 def read_exon_alignments(fn):
     """read lines of NCBI's alignment gff file, fn, returning ExonAlignment records"""
 
-    # NC_000007.13	RefSeq	cDNA_match	50344265	50344518	254	+	.	ID=aln58042;Target=NM_001220765.2 1 254 +;gap_count=0;identity=0.0691326;idty=1;num_ident=428;num_mismatch=0;pct_coverage=6.91326;pct_identity_gap=100;pct_identity_ungap=100;score=254
-    # NC_000002.11  RefSeq  cDNA_match  179671939   179672150             212 -   .               ID=ed951d46-194c-477a-a480-4bc64530c5ba;Target=NM_001267550.2 1 212 +;gap_count=0;identity=0.999991;idty=1;num_ident=109223;num_mismatch=1;pct_coverage=100;pct_identity_gap=99.9991;pct_identity_ungap=99.9991
+    # NC_000022.10    RefSeq  cDNA_match      20783512        20783627        116     -       .       ID=7b8c7a437b92bf9dee20d81acadadd8e;Target=NM_182895.5 1496 1611 +;consensus_splices=20;exon_identity=0.99769;for_remapping=2;gap_count=3;identity=0.99769;idty=1;matches=3455;num_ident=3455;num_mismatch=5;pct_coverage=99.9134;pct_coverage_hiqual=99.9134;pct_identity_gap=99.769;pct_identity_ungap=99.8555;product_coverage=1;rank=1;splices=20;weighted_identity=0.996898
+    # NC_000022.10    RefSeq  cDNA_match      20781685        20781837        153     -       .       ID=7b8c7a437b92bf9dee20d81acadadd8e;Target=NM_182895.5 1612 1764 +;consensus_splices=20;exon_identity=0.99769;for_remapping=2;gap_count=3;identity=0.99769;idty=1;matches=3455;num_ident=3455;num_mismatch=5;pct_coverage=99.9134;pct_coverage_hiqual=99.9134;pct_identity_gap=99.769;pct_identity_ungap=99.8555;product_coverage=1;rank=1;splices=20;weighted_identity=0.996898
+    # NC_000022.10    RefSeq  cDNA_match      20778874        20780569        1676.05 -       .       ID=7b8c7a437b92bf9dee20d81acadadd8e;Target=NM_182895.5 1765 3463 +;consensus_splices=20;exon_identity=0.99769;for_remapping=2;gap_count=3;identity=0.99769;idty=0.995291;matches=3455;num_ident=3455;num_mismatch=5;pct_coverage=99.9134;pct_coverage_hiqual=99.9134;pct_identity_gap=99.769;pct_identity_ungap=99.8555;product_coverage=1;rank=1;splices=20;weighted_identity=0.996898;Gap=M540 I1 M5 I1 M51 I1 M1100
     line_re = re.compile(
         "(?P<ref_ac>\S+)\s+(?P<origin>\S+)\s+(?P<match_type>\S+)\s+"
         "(?P<g_start>\d+)\s+(?P<g_end>\d+)\s+(?P<score>\S+)\s+"
         "(?P<strand>[-+])\s+\.\s+ID=(?P<aln_id>[^;]+);Target=(?P<tx_ac>\S+)"
         "\s+(?P<tx_start>\d+)\s+(?P<tx_end>\d+).+?"
-        "pct_coverage=(?P<pct_coverage>[^;]+);"
+        "pct_coverage=(?P<pct_coverage>[^;]+);.+?"
         "pct_identity_gap=(?P<pct_identity_gap>[^;]+);"
         "pct_identity_ungap=(?P<pct_identity_ungap>[^;]+)"
     )
-    fh = io.open(fn, "rt")
-    for line in fh.readlines():
-        if not line.startswith('#'):
-            try:
-                yield ExonAlignment(**line_re.match(line).groupdict())
-            except (AttributeError, ValueError):
-                raise Exception("Failed at", line)
+
+    with open_file(fn) as fh:
+        for line in fh:
+            if not line.startswith('#'):
+                try:
+                    re_match = line_re.match(line)
+                    if re_match and re_match["match_type"] == "cDNA_match":
+                        yield ExonAlignment(**line_re.match(line).groupdict())
+                except (AttributeError, ValueError):
+                    raise Exception("Failed at", line)
 
 
 def read_transcript_alignments(fn):
@@ -217,14 +217,8 @@ def group_transcript_alignments(transcript_alignments):
             for key, alns_i in itertools.groupby(transcript_alignments, key=_key))
 
 
-def convert_exon_data(opts, transcript_alignment):
+def convert_exon_data(transcript_alignment):
     """return (TxInfo,ExonSet) tuple for given exon record data"""
-    ti = TxInfo(ac=transcript_alignment.tx_ac,
-                origin=opts.origin,
-                hgnc=None,
-                cds_se_i=None,
-                exons_se_i=transcript_alignment.tx_exons_se_i
-                )
     es = ExonSet(
         tx_ac=transcript_alignment.tx_ac,
         alt_ac=transcript_alignment.ref_ac,
@@ -232,67 +226,20 @@ def convert_exon_data(opts, transcript_alignment):
         strand=-1 if transcript_alignment.strand == "-" else 1,
         exons_se_i=transcript_alignment.ref_exons_se_i
     )
-    return (ti, es)
+    return es
 
 
-if __name__ == "__main__":
-    logging_conf_fn = pkg_resources.resource_filename(
-        "uta", "etc/logging.conf")
-    logging.config.fileConfig(logging_conf_fn)
-    logging.getLogger().setLevel(logging.INFO)
-    logger = logging.getLogger(__name__)
-
-    opts = parse_args(sys.argv[1:])
-
-    if opts.geneacs:
-        gar = GeneAccessionsReader(gzip.open(opts.geneacs, "rt"))
-        tx2gene = {ga.tx_ac: ga.hgnc for ga in gar}
-        logger.info(
-            "read {} gene-accession mappings from {}".format(len(tx2gene), opts.geneacs))
-    else:
-        tx2gene = None
-        logger.info("No geneacs (-G) file provided; gene info will be empty.")
-        
-    if opts.txinfo:
-        tir = TxInfoReader(gzip.open(opts.txinfo, "rt"))
-        tx2ti = {ti.ac: ti for ti in tir}
-        logger.info(
-            "read {} CDS data from {}".format(len(tx2ti), opts.txinfo))
-        # add any gene-accession mappings from txinfo file if they are not in geneacs file; log warning if they disagree
-        if tx2gene:
-            for ti_ac in tx2ti:
-                if not tx2gene.get(ti_ac):
-                    tx2gene[ti_ac] = tx2ti[ti_ac].hgnc
-                if tx2gene[ti_ac] != tx2ti[ti_ac].hgnc:
-                    logger.warning('HGNC symbol disagrees in txinfo ({tx2ti_hgnc}) and geneacs ({tx2gene_hgnc}) files for accession {ti_ac}'.format(
-                        tx2ti_hgnc=tx2ti[ti_ac].hgnc,
-                        tx2gene_hgnc=tx2gene[ti_ac].hgnc,
-                        ti_ac=ti_ac
-                    ))
-
-    else:
-        tx2ti = None
-        logger.info("No gbff txinfo provided (-T); CDS start,end will be undefined for all transcripts and transcript-genome exon structures will not be verified")
-
-    es_fn = opts.prefix + "exonset.gz"
-    ti_fn = opts.prefix + "txinfo.gz"
-
-    esw = ExonSetWriter(gzip.open(es_fn + ".tmp", "wt"))
-    tiw = TxInfoWriter(gzip.open(ti_fn + ".tmp", "wt"))
-
-    ties = {}
-    ti_written = collections.defaultdict(lambda: False)
-    ac_not_in_gbff = set()
-    ac_exons_differ = set()
+def write_exonsets_from_gff_file(gff_fn, logger, opts, esw):
+    """write exonsets from a single gff file"""
     ac_in_source = set()
     ac_failed = set()
 
-    bins = "nogbff esdiffer unique multiple minimum none".split()
+    bins = "unique multiple minimum none skipped".split()
     sets = collections.defaultdict(lambda: {k: list() for k in bins})
 
-    transcript_alignments = read_transcript_alignments(opts.in_fn)
+    transcript_alignments = read_transcript_alignments(gff_fn)
     logger.info(
-        "read {} transcript alignments from {}".format(len(transcript_alignments), opts.in_fn))
+        "read {} transcript alignments from {}".format(len(transcript_alignments), gff_fn))
 
     for _, txalns in group_transcript_alignments(transcript_alignments):
         assert len(txalns) > 0
@@ -300,40 +247,13 @@ if __name__ == "__main__":
         ta0 = txalns[0]
         tx_ac, ref_ac = ta0.tx_ac, ta0.ref_ac
         skey = "{:.2s} {:.2s}".format(tx_ac, ref_ac)
+        if not tx_ac[:2] in ("NM", "NR") or not ref_ac[:2] == "NC":
+            sets[skey]["skipped"] += [txalns]
+            continue
+
         bin = None
-        
-        # ############################################################
-        # Optionally compare exon structure from gbff with input gff
-        # And get cds s,e from gbff (sigh)
-        if tx2ti is None:
-            cds_se_i = None
-            txalns_esm = txalns
-        else:
-            if tx_ac not in tx2ti:
-                logger.warning("{ta.tx_ac}~{ta.ref_ac}: no transcript info in {opts.txinfo}; skipping transcript".format(
-                    ta=ta0, opts=opts))
-                ac_not_in_gbff.add(tx_ac)
-                bin = "nogbff"
-                sets[skey][bin] += [txalns]
-                continue
+        txalns_load = []
 
-            gbff_ti = tx2ti[tx_ac]
-            txalns_esm = [ta for ta in txalns if ta.tx_exons_se_i == gbff_ti.exons_se_i]
-            n_rm = len(txalns) - len(txalns_esm)
-            if n_rm > 0:
-                logger.warning("{ta.tx_ac}~{ta.ref_ac}: Removed {n_rm}/{n_tot} exon structures that differ from gbff definition".format(
-                    n_rm=n_rm, n_tot=len(txalns), ta=ta, opts=opts))
-            if len(txalns_esm) == 0:
-                logger.warning("{ta.tx_ac}~{ta.ref_ac}: All {n} exon structures differ from gbff definition; skipping alignment".format(
-                    ta=ta, opts=opts, n=len(txalns)))
-                ac_exons_differ.add(tx_ac)
-                bin = "esdiffer"
-                sets[skey][bin] += [txalns]
-                continue
-
-            cds_se_i = gbff_ti.cds_se_i  # possibly None
-
-        
         # ############################################################
         # Filter alignments by coverage and pct_identity_gap
         # From Terence Murphy, NCBI:
@@ -341,7 +261,7 @@ if __name__ == "__main__":
         # and RefSeqGene alignments that meet the filter:
         # 'pct_identity_gap >= 99.5 and pct_coverage >= 95'"
         txalns_strict = [txaln
-                         for txaln in txalns_esm
+                         for txaln in txalns
                          if (txaln.pct_coverage > opts.strict_coverage
                              and txaln.pct_identity_gap > opts.strict_pct_identity_gap)]
 
@@ -354,90 +274,76 @@ if __name__ == "__main__":
 
             logger.warning("{ta.tx_ac}~{ta.ref_ac}: Multiple ({n}) strict alignments; cov/pig: {stats}".format(
                 ta=txalns_strict[0], n=len(txalns_strict), opts=opts,
-                stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_strict),
-                ))
+                stats="; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_strict),
+            ))
             txalns_load = txalns_strict
             bin = "multiple"
 
         if len(txalns_strict) == 0:
 
             txalns_min = [txaln
-                          for txaln in txalns_esm
+                          for txaln in txalns
                           if (txaln.pct_coverage > opts.min_coverage
                               and txaln.pct_identity_gap > opts.min_pct_identity_gap)]
             if len(txalns_min) == 0:
                 logger.warning("{ta.tx_ac}~{ta.ref_ac}: No usable alignments; cov/pig: {stats}".format(
                     ta=txalns[0],
-                    stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_esm),
-                    ))
+                    stats="; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns),
+                ))
                 bin = "none"
+                ac_failed.add(skey)
             else:
-                logger.warning("{ta.tx_ac}~{ta.ref_ac}: Resorting to minimum criteria; loading {n} alignments; cov/pig: {stats}".format(
-                    ta=txalns_min[0], n=len(txalns_min),
-                    stats = "; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_min),
+                logger.warning(
+                    "{ta.tx_ac}~{ta.ref_ac}: Resorting to minimum criteria; loading {n} alignments; cov/pig: {stats}".format(
+                        ta=txalns_min[0], n=len(txalns_min),
+                        stats="; ".join("{ta.pct_coverage}/{ta.pct_identity_gap}".format(ta=ta) for ta in txalns_min),
                     ))
                 bin = "minimum"
             txalns_load = txalns_min
 
-        sets[skey][bin] += [txalns_esm]
+        sets[skey][bin] += [txalns]
 
         for ta in txalns_load:
-            ti, es = convert_exon_data(opts, ta)
-            ti.cds_se_i = cds_se_i
+            es = convert_exon_data(ta)
             ac_in_source.add(tx_ac)
-            ti.hgnc = tx2gene.get(ti.ac, None)
-
-            if not ti_written[ti.ac]:
-                # write a single txinfo line once; multiple may occur for multiple alignments of e.g., one NM to NC, NW, NT
-                tiw.write(ti)
-                ti_written[ti.ac] = True
 
             esw.write(es)
 
     # END HEINOUS LOOP
-
-    for fn in [ti_fn, es_fn]:
-        os.rename(fn + ".tmp", fn)
 
     seen_but_failed = ac_failed - ac_in_source
     if seen_but_failed:
         logger.warning("{n_acv} acvs seen but failed criteria: {acs}".format(
             n_acv=len(seen_but_failed), acs=",".join(sorted(seen_but_failed))))
 
-    if ac_not_in_gbff:
-        s_not_g_b = set(k.partition(".")[
-                        0] for k in ac_in_source) - set(k.partition(".")[0] for k in tx2gene.keys())
-        logger.warning("{n_acv} acvs ({n_ac} base acs) in source not in geneacs file: {acs}".format(
-            n_acv=len(ac_not_in_gbff), n_ac=len(s_not_g_b), opts=opts, acs=",".join(sorted(ac_not_in_gbff))))
-
-    if ac_exons_differ:
-        logger.warning("{n} accessions in gbff-derived txinfo have different exon coordinates: {acs}".format(
-            n=len(ac_exons_differ), opts=opts, acs=",".join(sorted(ac_exons_differ))))
-
-    pprint.pprint(opts)
     pt = prettytable.PrettyTable(field_names=["ac_pair"]
-                                 + bins
-                                 + "max_coverage max_pct_identity_gap nobgffs nogbff_noup esdiffers nones".split()
+                                             + bins
+                                             + "max_coverage max_pct_identity_gap nones".split()
                                  )
     for ack in sorted(sets.keys()):
         n = 5
-        nogbff_acs = sorted(set(ta.tx_ac for ta in itertools.chain.from_iterable(sets[ack]["nogbff"])))[:n]
-        esdiffer_acs = sorted(set(ta.tx_ac for ta in itertools.chain.from_iterable(sets[ack]["esdiffer"])))[:n]
         nones = list(itertools.chain.from_iterable(sets[ack]["none"]))
         nones_acs = sorted(set(ta.tx_ac for ta in nones))[:n]
         max_pct_identity_gap = "{:.2f}".format(max(ta.pct_identity_gap for ta in nones)) if nones else "n/a"
         max_pct_coverage = "{:.2f}".format(max(ta.pct_coverage for ta in nones)) if nones else "n/a"
 
-        nogbff_noup = sorted(
-            set(ta.tx_ac.split('.')[0] for ta in itertools.chain.from_iterable(sets[ack]["nogbff"]))
-            - set(ta.tx_ac.split('.')[0] for ta in itertools.chain.from_iterable(sets[ack]["unique"]))
-            - set(ta.tx_ac.split('.')[0] for ta in itertools.chain.from_iterable(sets[ack]["multiple"]))
-            )
-
         pt.add_row([ack] + [len(sets[ack][bk]) for bk in bins] +
                    [max_pct_coverage, max_pct_identity_gap,
-                    " ".join(nogbff_acs),
-                    str(len(nogbff_noup)) + ": " + " ".join(nogbff_noup[:n]),
-                    " ".join(esdiffer_acs),
-                    " ".join(nones_acs) ])
-    print(pt)
+                    " ".join(nones_acs)])
+    logger.info("summary in table below...\n" + str(pt))
+
+
+
+if __name__ == "__main__":
+    logging_conf_fn = importlib_resources.files("uta").joinpath("etc/logging.conf")
+    logging.config.fileConfig(logging_conf_fn)
+    logging.getLogger().setLevel(logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    opts = parse_args()
+
+    esw = ExonSetWriter(sys.stdout)
+
+    for gff_fn in opts.GFF_files:
+        logger.info("processing {}".format(gff_fn))
+        write_exonsets_from_gff_file(gff_fn, logger, opts, esw)
