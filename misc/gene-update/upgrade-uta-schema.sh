@@ -17,8 +17,8 @@ set -euxo pipefail
 source_uta_v="uta_20210129b"
 working_uta_v="uta"
 dest_uta_v=$1
-dumps_dir="/workdir/dumps"
-mkdir -p $dumps_dir
+tmp_dumps_dir="/tmp/dumps"
+mkdir -p $tmp_dumps_dir
 
 ## setup working uta schema
 # delete schema if exists
@@ -26,10 +26,10 @@ psql -h localhost -U uta_admin -d uta -c "DROP SCHEMA IF EXISTS $working_uta_v C
 
 # dump source version
 pg_dump -U uta_admin -h localhost -d uta -n "$source_uta_v" | \
- gzip -c > $dumps_dir/"$source_uta_v".pgd.gz
+ gzip -c > $tmp_dumps_dir/"$source_uta_v".pgd.gz
 
 # create new schema
-gzip -cdq $dumps_dir/"$source_uta_v".pgd.gz | \
+gzip -cdq $tmp_dumps_dir/"$source_uta_v".pgd.gz | \
  sbin/pg-dump-schema-rename "$source_uta_v" "$working_uta_v" | \
  sbin/pg-dump-schema-rename "uta_1_1" "$working_uta_v" | \
  psql -U uta_admin -h localhost -d uta -aeE
@@ -53,3 +53,5 @@ alembic -c etc/alembic.ini upgrade head
 ## Rename schema to destination schema name
 psql -h localhost -U uta_admin -d uta -c "DROP SCHEMA IF EXISTS $dest_uta_v CASCADE;"
 psql -h localhost -U uta_admin -d uta -c "ALTER SCHEMA uta RENAME TO $dest_uta_v";
+pg_dump -h localhost -U uta_admin -d uta -n "$dest_uta_v" | \
+ gzip -c > "/uta-gene-update/work/$dest_uta_v.pgd.gz"

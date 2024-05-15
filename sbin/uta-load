@@ -11,13 +11,14 @@
 set -euxo pipefail
 
 source_uta_v=$1
-ncbi_dir=$2
-working_dir=$3
-log_dir=$4
+dest_uta_v=$2
+ncbi_dir=$3
+working_dir=$4
+log_dir=$5
 
-if [ -z "$source_uta_v" ] || [ -z "$ncbi_dir" ] || [ -z "$working_dir" ] || [ -z "$log_dir" ]
+if [ -z "$source_uta_v" ] || [ -z "$dest_uta_v" ] || [ -z "$ncbi_dir" ] || [ -z "$working_dir" ] || [ -z "$log_dir" ]
 then
-    echo 'Usage: uta-load <source_uta_v> <ncbi_dir> <working_dir> <log_dir>'
+    echo 'Usage: uta-load <source_uta_v> <dest_uta_v> <ncbi_dir> <working_dir> <log_dir>'
     exit 1
 fi
 
@@ -66,3 +67,9 @@ uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf align-exons 2>&1 | 
 
 ### run diff
 sbin/uta-diff "$source_uta_v" "$loading_uta_v"
+
+## Rename schema to destination schema name and export to dump file
+psql -h localhost -U uta_admin -d uta -c "DROP SCHEMA IF EXISTS $dest_uta_v CASCADE;"
+psql -h localhost -U uta_admin -d uta -c "ALTER SCHEMA uta RENAME TO $dest_uta_v";
+pg_dump -h localhost -U uta_admin -d uta -n "$dest_uta_v" | \
+ gzip -c > "$working_dir/$dest_uta_v.pgd.gz"

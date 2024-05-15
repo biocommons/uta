@@ -307,6 +307,7 @@ mkdir -p $(pwd)/output/logs
 Set variables:
 ```
 export UTA_ETL_OLD_SEQREPO_VERSION=2024-02-20
+export UTA_ETL_OLD_UTA_IMAGE_TAG=uta_20210129b
 export UTA_ETL_OLD_UTA_VERSION=uta_20210129b
 export UTA_ETL_NCBI_DIR=./ncbi-data
 export UTA_ETL_SEQREPO_DIR=./seqrepo-data
@@ -347,14 +348,14 @@ See 2A for nuclear transcripts and 2B for mitochondrial transcripts.
 docker compose run ncbi-download
 docker compose run uta-extract
 docker compose run seqrepo-load
-docker compose run uta-load
+UTA_ETL_NEW_UTA_VERSION=uta_20240512 docker compose run uta-load
 ```
 
 #### 2B. Mitochondrial transcripts
 ```
-docker compose run mito-extract
+docker compose -f docker-compose.yml -f misc/mito-transcripts/docker-compose-mito-extract.yml run mito-extract
 docker compose run seqrepo-load
-docker compose run uta-load
+UTA_ETL_NEW_UTA_VERSION=uta_20240512 docker compose run uta-load
 ```
 
 #### 2C. Manual splign transcripts
