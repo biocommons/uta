@@ -2,7 +2,7 @@
 
 # Extract data from NCBI files into intermediate files.
 
-set -e
+set -euxo pipefail
 
 ncbi_dir=$1
 working_dir=$2
@@ -19,12 +19,12 @@ sbin/ncbi-parse-geneinfo $ncbi_dir/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gen
     gzip -c > "$working_dir/geneinfo.gz" 2>&1 | tee "$log_dir/ncbi-parse-geneinfo.log"
 
 # transcript protein associations
-sbin/ncbi-parse-gene2refseq $ncbi_dir/gene/DATA/gene2accession.gz | gzip -c > "$working_dir/assocacs.gz" 2>&1 | \
+sbin/ncbi-parse-gene2refseq $ncbi_dir/gene/DATA/gene2refseq.gz | gzip -c > "$working_dir/assocacs.gz" 2>&1 | \
     tee "$log_dir/ncbi-fetch-assoc-acs.log"
 
 # parse transcript info from GBFF input files
-GBFF_files=$(ls $ncbi_dir/refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz)
-sbin/ncbi-parse-gbff "$GBFF_files" | gzip -c > "$working_dir/txinfo.gz" 2>&1 | \
+mapfile -t GBFF_FILES < <(find "$ncbi_dir/refseq" -type f -name "human.*.rna.gbff.gz")
+sbin/ncbi-parse-gbff "${GBFF_FILES[@]}" | gzip -c > "$working_dir/txinfo.gz" 2>&1 | \
     tee "$log_dir/ncbi-parse-gbff.log"
 
 # parse alignments from GFF input files

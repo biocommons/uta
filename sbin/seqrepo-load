@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euxo pipefail
 
 seqrepo_root=$1
 seqrepo_version=$2
@@ -19,5 +19,5 @@ mapfile -t FASTA_FILES < <(find "$sequence_dir" -type f -name "*.f[an]a*")
 # Load SeqRepo with new sequences
 seqrepo --root-directory "$seqrepo_root" \
     load -n NCBI --instance-name "$seqrepo_version" \
-    "${FASTA_FILES[@]}" 2>& 1 | \
+    "${FASTA_FILES[@]}" 2>&1 | \
     tee "$log_dir/seqrepo-load.log"

@@ -22,6 +22,10 @@ class EutilsDownloadError(Exception):
     pass
 
 
+class ExonStructureMismatchError(UTAError):
+    pass
+
+
 # <LICENSE>
 # Copyright 2014 UTA Contributors (https://bitbucket.org/biocommons/uta)
 ##

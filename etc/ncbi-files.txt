@@ -5,7 +5,7 @@
 #    │       ├── GENE_INFO
 #    │       │   └── Mammalia
 #    │       │       └── Homo_sapiens.gene_info.gz
-#    │       └── gene2accession.gz
+#    │       └── gene2refseq.gz
 #    ├── genomes
 #    │   └── refseq
 #    │       └── vertebrate_mammalian

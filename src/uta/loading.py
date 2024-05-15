@@ -30,6 +30,7 @@ import uta.formats.seqinfo as ufsi
 import uta.formats.txinfo as ufti
 import uta.parsers.geneinfo
 import uta.parsers.seqgene
+from uta.exceptions import ExonStructureMismatchError
 
 usam = uta.models
 
@@ -317,37 +318,41 @@ def load_exonset(session, opts, cf):
             )
             tx_exon_count = len(tx_es.exons_se_i())
             aln_exon_count = len(es.exons_se_i.split(";"))
-            if tx_exon_count != aln_exon_count:
-                logger.warning(
+            if tx_exon_count == aln_exon_count:
+                n, o = _upsert_exon_set_record(
+                    session, es.tx_ac, es.alt_ac, es.strand, es.method, es.exons_se_i
+                )
+                session.commit()
+            else:
+                raise ExonStructureMismatchError(
                     "Exon structure mismatch: {tx_exon_count} exons in transcript {es.tx_ac}; {aln_exon_count} in alignment {es.alt_ac}".format(
                         tx_exon_count=tx_exon_count,
                         aln_exon_count=aln_exon_count,
                         es=es,
                     )
                 )
-                skipped = True
-                continue
-
-            n, o = _upsert_exon_set_record(
-                session, es.tx_ac, es.alt_ac, es.strand, es.method, es.exons_se_i
-            )
-            session.commit()
         except IntegrityError as e:
             logger.exception(e)
             session.rollback()
             n_errors += 1
+        except NoResultFound as e:
+            logger.exception(e)
+            logger.warning("NoResultFound for transcript ExonSet: {es.tx_ac}".format(es=es))
+            skipped = True
+        except ExonStructureMismatchError as e:
+            logger.exception(e)
+            skipped = True
         else:
+            (no) = (n is not None, o is not None)
+            if no == (True, False):
+                n_new += 1
+            elif no == (True, True):
+                n_deprecated += 1
+            elif no == (False, True):
+                n_unchanged += 1
+        finally:
             if skipped:
                 n_skipped += 1
-            else:
-                (no) = (n is not None, o is not None)
-                if no == (True, False):
-                    n_new += 1
-                elif no == (True, True):
-                    n_deprecated += 1
-                elif no == (False, True):
-                    n_unchanged += 1
-        finally:
             if i_es % update_period == 0 or i_es + 1 == n_rows:
                 logger.info(
                     "{i_es}/{n_rows} {p:.1f}%; {n_new} new, {n_unchanged} unchanged, {n_deprecated} deprecated, {n_skipped} skipped, {n_errors} n_errors".format(
@@ -756,7 +761,7 @@ def load_txinfo(session, opts, cf):
                     session.add(usam.TranslationException(**te))
 
         if u_tx.gene_id != ti.gene_id:
-            raise Exception("{ti.ac}: GeneID changed from {u_tx.gene_id} to {ti.gene_id}".format(u_tx=u_tx, ti=ti))
+            logger.warning("{ti.ac}: GeneID changed from {u_tx.gene_id} to {ti.gene_id}".format(u_tx=u_tx, ti=ti))
 
         # state: transcript now exists, either existing or freshly-created
 
