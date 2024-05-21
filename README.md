@@ -306,11 +306,10 @@ mkdir -p $(pwd)/output/logs
 
 Set variables:
 ```
-export UTA_ETL_OLD_SEQREPO_VERSION=2024-02-20
 export UTA_ETL_OLD_UTA_IMAGE_TAG=uta_20210129b
-export UTA_ETL_OLD_UTA_VERSION=uta_20210129b
+export UTA_ETL_OLD_UTA_VERSION=UTA_ETL_OLD_UTA_IMAGE_TAG
+export UTA_ETL_NEW_UTA_VERSION=uta_20240512
 export UTA_ETL_NCBI_DIR=./ncbi-data
-export UTA_ETL_SEQREPO_DIR=./seqrepo-data
 export UTA_ETL_WORK_DIR=./output/artifacts
 export UTA_ETL_LOG_DIR=./output/logs
 ```
@@ -322,16 +321,7 @@ docker build --target uta -t uta-update .
 
 ### 1. Download SeqRepo data
 ```
-docker pull biocommons/seqrepo:$UTA_ETL_OLD_SEQREPO_VERSION
-
-# download seqrepo. can skip if container already exists.
-docker run --name seqrepo biocommons/seqrepo:$UTA_ETL_OLD_SEQREPO_VERSION
-
-# copy seqrepo data into a local directory
-docker run -v $UTA_ETL_SEQREPO_DIR:/output-dir --volumes-from seqrepo ubuntu bash -c 'cp -R /usr/local/share/seqrepo/* /output-dir'
-
-# allow seqrepo to be modified
-docker run -it -v $UTA_ETL_SEQREPO_DIR:/output-dir ubuntu bash -c 'chmod -R +w /output-dir'
+docker compose run seqrepo-pull
 ```
 
 Note: pulling data takes ~30 minutes and requires ~13 GB.
@@ -348,14 +338,14 @@ See 2A for nuclear transcripts and 2B for mitochondrial transcripts.
 docker compose run ncbi-download
 docker compose run uta-extract
 docker compose run seqrepo-load
-UTA_ETL_NEW_UTA_VERSION=uta_20240512 docker compose run uta-load
+docker compose run uta-load
 ```
 
 #### 2B. Mitochondrial transcripts
 ```
 docker compose -f docker-compose.yml -f misc/mito-transcripts/docker-compose-mito-extract.yml run mito-extract
 docker compose run seqrepo-load
-UTA_ETL_NEW_UTA_VERSION=uta_20240512 docker compose run uta-load
+docker compose run uta-load
 ```
 
 #### 2C. Manual splign transcripts

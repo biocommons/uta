@@ -1,0 +1,16 @@
+# docker compose file for the splign-manual uta update procedure
+
+version: '3'
+
+services:
+  splign-manual:
+    image: uta-update
+    command: sbin/uta-splign-manual ${UTA_ETL_OLD_UTA_VERSION} /uta-splign-manual/input /uta-splign-manual/work /uta-splign-manual/logs
+    depends_on:
+      uta:
+        condition: service_healthy
+    volumes:
+      - ${UTA_SPLIGN_MANUAL_DIR}:/uta-splign-manual/input
+      - ${UTA_ETL_WORK_DIR}:/uta-splign-manual/work
+      - ${UTA_ETL_LOG_DIR}:/uta-splign-manual/logs
+    network_mode: host

@@ -3,6 +3,13 @@
 version: '3'
 
 services:
+  seqrepo-pull:
+    user: root
+    image: uta-update
+    command: sbin/seqrepo-pull
+    volumes:
+      - seqrepo-volume:/biocommons/dl.biocommons.org/seqrepo
+    network_mode: host
   ncbi-download:
     image: uta-update
     command: sbin/ncbi-download etc/ncbi-files.txt /ncbi-dir
@@ -22,9 +29,9 @@ services:
     network_mode: host
   seqrepo-load:
     image: uta-update
-    command: sbin/seqrepo-load /usr/local/share/seqrepo ${UTA_ETL_OLD_SEQREPO_VERSION} /seqrepo-load/work /seqrepo-load/logs
+    command: sbin/seqrepo-load /seqrepo-load/work /seqrepo-load/logs
     volumes:
-      - ${UTA_ETL_SEQREPO_DIR}:/usr/local/share/seqrepo
+      - seqrepo-volume:/biocommons/dl.biocommons.org/seqrepo
       - ${UTA_ETL_WORK_DIR}:/seqrepo-load/work
       - ${UTA_ETL_LOG_DIR}:/seqrepo-load/logs
     working_dir: /opt/repos/uta
@@ -46,19 +53,10 @@ services:
       uta:
         condition: service_healthy
     volumes:
-      - ${UTA_ETL_SEQREPO_DIR}:/usr/local/share/seqrepo
+      - seqrepo-volume:/biocommons/dl.biocommons.org/seqrepo
       - ${UTA_ETL_WORK_DIR}:/uta-load/work
       - ${UTA_ETL_LOG_DIR}:/uta-load/logs
     network_mode: host
-  splign-manual:
-    image: uta-update
-    command: sbin/uta-splign-manual ${UTA_ETL_OLD_SEQREPO_VERSION} ${UTA_ETL_OLD_UTA_VERSION} /uta-splign-manual/input /uta-splign-manual/work /uta-splign-manual/logs
-    depends_on:
-      uta:
-        condition: service_healthy
-    volumes:
-      - ${UTA_ETL_SEQREPO_DIR}:/usr/local/share/seqrepo
-      - ${UTA_SPLIGN_MANUAL_DIR}:/uta-splign-manual/input
-      - ${UTA_ETL_WORK_DIR}:/uta-splign-manual/work
-      - ${UTA_ETL_LOG_DIR}:/uta-splign-manual/logs
-    network_mode: host
+
+volumes:
+  seqrepo-volume:

@@ -2,14 +2,12 @@
 
 set -euxo pipefail
 
-seqrepo_root=$1
-seqrepo_version=$2
-sequence_dir=$3
-log_dir=$4
+sequence_dir=$1
+log_dir=$2
 
-if [ -z "$seqrepo_root" ] || [ -z "$seqrepo_version" ] || [ -z "$sequence_dir" ] || [ -z "$log_dir" ]
+if [ -z "$sequence_dir" ] || [ -z "$log_dir" ]
 then
-    echo 'Usage: sbin/seqrepo-load <seqrepo_root> <seqrepo_version> <sequence_dir> <log_dir>'
+    echo 'Usage: sbin/seqrepo-load <sequence_dir> <log_dir>'
     exit 1
 fi
 
@@ -17,7 +15,7 @@ fi
 mapfile -t FASTA_FILES < <(find "$sequence_dir" -type f -name "*.f[an]a*")
 
 # Load SeqRepo with new sequences
-seqrepo --root-directory "$seqrepo_root" \
-    load -n NCBI --instance-name "$seqrepo_version" \
+seqrepo --root-directory "/biocommons/dl.biocommons.org/seqrepo" \
+    load -n NCBI --instance-name "master" \
     "${FASTA_FILES[@]}" 2>&1 | \
     tee "$log_dir/seqrepo-load.log"
