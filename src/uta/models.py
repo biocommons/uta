@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 # schema name support
 # also see etc/uta.conf
 
-schema_version = "1.1"
+schema_version = "1.2"
 use_schema = True
 if use_schema:
     schema_name = "uta"

@@ -30,8 +30,9 @@ mkdir -p "$log_dir"
 etc/scripts/delete-schema.sh "$loading_uta_v"
 etc/scripts/create-new-schema.sh "$source_uta_v" "$loading_uta_v"
 
-## for now set up Alembic for schema migrations
+## apply any outstanding alembic migrations and update schema version if necessary
 alembic -c etc/alembic.ini upgrade head
+uta --conf=etc/global.conf --conf=etc/uta_dev@localhost.conf update-meta-data
 
 # generate seqinfo files from exonsets (this step requires seqrepo)
 sbin/exonset-to-seqinfo -o NCBI "$working_dir/exonsets.gz" | gzip -c > "$working_dir/seqinfo.gz" 2>&1 | \

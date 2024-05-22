@@ -14,25 +14,44 @@ import uta.models as usam
 class TestUtaLoading(unittest.TestCase):
 
     def setUp(self):
+        # setup test database
         self.db = testing.postgresql.Postgresql()
         self.session = uta.connect(self.db.url())
-        schema = usam.schema_name
-        self.session.execute(sa.text(f'drop schema if exists {schema} cascade'))
-        self.session.execute(sa.text(f'create schema {schema}'))
-        self.session.execute(sa.text('create role uta_admin'))
-        self.session.execute(sa.text(f'grant all privileges on schema {schema} to uta_admin'))
-        self.session.commit()
 
-        # create all uta tables
-        usam.Base.metadata.create_all(self.session.bind.engine)
-        self.session.execute(sa.text(f'grant all privileges on all tables in schema {schema} to uta_admin'))
-        self.session.execute(sa.text(f'grant all privileges on all sequences in schema {schema} to uta_admin'))
-        self.session.commit()
+        admin_role = 'uta_admin'
+        self.session.execute(sa.text(f'create user {admin_role}'))
+        self.session.execute(sa.text(f'grant all privileges on database test to {admin_role}'))
+
+        self.cf = configparser.ConfigParser()
+        self.cf.add_section('uta')
+        self.cf.set('uta', 'admin_role', 'uta_admin')
+
+        ul.create_schema(self.session, {}, self.cf)
+        ul.grant_permissions(self.session, {}, self.cf)
 
     def tearDown(self):
         self.session.close()
         self.db.stop(_signal=signal.SIGKILL)
         self.db.cleanup()
+
+    def test_meta_data(self):
+        """
+        Metadata should exist, then updated when update_meta_data is called.
+        """
+        # the schema_version should match existing values in UTA models
+        expected_schema_version = usam.schema_version
+        md_schema_version = self.session.query(usam.Meta).filter(usam.Meta.key == 'schema_version').one()
+        self.assertEqual(md_schema_version.value, expected_schema_version)
+
+        new_schema_version = '9.9'
+        with patch('uta.models.schema_version', new_schema_version):
+            ul.update_meta_data(self.session, {}, self.cf)
+
+        md_schema_version = self.session.query(usam.Meta).filter(usam.Meta.key == 'schema_version').one()
+        self.assertEqual(md_schema_version.value, new_schema_version)
+
+        md_updated_at = self.session.query(usam.Meta).filter(usam.Meta.key == 'updated on').one_or_none()
+        self.assertIsNotNone(md_updated_at)
 
     def test_load_assoc_ac(self):
         """

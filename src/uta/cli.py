@@ -6,6 +6,7 @@ Usage:
   uta (-C CONF ...) [options] shell
   uta (-C CONF ...) [options] drop-schema
   uta (-C CONF ...) [options] create-schema
+  uta (-C CONF ...) [options] update-meta-data
   uta (-C CONF ...) [options] load-sql FILES ...
   uta (-C CONF ...) [options] rebuild
   uta (-C CONF ...) [options] load-origin FILE
@@ -68,6 +69,7 @@ def main():
         ("align-exons",         ul.align_exons),
         ("analyze",             ul.analyze),
         ("create-schema",       ul.create_schema),
+        ("update-meta-data",    ul.update_meta_data),
         ("drop-schema",         ul.drop_schema),
         ("grant-permissions",   ul.grant_permissions),
         ("load-assoc-ac",       ul.load_assoc_ac),

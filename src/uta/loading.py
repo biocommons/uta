@@ -188,6 +188,33 @@ def create_schema(session, opts, cf):
     logger.info("created schema")
 
 
+def update_meta_data(session, opts, cf):
+    """Update Meta table with schema version"""
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
+
+    # check if schema version is up-to-date
+    md_schema_version = session.query(usam.Meta).filter_by(key="schema_version").one()
+    if md_schema_version.value != usam.schema_version:
+        logger.info(f"updating schema version from {md_schema_version.value} to {usam.schema_version}")
+        md_schema_version.value = usam.schema_version
+        session.commit()
+    else:
+        logger.info(f"schema version {md_schema_version.value} is already up-to-date")
+
+    # set updated on
+    md_updated_on = session.query(usam.Meta).filter_by(key="updated on").one_or_none()
+    if md_updated_on is None:
+        session.add(usam.Meta(key="updated on", value=datetime.datetime.now().isoformat()))
+        session.commit()
+        logger.info("added updated on")
+    else:
+        md_updated_on.value = datetime.datetime.now().isoformat()
+        session.commit()
+        logger.info("updated updated on")
+
+
 def drop_schema(session, opts, cf):
     if session.bind.name == "postgresql" and usam.use_schema:
         session.execute(
