@@ -707,8 +707,10 @@ def load_txinfo(session, opts, cf):
 
         if ti.cds_se_i:
             cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(","))
+            codon_table = ti.codon_table
         else:
             cds_start_i = cds_end_i = None
+            codon_table = None
             cds_md5 = None
 
         # 1. Fetch or make the Transcript record
@@ -776,6 +778,7 @@ def load_txinfo(session, opts, cf):
                 cds_start_i=cds_start_i,
                 cds_end_i=cds_end_i,
                 cds_md5=cds_md5,
+                codon_table=codon_table,
             )
             session.add(u_tx)
 

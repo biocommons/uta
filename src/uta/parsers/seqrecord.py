@@ -169,6 +169,15 @@ class SeqRecordFacade:
         return se_i
 
     @property
+    def codon_table(self) -> Optional[str]:
+        if self.cds_feature is None:
+            return None
+        else:
+            # default codon table is the standard table, aka "1"
+            # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+            return "1"
+
+    @property
     def transl_except(self) -> Optional[List[str]]:
         if self.cds_feature is None:
             return None

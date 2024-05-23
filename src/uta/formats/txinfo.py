@@ -8,7 +8,7 @@ from typing import List, Optional
 class TxInfo(
     recordtype.recordtype(
         'TxInfo',
-        ['origin', 'ac', 'gene_id', 'gene_symbol', 'cds_se_i', 'exons_se_i', 'transl_except'],
+        ['origin', 'ac', 'gene_id', 'gene_symbol', 'cds_se_i', 'exons_se_i', 'codon_table', 'transl_except'],
 )):
 
     @staticmethod

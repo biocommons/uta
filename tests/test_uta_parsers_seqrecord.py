@@ -27,6 +27,7 @@ class TestSeqRecordFacade(unittest.TestCase):
             expected_cds_translation="MAESGRPWAQARSAYRASEVLRRGTGRRRDPGPQSNGPGQEDARAPGRMARLRGQLRAEAASRSEVPRLLKLVERAGAG" \
                 "AAGAGERTGAHSRGSVCSVCGEPRGGATYPAGVLEVSERRLQEGLAAVREELGAGIEALRAELRAELDALRALLPPPPSPPARREPRAVPRAAPRGPTLP" \
                 "RTLGTVSALVAASRPADDAPDGPAECGAHRAPARKNHKKMPVPPGAPQGGGD",
+            expected_codon_table="1",
             expected_exons_se_i=[(0, 696)],
         ),
         param(
@@ -49,6 +50,7 @@ class TestSeqRecordFacade(unittest.TestCase):
                 "EDIDECALPTGGHICSYRCINIPGSFQCSCPSSGYRLAPNGRNCQDIDECVTGIHNCSINETCFNIQGGFRCLAFECPENYRRSAATRCERLPCHENREC" \
                 "SKLPLRITYYHLSFPTNIQAPAVVFRMGPSSAVPGDSMQLAITGGNEEGFFTTRKVSPHSGVVALTKPVPEPRDLLLTVKMDLSRHGTVSSFVAKLFIFV" \
                 "SAEL",
+            expected_codon_table="1",
             expected_exons_se_i=[
                 (0, 182),
                 (182, 288),
@@ -80,6 +82,7 @@ class TestSeqRecordFacade(unittest.TestCase):
             expected_cds_product=None,
             expected_cds_protein_id=None,
             expected_cds_translation=None,
+            expected_codon_table=None,
             expected_exons_se_i=[],
         ),
         param(
@@ -95,6 +98,7 @@ class TestSeqRecordFacade(unittest.TestCase):
             expected_cds_product=None,
             expected_cds_protein_id=None,
             expected_cds_translation=None,
+            expected_codon_table=None,
             expected_exons_se_i=[],
         ),
     ])
@@ -112,6 +116,7 @@ class TestSeqRecordFacade(unittest.TestCase):
         expected_cds_product,
         expected_cds_protein_id,
         expected_cds_translation,
+        expected_codon_table,
         expected_exons_se_i,
     ):
         gbff_file = os.path.join(self.test_data_dir, file_name)
@@ -127,17 +132,8 @@ class TestSeqRecordFacade(unittest.TestCase):
         assert self.seq_record_facade.cds_product == expected_cds_product
         assert self.seq_record_facade.cds_protein_id == expected_cds_protein_id
         assert self.seq_record_facade.cds_translation == expected_cds_translation
+        assert self.seq_record_facade.codon_table == expected_codon_table
         assert self.seq_record_facade.exons_se_i == expected_exons_se_i
-
-    # @parameterized.expand([    @parameterized.expand([
-    #     param('no genes', features={}),
-    #     param('no genes', features={'gene': []}),
-    #     param('more than one gene', features={'gene': [Mock(), Mock()]}),
-    #     param('more than one CDS', features={'CDS': [Mock(), Mock()]}),
-    # ])
-    # def test_validate_features_by_type_invalid(self, test_name, features):
-    #     with self.assertRaises(SeqRecordFeatureError):
-    #         SeqRecordFacade.validate_features_by_type(features)
 
     @parameterized.expand([
         param("no gene feature", gene_feature_mock={}),

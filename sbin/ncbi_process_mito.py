@@ -341,6 +341,7 @@ def main(ncbi_accession: str, output_dir: str) -> None:
                     mg.gene_symbol,
                     mg.cds_se_i(),
                     mg.exons_se_i(),
+                    mg.transl_table,
                     TxInfo.serialize_transl_except(mg.transl_except),
                 )
             )
