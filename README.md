@@ -10,7 +10,7 @@ aligning the same transcript to multiple references using multiple
 alignment methods. Specifically, it facilitates the following:
 
 -   Querying for multiple transcript sources through a single interface
--   Interpretating variants reported in literature against obsolete
+-   Interpreting variants reported in literature against obsolete
     transcript records
 -   Identifying regions where transcript and reference genome sequence
     assemblies disagree
