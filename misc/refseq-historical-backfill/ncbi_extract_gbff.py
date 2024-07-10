@@ -132,6 +132,7 @@ def main(gbff_files: Iterable, origin: str, prefix: str, output_dir: str) -> Non
                             gene_symbol=srf.gene_symbol,
                             cds_se_i=TxInfo.serialize_cds_se_i(srf.cds_se_i),
                             exons_se_i=TxInfo.serialize_exons_se_i(srf.exons_se_i),
+                            codon_table=srf.codon_table,
                             transl_except=TxInfo.serialize_transl_except(
                                 srf.transl_except
                             ),

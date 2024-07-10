@@ -55,6 +55,7 @@ dependencies = [
   "psycopg2-binary",
   "pytz",
   "recordtype",
+  "retry",
   "sqlalchemy",
   "uta-align>=0.3",
 ]

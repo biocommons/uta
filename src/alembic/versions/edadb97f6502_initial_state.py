@@ -300,6 +300,9 @@ def upgrade() -> None:
         CREATE MATERIALIZED VIEW tx_def_summary_mv AS SELECT * FROM tx_def_summary_dv WITH NO DATA;
     """)
     op.execute("""
+        CREATE VIEW tx_def_summary_v AS SELECT * FROM tx_def_summary_mv;
+    """)
+    op.execute("""
         COMMENT ON MATERIALIZED VIEW tx_def_summary_mv IS 'transcript definitions, with exon structures and fingerprints';
     """)
     op.execute("""
@@ -341,6 +344,7 @@ def downgrade() -> None:
     op.execute("DROP INDEX tx_def_summary_mv_alt_aln_method CASCADE")
     op.execute("DROP INDEX tx_def_summary_mv_alt_ac CASCADE")
     op.execute("DROP INDEX tx_def_summary_mv_tx_ac CASCADE")
+    op.execute("DROP VIEW tx_def_summary_v CASCADE;")
     op.execute("DROP MATERIALIZED VIEW tx_def_summary_mv CASCADE;")
     op.execute("DROP VIEW tx_def_summary_dv CASCADE;")
     op.execute("DROP MATERIALIZED VIEW tx_exon_set_summary_mv CASCADE;")

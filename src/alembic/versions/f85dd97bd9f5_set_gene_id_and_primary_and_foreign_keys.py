@@ -154,6 +154,7 @@ def upgrade() -> None:
         CREATE VIEW tx_similarity_v AS
         SELECT DISTINCT
                D1.tx_ac as tx_ac1, D2.tx_ac as tx_ac2,
+               D1.hgnc = D2.hgnc as hgnc_eq,
                D1.symbol = D2.symbol as symbol_eq,
                D1.cds_md5=D2.cds_md5 as cds_eq,
                D1.es_fingerprint=D2.es_fingerprint as es_fp_eq,

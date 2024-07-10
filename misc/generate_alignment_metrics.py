@@ -179,7 +179,7 @@ MM = "X"
 
 TX_EXON_SET_SUMMARY_ALL_BUILD37_SQL = """
 select *
-from uta_20210129b.tx_exon_set_summary_mv as mv
+from tx_exon_set_summary_mv as mv
 where mv.alt_aln_method in ('splign', 'splign-manual') and mv.tx_ac ~ 'N[MR]_*' and mv.tx_ac !~ '/'
       and mv.alt_ac in ('NC_000001.10', 'NC_000002.11', 'NC_000003.11', 'NC_000004.11', 'NC_000005.9', 'NC_000006.11',
                         'NC_000007.13', 'NC_000008.10', 'NC_000009.11', 'NC_000010.10', 'NC_000011.9', 'NC_000012.11',
@@ -190,14 +190,14 @@ where mv.alt_aln_method in ('splign', 'splign-manual') and mv.tx_ac ~ 'N[MR]_*' 
 
 TX_EXON_SET_SUMMARY_SQL = """
 select mv.ends_i[mv.n_exons] as tx_length, *
-from uta_20210129b.tx_exon_set_summary_mv as mv
+from tx_exon_set_summary_mv as mv
 where mv.tx_ac='{tx_ac}' and mv.alt_ac='{alt_ac}' and mv.alt_aln_method='{alt_aln_method}';
 """
 
 TX_EXON_ALN_SQL = """
 select v.hgnc, v.tx_ac, v.alt_ac, v.alt_aln_method, v.alt_strand, v.ord, v.tx_start_i, v.tx_end_i,
        v.alt_start_i, v.alt_end_i, v.cigar
-from uta_20210129b.tx_exon_aln_v as v
+from tx_exon_aln_v as v
 where tx_ac='{tx_ac}' and alt_ac='{alt_ac}' and alt_aln_method='{alt_aln_method}'
 order by ord;
 """
@@ -213,7 +213,6 @@ def parse_args():
 
 def _get_cursor(con, schema_name):
     cur = con.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-    cur.execute("set role uta_admin;")
     cur.execute(f"set search_path = {schema_name}")
     return cur
 
