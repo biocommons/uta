@@ -214,7 +214,7 @@ class TestUtaLoading(unittest.TestCase):
                 'gene_id': '140606',
                 'cds_start_i': 63,
                 'cds_end_i': 501,
-                'codon_table': 1,
+                'codon_table': '1',
             },
         )
 
@@ -232,7 +232,7 @@ class TestUtaLoading(unittest.TestCase):
                 'gene_id': '4514',
                 'cds_start_i': 0,
                 'cds_end_i': 784,
-                'codon_table': 2,
+                'codon_table': '2',
             },
         )
 

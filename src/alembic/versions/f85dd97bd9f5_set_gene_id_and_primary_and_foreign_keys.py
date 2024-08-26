@@ -171,16 +171,8 @@ def upgrade() -> None:
     """)
     # ### end of updates to existing views ###
 
-    # ### drop hgnc from transcript ###
-    op.drop_column('transcript', 'hgnc', schema='uta')
-    # ### end Alembic commands ###
-
 
 def downgrade() -> None:
-    # ### updates to views to add hgnc to transcript ###
-    op.add_column('transcript', sa.Column('hgnc', sa.Text(), nullable=True), schema='uta')
-    # ### end of updates to transcript ###
-
     # ### commands to downgrade views before adding hgnc to transcript ###
     op.execute("DROP VIEW IF EXISTS tx_similarity_v CASCADE;")
     op.execute("DROP MATERIALIZED VIEW IF EXISTS tx_def_summary_mv CASCADE;")

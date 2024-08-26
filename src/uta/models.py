@@ -129,12 +129,13 @@ class Transcript(Base):
     origin_id = sa.Column(
         sa.Integer, sa.ForeignKey("origin.origin_id", onupdate="CASCADE", ondelete="CASCADE"), nullable=False, index=True)
     gene_id = sa.Column(sa.Text, sa.ForeignKey("gene.gene_id"), nullable=False, index=True)
+    hgnc = sa.Column(sa.Text, nullable=True, index=True)
     cds_start_i = sa.Column(sa.Integer)
     cds_end_i = sa.Column(sa.Integer)
     cds_md5 = sa.Column(sa.Text, index=True)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)
-    codon_table = sa.Column(sa.Integer, nullable=False, server_default='1')  # 1 = standard, 2 = mitochondrial
+    codon_table = sa.Column(sa.Text, nullable=True, server_default='1')  # 1 = standard, 2 = mitochondrial
 
     # relationships:
     origin = sao.relationship("Origin", backref="transcripts")
