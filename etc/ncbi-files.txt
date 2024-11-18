@@ -1,0 +1,48 @@
+# This configuration file contains the paths to the NCBI data files needed by the SeqRepo/UTA load pipelines.
+#
+#    ├── gene
+#    │   └── DATA
+#    │       ├── GENE_INFO
+#    │       │   └── Mammalia
+#    │       │       └── Homo_sapiens.gene_info.gz
+#    │       └── gene2refseq.gz
+#    ├── genomes
+#    │   └── refseq
+#    │       └── vertebrate_mammalian
+#    │           └── Homo_sapiens
+#    │               └── all_assembly_versions
+#    │                   └── GCF_000001405.25_GRCh37.p13
+#    │                       ├── GCF_000001405.25_GRCh37.p13_genomic.fna.gz
+#    │                       └── GCF_000001405.25_GRCh37.p13_genomic.gff.gz
+#    └── refseq
+#        └── H_sapiens
+#            └── mRNA_Prot
+#                ├── human.1.protein.faa.gz
+#                ├── human.1.rna.fna.gz
+#                ├── human.1.rna.gbff.gz
+#                ├── ...
+
+## Gene Data
+gene/DATA/gene2refseq.gz
+gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
+
+## RefSeq Data
+refseq/H_sapiens/mRNA_Prot/human.*.rna.gbff.gz
+refseq/H_sapiens/mRNA_Prot/human.*.rna.fna.gz
+refseq/H_sapiens/mRNA_Prot/human.*.protein.faa.gz
+
+## Genome build and alignment data
+# Build 37
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_assembly_report.txt
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.fna.gz
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.gff.gz
+
+# Build 38
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_assembly_report.txt
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.gff.gz
+
+# T2Tv2.0
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_assembly_report.txt
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
+genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.gff.gz

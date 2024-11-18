@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# This script downloads the files needed for a UTA+SeqRepo update into to the given directory.
+#
+# DESTINATION_DIR will have a directory structure matching the source.
+
+set -e
+
+FILE_PATH_CONFIG=$1
+DOWNLOAD_DIR=$2
+
+if [ -z "$FILE_PATH_CONFIG" ] || [ -z "$DOWNLOAD_DIR" ]
+then
+    echo 'Usage: sbin/ncbi-download <file path config> <download_dir> '
+    exit 1
+else
+    echo "Downloading files to $DOWNLOAD_DIR"
+fi
+
+grep -v -e '^#' -e '^$' "$FILE_PATH_CONFIG" | while read -r DOWNLOAD_PATH; do
+    # each top-level directory in NCBI is an rsync module.
+    # bash parameter expansion removes all content after first slash.
+    DOWNLOAD_MODULE="${DOWNLOAD_PATH%%/*}"
+    DOWNLOAD_SRC="ftp.ncbi.nlm.nih.gov::$DOWNLOAD_PATH"
+    DOWNLOAD_DST="$DOWNLOAD_DIR/$DOWNLOAD_MODULE"
+    mkdir -p $DOWNLOAD_DST
+    echo "Downloading $DOWNLOAD_SRC to $DOWNLOAD_DST"
+    rsync --no-motd -DHPRprtv "$DOWNLOAD_SRC" "$DOWNLOAD_DST"
+done

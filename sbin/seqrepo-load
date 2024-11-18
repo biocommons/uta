@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+sequence_dir=$1
+log_dir=$2
+
+if [ -z "$sequence_dir" ] || [ -z "$log_dir" ]
+then
+    echo 'Usage: sbin/seqrepo-load <sequence_dir> <log_dir>'
+    exit 1
+fi
+
+# find all fasta files in the working directory
+mapfile -t FASTA_FILES < <(find "$sequence_dir" -type f -name "*.f[an]a*")
+
+# Load SeqRepo with new sequences
+seqrepo --root-directory "/biocommons/dl.biocommons.org/seqrepo" \
+    load -n NCBI --instance-name "master" \
+    "${FASTA_FILES[@]}" 2>&1 | \
+    tee "$log_dir/seqrepo-load.log"

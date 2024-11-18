@@ -15,7 +15,6 @@ duplicates"""
 import csv
 import gzip
 import io
-import os
 import sys
 
 import attr
@@ -43,15 +42,15 @@ if __name__ == "__main__":
     aars = dict()
     for fn in sys.argv[1:]:
         ifh = csv.DictReader(anyopen(fn), delimiter="\t")
-        
+
         if ofh is None:
             ofh = csv.DictWriter(sys.stdout, fieldnames=out_header, delimiter="\t")
             ofh.writeheader()
-        
+
         for r in ifh:
             if r["tx_ac"] in ("","-") or r["pro_ac"] in ("","-"):
                 continue
-            
+
             aar = AssAccRec(tx_ac=r["tx_ac"], pro_ac=r["pro_ac"], origin=r["origin"])
             k = (aar.tx_ac, aar.origin)
             if k in aars:

@@ -1,0 +1,57 @@
+LOCUS       NR_173148                698 bp    RNA     linear   PRI 17-SEP-2021
+DEFINITION  Homo sapiens family with sequence similarity 246 member C
+            (gene/pseudogene) (FAM246C), non-coding RNA.
+ACCESSION   NR_173148
+VERSION     NR_173148.1
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AC000095.5.
+
+            Transcript Variant: This transcript matches the GRCh38 reference
+            assembly. Compared to other members of the FAM246 gene family, it
+            has a premature stop codon which makes it a non-coding transcript.
+
+            ##RefSeq-Attributes-START##
+            polymorphic pseudogene :: based on alignments, homology
+            ##RefSeq-Attributes-END##
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-698               AC000095.5         28241-28938
+FEATURES             Location/Qualifiers
+     source          1..698
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="22"
+                     /map="22q11.21"
+     gene            1..698
+                     /gene="FAM246C"
+                     /note="family with sequence similarity 246 member C
+                     (gene/pseudogene)"
+                     /db_xref="GeneID:117134596"
+                     /db_xref="HGNC:HGNC:54842"
+     misc_RNA        1..698
+                     /gene="FAM246C"
+                     /product="family with sequence similarity 246 member C
+                     (gene/pseudogene)"
+                     /db_xref="GeneID:117134596"
+                     /db_xref="HGNC:HGNC:54842"
+ORIGIN
+        1 atggcggagc ccggccgccc gtgggcccag gcgcgtagtg cgtacagagc cagcgaggtg
+       61 ctgcggcgcg gcacgggccg ccggcgggat ccggggccgc aatccaatgg gccgggccag
+      121 gaagacgccc gagccccggg ccggatggct cgcctgcgcg gccagctccg ggccgaagcg
+      181 gcttcgcggt ccgaggtgcc gcggctgctg aagctggtgg agcgtgcggg ggccggggcg
+      241 gccgggcgcg ggcgagagga ccggcgcgca cagccgcggg ctccgtgtgc tcggtatgcg
+      301 gggagccccg cggcggggcc acctacccgg cgggggtcct ggaggtgagc gagcggcggc
+      361 tgcaggaggg cctggcggca gtgcgcgagg agctgggcgc cgggattgag gcgctgcgcg
+      421 cggagcttcg agcggagctg gatgccctgc gcgcgctgct gccgccgccg ccgtccccgc
+      481 ctgcccgccg cgagccccgc gccgtccccc gcgccgcgcc ccgcggcccg accctgccgc
+      541 ggacgctcgg caccgtgagc gccctggtcg ccgcctccag gcccgcagac gacgccccgg
+      601 acggcccagc agaatgcgga gcgcaccgag ccccggccag gaagaaccac aagaagatgc
+      661 cagtgccgcc tggggccccg caaggtggcg gggactga
+//

@@ -6,21 +6,22 @@ import hashlib
 
 import sqlalchemy as sa
 import sqlalchemy.orm as sao
+import sqlalchemy.types
+import sqlalchemy.sql.functions
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.dialects import postgresql
 
 
 ############################################################################
 # schema name support
 # also see etc/uta.conf
 
-schema_version = "1.1"
+schema_version = "1.2"
 use_schema = True
 if use_schema:
-    schema_name = "uta_" + schema_version.replace(".","_")
-    schema_name_dot = schema_name + "."
+    schema_name = "uta"
 else:
     schema_name = None
-    schema_name_dot = ""
 
 
 ############################################################################
@@ -97,13 +98,17 @@ class Gene(Base):
     __tablename__ = "gene"
 
     # columns:
-    hgnc = sa.Column(sa.Text, primary_key=True)
+    gene_id = sa.Column(sa.Text, primary_key=True)
+    hgnc = sa.Column(sa.Text, nullable=False, index=True)
+    symbol = sa.Column(sa.Text, nullable=False, index=True)
     maploc = sa.Column(sa.Text)
     descr = sa.Column(sa.Text)
     summary = sa.Column(sa.Text)
     aliases = sa.Column(sa.Text)
     added = sa.Column(
         sa.DateTime, nullable=False, default=datetime.datetime.now())
+    type = sa.Column(sa.Text)
+    xrefs = sa.Column(sa.Text)
 
     # methods:
 
@@ -123,15 +128,41 @@ class Transcript(Base):
     ac = sa.Column(sa.Text, primary_key=True)
     origin_id = sa.Column(
         sa.Integer, sa.ForeignKey("origin.origin_id", onupdate="CASCADE", ondelete="CASCADE"), nullable=False, index=True)
-    hgnc = sa.Column(sa.Text)  # , sa.ForeignKey("gene.hgnc"))
-    cds_start_i = sa.Column(sa.Integer) #, nullable=False)
-    cds_end_i = sa.Column(sa.Integer) #, nullable=False)
+    gene_id = sa.Column(sa.Text, sa.ForeignKey("gene.gene_id"), nullable=False, index=True)
+    hgnc = sa.Column(sa.Text, nullable=True, index=True)
+    cds_start_i = sa.Column(sa.Integer)
+    cds_end_i = sa.Column(sa.Integer)
     cds_md5 = sa.Column(sa.Text, index=True)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)
+    codon_table = sa.Column(sa.Text, nullable=True, server_default='1')  # 1 = standard, 2 = mitochondrial
 
     # relationships:
     origin = sao.relationship("Origin", backref="transcripts")
+
+
+class TranslationException(Base):
+    """
+    Represents `transl_except` annotations on CDS features in transcript records from NCBI.
+
+    Examples:
+    /transl_except=(pos:333..335,aa:Sec)
+    /transl_except=(pos:1017,aa:TERM)
+    """
+
+    __tablename__ = "translation_exception"
+    __table_args__ = (
+        sa.CheckConstraint("start_position <= end_position", "start_less_than_or_equal_to_end"),
+    )
+
+    translation_exception_id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
+    tx_ac = sa.Column(sa.Text, sa.ForeignKey("transcript.ac", onupdate="CASCADE", ondelete="CASCADE"), nullable=False)
+    start_position = sa.Column(sa.Integer, nullable=False)
+    end_position = sa.Column(sa.Integer, nullable=False)
+    amino_acid = sa.Column(sa.Text, nullable=False)
+
+    # relationships:
+    transcript = sao.relationship("Transcript", backref="translation_exceptions")
 
 
 class ExonSet(Base):
@@ -208,8 +239,8 @@ class ExonAln(Base):
     cigar = sa.Column(sa.Text, nullable=False)
     added = sa.Column(
         sa.DateTime, default=datetime.datetime.now(), nullable=False)
-    tx_aseq = sa.Column(sa.Text, nullable=False)
-    alt_aseq = sa.Column(sa.Text, nullable=False)
+    tx_aseq = sa.Column(sa.Text, nullable=True)
+    alt_aseq = sa.Column(sa.Text, nullable=True)
 
     # relationships:
     tx_exon = sao.relationship(
@@ -218,6 +249,27 @@ class ExonAln(Base):
         "Exon", backref="alt_aln", foreign_keys=[alt_exon_id])
 
     # methods:
+
+
+class AssociatedAccessions(Base):
+    __tablename__ = "associated_accessions"
+    __table_args__ = (
+        sa.Index("unique_pair_in_origin", "origin", "tx_ac", "pro_ac", unique=True),
+        sa.Index("associated_accessions_pro_ac", "pro_ac"),
+        sa.Index("associated_accessions_tx_ac", "tx_ac"),
+        {"comment": "transcript-protein accession pairs associated in source databases"},
+    )
+
+    # columns:
+    associated_accession_id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    tx_ac = sa.Column(sa.Text, nullable=False)
+    pro_ac = sa.Column(sa.Text, nullable=False)
+    origin = sa.Column(sa.Text, nullable=False)
+    added = sa.Column(
+        postgresql.TIMESTAMP(timezone=True),
+        server_default=sqlalchemy.sql.functions.now(),
+        nullable=False,
+    )
 
 
 # <LICENSE>

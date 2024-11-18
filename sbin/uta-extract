@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+# Extract data from NCBI files into intermediate files.
+
+set -euxo pipefail
+
+ncbi_dir=$1
+working_dir=$2
+log_dir=$3
+
+if [ -z "$ncbi_dir" ] || [ -z "$working_dir" ] || [ -z "$log_dir" ]
+then
+    echo 'Usage: sbin/uta-extract <ncbi_dir> <working_dir> <log_dir>'
+    exit 1
+fi
+
+# genes
+sbin/ncbi-parse-geneinfo $ncbi_dir/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz | \
+    gzip -c > "$working_dir/geneinfo.gz" 2>&1 | tee "$log_dir/ncbi-parse-geneinfo.log"
+
+# transcript protein associations
+sbin/ncbi-parse-gene2refseq $ncbi_dir/gene/DATA/gene2refseq.gz | gzip -c > "$working_dir/assocacs.gz" 2>&1 | \
+    tee "$log_dir/ncbi-fetch-assoc-acs.log"
+
+# parse transcript info from GBFF input files
+mapfile -t GBFF_FILES < <(find "$ncbi_dir/refseq" -type f -name "human.*.rna.gbff.gz")
+sbin/ncbi-parse-gbff "${GBFF_FILES[@]}" | gzip -c > "$working_dir/txinfo.gz" 2>&1 | \
+    tee "$log_dir/ncbi-parse-gbff.log"
+
+# parse alignments from GFF input files
+# Due to NCBI's handling of transcripts with "frameshifting insertions and deletions with micro-introns" we
+# need to parse out the cDNA_match alignment and use them preferentially over exons from genome GFF files.
+# The cDNA_match records include the indels and do not have micro-introns.
+mapfile -t GFF_FILES < <(find "$ncbi_dir/genomes" -type f -name "GCF_*_genomic.gff.gz")
+sbin/ncbi-parse-gff "${GFF_FILES[@]}" | gzip -c > "$working_dir/cdna_match.exonsets.gz" 2>&1 | \
+    tee "$log_dir/ncbi_parse_gff.log"
+
+# extract exon blocks from GFF files
+sbin/ncbi_parse_genomic_gff.py "${GFF_FILES[@]}" | gzip -c > "$working_dir/exon_block.exonsets.gz" 2>&1 | \
+    tee "$log_dir/ncbi-parse-genomic-gff.log"
+
+# coalesce exonsets
+sbin/coalesce_exonsets.py "$working_dir/cdna_match.exonsets.gz" "$working_dir/exon_block.exonsets.gz" | \
+    gzip -c > "$working_dir/unfiltered_exonsets.gz" 2>&1 | tee "$log_dir/coalesce_exonsets.log"
+
+# filter transcripts
+sbin/filter_exonset_transcripts.py --tx-info "$working_dir/txinfo.gz" --exonsets "$working_dir/unfiltered_exonsets.gz" \
+    --missing-ids "$working_dir/filtered_tx_acs.txt" | gzip -c > "$working_dir/exonsets.gz" 2>&1 | \
+    tee "$log_dir/filter_exonset_transcripts.log"
+
+# move fasta files into same dir
+find "$ncbi_dir" -type f -name "*.f[an]a.gz" -print0 | xargs -i --null cp {} "$working_dir/"

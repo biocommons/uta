@@ -6,6 +6,7 @@ Usage:
   uta (-C CONF ...) [options] shell
   uta (-C CONF ...) [options] drop-schema
   uta (-C CONF ...) [options] create-schema
+  uta (-C CONF ...) [options] update-meta-data
   uta (-C CONF ...) [options] load-sql FILES ...
   uta (-C CONF ...) [options] rebuild
   uta (-C CONF ...) [options] load-origin FILE
@@ -13,13 +14,14 @@ Usage:
   uta (-C CONF ...) [options] load-geneinfo FILE
   uta (-C CONF ...) [options] load-txinfo FILE
   uta (-C CONF ...) [options] load-exonset FILE
+  uta (-C CONF ...) [options] load-assoc-ac FILE
   uta (-C CONF ...) [options] load-sequences
   uta (-C CONF ...) [options] align-exons [--sql SQL]
   uta (-C CONF ...) [options] load-ncbi-seqgene FILE
   uta (-C CONF ...) [options] grant-permissions
   uta (-C CONF ...) [options] refresh-matviews
   uta (-C CONF ...) [options] analyze
-  
+
 Options:
   -C CONF, --conf CONF	Configuration to read (required)
 
@@ -67,8 +69,10 @@ def main():
         ("align-exons",         ul.align_exons),
         ("analyze",             ul.analyze),
         ("create-schema",       ul.create_schema),
+        ("update-meta-data",    ul.update_meta_data),
         ("drop-schema",         ul.drop_schema),
         ("grant-permissions",   ul.grant_permissions),
+        ("load-assoc-ac",       ul.load_assoc_ac),
         ("load-exonset",        ul.load_exonset),
         ("load-geneinfo",       ul.load_geneinfo),
         ("load-origin",         ul.load_origin),
@@ -118,11 +122,8 @@ def main():
         cmd=cmd, elapsed=time.time() - t0))
 
 
-
 if __name__ == "__main__":
     main()
-
-
 
 
 # <LICENSE>

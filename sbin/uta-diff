@@ -14,7 +14,8 @@ cmp_cols = collections.defaultdict(lambda: ['*'])
 cmp_cols.update({
     "associated_accessions": "tx_ac pro_ac origin".split(),
     "exon_aln": "exon_aln_id tx_exon_id alt_exon_id cigar added".split(),
-    "gene": "hgnc".split(),
+    "gene": "gene_id".split(),
+    "seq_anno": "seq_anno_id seq_id origin_id ac added".split(),
     "transcript": "ac".split(),
     })
 
@@ -41,10 +42,10 @@ def cmp1(con, tbl, s1, s2):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger()
 
-    url = "postgresql://uta_admin@localhost/uta_dev"
+    url = "postgresql://uta_admin@localhost/uta"
     tables = ["associated_accessions", "exon", "exon_aln", "exon_set",
               "gene", "meta", "origin", "seq", "seq_anno", "transcript",]
 
@@ -66,7 +67,7 @@ if __name__ == "__main__":
     print("""UTA comparison: url={url}, s1={s1}, s2={s2}
 t: time taken (seconds)
 n1, n2: total number of rows in schemas s1 and s2
-nu1, nu2, c: number of rows unique to s1, unique to s2, and common to both
+nu1, nu2, nc: number of rows unique to s1, unique to s2, and common to both
 cols: cols used for comparison
 """.format(url=url, s1=s1, s2=s2))
     print(pt)

@@ -3,7 +3,7 @@ name = "uta"
 dynamic = ["version"]
 description = "Universal Transcript Archive"
 readme = "README.md"
-requires-python = ">=3.5"
+requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
 
 keywords = [
@@ -39,6 +39,7 @@ classifiers = [
 ]
 
 dependencies = [
+  "alembic",
   "attrs",
   "biocommons.seqrepo",
   "biopython>=1.69",
@@ -47,17 +48,24 @@ dependencies = [
   "configparser",
   "docopt",
   "eutils>=0.3.2",
+  "importlib_resources",
+  "more_itertools",
   "nose",
   "prettytable",
   "psycopg2-binary",
   "pytz",
   "recordtype",
+  "retry",
   "sqlalchemy",
-  "uta-align",
+  "uta-align>=0.3",
 ]
 
 [project.optional-dependencies]
-test = ["coverage", "testing.postgresql"]
+test = [
+  "coverage",
+  "parameterized",
+  "testing.postgresql",
+]
 
 [project.urls]  # Optional
 "Homepage" = "https://github.com/biocommons/uta"

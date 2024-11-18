@@ -5,7 +5,7 @@ default_sep = ','
 
 
 class GeneInfo(recordtype.recordtype('GeneInfo',
-                                     ['gene_id', 'tax_id', 'hgnc', 'maploc', 'aliases', 'type', 'summary', 'descr', 'xrefs'])):
+                                     ['gene_id', 'gene_symbol', 'tax_id', 'hgnc', 'maploc', 'aliases', 'type', 'summary', 'descr', 'xrefs'])):
     pass
 
 
@@ -36,7 +36,6 @@ class GeneInfoReader(csv.DictReader):
         d['aliases'] = d['aliases'].split(default_sep)
         d['xrefs'] = d['xrefs'].split(default_sep)
         return GeneInfo(**d)
-
 
 
 if __name__ == '__main__':

@@ -1,0 +1,14 @@
+# docker compose file for the RefSeq historical backfill procedure
+
+version: '3'
+
+services:
+  uta-extract-historical:
+    image: uta-update
+    command: misc/refseq-historical-backfill/uta-extract-historical /ncbi-dir /uta-extract/work /uta-extract/logs
+    volumes:
+      - ${UTA_ETL_NCBI_DIR}:/ncbi-dir
+      - ${UTA_ETL_WORK_DIR}:/uta-extract/work
+      - ${UTA_ETL_LOG_DIR}:/uta-extract/logs
+    working_dir: /opt/repos/uta
+    network_mode: host

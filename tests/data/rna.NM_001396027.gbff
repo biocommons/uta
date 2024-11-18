@@ -1,0 +1,67 @@
+LOCUS       NM_001396027             696 bp    mRNA    linear   PRI 16-APR-2022
+DEFINITION  Homo sapiens family with sequence similarity 246 member C
+            (gene/pseudogene) (FAM246C), mRNA.
+ACCESSION   NM_001396027
+VERSION     NM_001396027.1
+KEYWORDS    RefSeq; RefSeq Select.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            CP068256.2.
+
+            Transcript Variant: This transcript contains two, common, single
+            nucleotide deletions relative to the GRCh38 reference assembly.
+            This transcript encodes a protein of 231 aa.
+
+            ##RefSeq-Attributes-START##
+            polymorphic pseudogene :: based on alignments, homology
+            RefSeq Select criteria :: based on single protein-coding transcript
+            ##RefSeq-Attributes-END##
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-696               CP068256.2         19404891-19405586
+FEATURES             Location/Qualifiers
+     source          1..696
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="22"
+                     /map="22q11.21"
+     gene            1..696
+                     /gene="FAM246C"
+                     /note="family with sequence similarity 246 member C
+                     (gene/pseudogene)"
+                     /db_xref="GeneID:117134596"
+                     /db_xref="HGNC:HGNC:54842"
+     CDS             1..696
+                     /gene="FAM246C"
+                     /codon_start=1
+                     /product="protein FAM246C"
+                     /protein_id="NP_001382956.1"
+                     /db_xref="GeneID:117134596"
+                     /db_xref="HGNC:HGNC:54842"
+                     /translation="MAESGRPWAQARSAYRASEVLRRGTGRRRDPGPQSNGPGQEDAR
+                     APGRMARLRGQLRAEAASRSEVPRLLKLVERAGAGAAGAGERTGAHSRGSVCSVCGEP
+                     RGGATYPAGVLEVSERRLQEGLAAVREELGAGIEALRAELRAELDALRALLPPPPSPP
+                     ARREPRAVPRAAPRGPTLPRTLGTVSALVAASRPADDAPDGPAECGAHRAPARKNHKK
+                     MPVPPGAPQGGGD"
+     exon            1..696
+                     /gene="FAM246C"
+                     /inference="alignment:Splign:2.1.0"
+ORIGIN
+        1 atggcggagt ccggccgccc gtgggcccag gcgcgtagtg cgtacagagc cagcgaggtg
+       61 ctgcggcgcg gcacgggccg ccggcgggat ccggggccgc aatccaatgg gccgggccag
+      121 gaagacgccc gagccccggg ccggatggct cgcctgcgcg gccagctccg ggccgaagcg
+      181 gcttcgcggt ccgaggtgcc gcggctgctg aagctggtgg agcgtgcggg ggccggggcg
+      241 gcgggcgcgg gcgagaggac cggcgcgcac agccgcggct ccgtgtgctc ggtatgcggg
+      301 gagccccgcg gcggggccac ctacccggcg ggggtcctgg aggtgagcga gcggcggctg
+      361 caggagggcc tggcggcagt gcgcgaggag ctgggcgccg ggattgaggc gctgcgcgcg
+      421 gagcttcgag cggagctgga tgccctgcgc gcgctgctgc cgccgccgcc gtccccgcct
+      481 gcccgccgcg agccccgcgc cgtcccccgc gccgcgcccc gcggcccgac cctgccgcgg
+      541 acgctcggca ccgtgagcgc cctggtcgcc gcctccaggc ccgcagacga cgccccggac
+      601 ggcccagcag aatgcggagc gcaccgagcc ccggccagga agaaccacaa gaagatgcca
+      661 gtgccgcctg gggccccgca aggtggcggg gactga
+//

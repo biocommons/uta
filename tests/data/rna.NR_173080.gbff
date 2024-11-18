@@ -1,0 +1,61 @@
+LOCUS       NR_173080               1073 bp    RNA     linear   PRI 20-JUL-2023
+DEFINITION  Homo sapiens uncharacterized LOC122455341 (LOC122455341),
+            transcript variant 1, long non-coding RNA.
+ACCESSION   NR_173080
+VERSION     NR_173080.1
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AC007326.28.
+
+            ##Evidence-Data-START##
+            RNAseq introns :: single sample supports all introns SAMEA2159764
+                              [ECO:0000348]
+            ##Evidence-Data-END##
+            COMPLETENESS: full length.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-93                AC007326.28        35576-35668
+            94-170              AC007326.28        37874-37950
+            171-1073            AC007326.28        44992-45894
+FEATURES             Location/Qualifiers
+     source          1..1073
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="22"
+                     /map="22q11.21"
+     gene            1..1073
+                     /gene="LOC122455341"
+                     /note="uncharacterized LOC122455341"
+                     /db_xref="GeneID:122455341"
+     ncRNA           1..1073
+                     /ncRNA_class="lncRNA"
+                     /gene="LOC122455341"
+                     /product="uncharacterized LOC122455341, transcript variant
+                     1"
+                     /db_xref="GeneID:122455341"
+ORIGIN
+        1 acaagttgta tggttcgttt tatatgaaga gttcagaata gacaaatcga tagagacaga
+       61 agtcacacga agacaagccc atagtggagc ctgggtgaag gtacgctcga gcgtggtcat
+      121 tgaggacaag tcgacgagag atcccgagta cgtctacagt cagccttacg tctgcaggtg
+      181 tacccaacag ctccgaagag acagcgacca tcgagaacgg gccatgatga cgatggcggt
+      241 tttgtcgaaa agaaaagggg gaaatgtggg gaaaagcaag agagatcaga ttgttactgt
+      301 gtctgtgtag aaagaagtag acataggaga ctccattttg ttatgtgcta agaaaaattc
+      361 ttctgccttg agattctgtt aatctataac cttaccccca accccgtgct ctctgaaacg
+      421 tgtgctgtgt caactcagag ttaaatggat taagggcggt gcaggatgtg ctttgttaaa
+      481 cagatgcttg aaggcagcat gctccttaag agtcatcacc actccctaat ctcaagtacc
+      541 cagggacaca aaaactgcgg aaggccgcag ggacctctgc ctaggaaagc caggtattgt
+      601 ccaaggtttc tccccatgtg atagtctgaa atatggcctc gtgggaaggg aaagacctga
+      661 ccgtccccca gcccgacacc aagggtctgt gctgaggagg attagtaaaa gaggaaggaa
+      721 tgcctcttgc agttgagaca agaggaaggc atctgtctcc tgcctgtccc tgggcaatgg
+      781 aatgtctcgg tataaaaccc gattgtatgc tccatctact gagataggga aaaaccgcct
+      841 tagggctgga ggtgggacct gcgggcagca atactgcttt gtaaagcatt gagatgttta
+      901 tgtgtatgca tatctaaaag cacagcactt aatcctttac attgtctatg atgcaaagac
+      961 ctttgttcac gtgtttgtct gctgaccctc tccccacaat tgtcttgtga ccctgacaca
+     1021 tccccctctt cgagaaacac ccacaagtga tgaataaata ctaagggaac tca
+//

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+SEQREPO_DIR="/biocommons/dl.biocommons.org/seqrepo"
+
+# pull the latest seqrepo version from biocommons
+latest_version=$(seqrepo list-remote-instances | tail -n 1 | xargs)
+cd "$SEQREPO_DIR"
+rsync -rtHP --no-motd dl.biocommons.org::seqrepo/"$latest_version" .
+
+# setup seqrepo build directory
+mkdir -p master/sequences
+cd "$latest_version"
+cp -av aliases.sqlite3 "$SEQREPO_DIR"/master/
+chmod u+w "$SEQREPO_DIR"/master/aliases.sqlite3
+cd sequences
+cp -av db.sqlite3 "$SEQREPO_DIR"/master/sequences/
+chmod u+w "$SEQREPO_DIR"/master/sequences/db.sqlite3
+for d in 2???; do
+    cp -alv $d "$SEQREPO_DIR"/master/sequences/
+done

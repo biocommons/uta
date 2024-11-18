@@ -7,16 +7,19 @@ import hashlib
 import itertools
 import logging
 import time
+from typing import Any, Dict, List
 
 from biocommons.seqrepo import SeqRepo
 from bioutils.coordinates import strand_pm_to_int, MINUS_STRAND
 from bioutils.digests import seq_md5
 from bioutils.sequences import reverse_complement
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import text
 import psycopg2.extras
 import six
-import uta_align.align.algorithms as utaaa
+from uta_align.align.algorithms import cigar_alignment, needleman_wunsch_gotoh_align
 
 from uta.lru_cache import lru_cache
 
@@ -27,6 +30,7 @@ import uta.formats.seqinfo as ufsi
 import uta.formats.txinfo as ufti
 import uta.parsers.geneinfo
 import uta.parsers.seqgene
+from uta.exceptions import ExonStructureMismatchError
 
 usam = uta.models
 
@@ -46,10 +50,10 @@ def align_exons(session, opts, cf):
         return cur
 
     def align(s1, s2):
-        score, cigar = utaaa.needleman_wunsch_gotoh_align(s1.encode("ascii"),
-                                                          s2.encode("ascii"),
-                                                          extended_cigar=True)
-        tx_aseq, alt_aseq = utaaa.cigar_alignment(
+        score, cigar = needleman_wunsch_gotoh_align(s1.encode("ascii"),
+                                                    s2.encode("ascii"),
+                                                    extended_cigar=True)
+        tx_aseq, alt_aseq = cigar_alignment(
             tx_seq, alt_seq, cigar, hide_match=False)
         return tx_aseq.decode("ascii"), alt_aseq.decode("ascii"), cigar.to_string().decode("ascii")
 
@@ -150,27 +154,27 @@ def align_exons(session, opts, cf):
 
 
 def analyze(session, opts, cf):
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
     cmds = [
         "analyze verbose"
     ]
     for cmd in cmds:
         logger.info(cmd)
-        session.execute(cmd)
+        session.execute(text(cmd))
     session.commit()
 
 
 def create_schema(session, opts, cf):
     """Create and populate initial schema"""
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     if session.bind.name == "postgresql" and usam.use_schema:
-        session.execute("create schema " + usam.schema_name)
-        session.execute("set search_path = " + usam.schema_name)
+        session.execute(text("create schema " + usam.schema_name))
+        session.execute(text("set search_path = " + usam.schema_name))
         session.commit()
 
     usam.Base.metadata.create_all(session.bind)
@@ -184,11 +188,38 @@ def create_schema(session, opts, cf):
     logger.info("created schema")
 
 
+def update_meta_data(session, opts, cf):
+    """Update Meta table with schema version"""
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
+
+    # check if schema version is up-to-date
+    md_schema_version = session.query(usam.Meta).filter_by(key="schema_version").one()
+    if md_schema_version.value != usam.schema_version:
+        logger.info(f"updating schema version from {md_schema_version.value} to {usam.schema_version}")
+        md_schema_version.value = usam.schema_version
+        session.commit()
+    else:
+        logger.info(f"schema version {md_schema_version.value} is already up-to-date")
+
+    # set updated on
+    md_updated_on = session.query(usam.Meta).filter_by(key="updated on").one_or_none()
+    if md_updated_on is None:
+        session.add(usam.Meta(key="updated on", value=datetime.datetime.now().isoformat()))
+        session.commit()
+        logger.info("added updated on")
+    else:
+        md_updated_on.value = datetime.datetime.now().isoformat()
+        session.commit()
+        logger.info("updated updated on")
+
+
 def drop_schema(session, opts, cf):
     if session.bind.name == "postgresql" and usam.use_schema:
         session.execute(
-            "set role {admin_role};".format(admin_role=cf.get("uta", "admin_role")))
-        session.execute("set search_path = " + usam.schema_name)
+            text("set role {admin_role};".format(admin_role=cf.get("uta", "admin_role"))))
+        session.execute(text("set search_path = " + usam.schema_name))
 
         ddl = "drop schema if exists " + usam.schema_name + " cascade"
         session.execute(ddl)
@@ -199,9 +230,9 @@ def drop_schema(session, opts, cf):
 def grant_permissions(session, opts, cf):
     schema = usam.schema_name
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     cmds = [
         # alter db doesn't belong here, and probably better to avoid the implicit behevior this encourages
@@ -211,32 +242,73 @@ def grant_permissions(session, opts, cf):
 
     sql = "select concat(schemaname,'.',tablename) as fqrn from pg_tables where schemaname='{schema}'".format(
         schema=schema)
-    rows = list(session.execute(sql))
+    rows = list(session.execute(text(sql)))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
     cmds += ["alter table {fqrn} owner to uta_admin".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
 
     sql = "select concat(schemaname,'.',viewname) as fqrn from pg_views where schemaname='{schema}'".format(
         schema=schema)
-    rows = list(session.execute(sql))
+    rows = list(session.execute(text(sql)))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
     cmds += ["alter view {fqrn} owner to uta_admin".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
 
     sql = "select concat(schemaname,'.',matviewname) as fqrn from pg_matviews where schemaname='{schema}'".format(
         schema=schema)
-    rows = list(session.execute(sql))
+    rows = list(session.execute(text(sql)))
     cmds += ["grant select on {fqrn} to PUBLIC".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
     cmds += ["alter materialized view {fqrn} owner to uta_admin".format(
-        fqrn=row["fqrn"]) for row in rows]
+        fqrn=row.fqrn) for row in rows]
 
     for cmd in sorted(cmds):
         logger.info(cmd)
-        session.execute(cmd)
+        session.execute(text(cmd))
     session.commit()
+
+
+def load_assoc_ac(session, opts, cf):
+    """
+    Insert rows into `associated_accessions` table in the UTA database,
+    using data from a file written by sbin/assoc-acs-merge.
+    """
+    logger.info("load_assoc_ac")
+
+    admin_role = cf.get("uta", "admin_role")
+    session.execute(text(f"set role {admin_role};"))
+    session.execute(text(f"set search_path = {usam.schema_name};"))
+    fname = opts["FILE"]
+
+    with gzip.open(fname, "rt") as fhandle:
+        for file_row in csv.DictReader(fhandle, delimiter="\t"):
+            row = {
+                "origin": file_row["origin"],
+                "pro_ac": file_row["pro_ac"],
+                "tx_ac": file_row["tx_ac"],
+            }
+            aa, created = _get_or_insert(
+                session=session,
+                table=usam.AssociatedAccessions,
+                row=row,
+                row_identifier=('origin', 'tx_ac', 'pro_ac'),
+            )
+            if created:
+                # If committing on every insert is too slow, we can
+                # look into committing in batches like load_txinfo does.
+                session.commit()
+                logger.info(f"Added: {aa.tx_ac}, {aa.pro_ac}, {aa.origin}")
+            else:
+                logger.info(f"Already exists: {file_row}")
+                # All fields should should match when unique identifiers match.
+                # Discrepancies should be investigated.
+                existing_row = {
+                    "origin": aa.origin,
+                    "pro_ac": aa.pro_ac,
+                    "tx_ac": aa.tx_ac,
+                }
 
 
 def load_exonset(session, opts, cf):
@@ -244,27 +316,60 @@ def load_exonset(session, opts, cf):
 
     update_period = 25
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(
+        text("set role {admin_role};".format(admin_role=cf.get("uta", "admin_role")))
+    )
+    session.execute(text("set search_path = " + usam.schema_name))
 
-    n_rows = len(gzip.open(opts["FILE"], 'rt').readlines()) - 1
-    esr = ufes.ExonSetReader(gzip.open(opts["FILE"], 'rt'))
+    n_rows = len(gzip.open(opts["FILE"], "rt").readlines()) - 1
+    esr = ufes.ExonSetReader(gzip.open(opts["FILE"], "rt"))
     logger.info("opened " + opts["FILE"])
 
     n_new = 0
     n_unchanged = 0
     n_deprecated = 0
+    n_skipped = 0
     n_errors = 0
     for i_es, es in enumerate(esr):
+        skipped = False
         try:
-            n, o = _upsert_exon_set_record(session, es.tx_ac, es.alt_ac, es.strand, es.method, es.exons_se_i)
-            session.commit()
+            # determine if alignment and transcript have the same exon structure
+            tx_es = (
+                session.query(usam.ExonSet)
+                .filter(
+                    usam.ExonSet.tx_ac == es.tx_ac,
+                    usam.ExonSet.alt_ac == es.tx_ac,
+                    usam.ExonSet.alt_aln_method == "transcript",
+                )
+                .one()
+            )
+            tx_exon_count = len(tx_es.exons_se_i())
+            aln_exon_count = len(es.exons_se_i.split(";"))
+            if tx_exon_count == aln_exon_count:
+                n, o = _upsert_exon_set_record(
+                    session, es.tx_ac, es.alt_ac, es.strand, es.method, es.exons_se_i
+                )
+                session.commit()
+            else:
+                raise ExonStructureMismatchError(
+                    "Exon structure mismatch: {tx_exon_count} exons in transcript {es.tx_ac}; {aln_exon_count} in alignment {es.alt_ac}".format(
+                        tx_exon_count=tx_exon_count,
+                        aln_exon_count=aln_exon_count,
+                        es=es,
+                    )
+                )
         except IntegrityError as e:
             logger.exception(e)
             session.rollback()
             n_errors += 1
-        finally:        
+        except NoResultFound as e:
+            logger.exception(e)
+            logger.warning("NoResultFound for transcript ExonSet: {es.tx_ac}".format(es=es))
+            skipped = True
+        except ExonStructureMismatchError as e:
+            logger.exception(e)
+            skipped = True
+        else:
             (no) = (n is not None, o is not None)
             if no == (True, False):
                 n_new += 1
@@ -272,19 +377,30 @@ def load_exonset(session, opts, cf):
                 n_deprecated += 1
             elif no == (False, True):
                 n_unchanged += 1
-
+        finally:
+            if skipped:
+                n_skipped += 1
             if i_es % update_period == 0 or i_es + 1 == n_rows:
-                logger.info("{i_es}/{n_rows} {p:.1f}%; {n_new} new, {n_unchanged} unchanged, {n_deprecated} deprecated, {n_errors} n_errors".format(
-                    i_es=i_es, n_rows=n_rows,
-                    n_new=n_new, n_unchanged=n_unchanged, n_deprecated=n_deprecated, n_errors=n_errors,
-                    p=(i_es + 1) / n_rows * 100))
+                logger.info(
+                    "{i_es}/{n_rows} {p:.1f}%; {n_new} new, {n_unchanged} unchanged, {n_deprecated} deprecated, {n_skipped} skipped, {n_errors} n_errors".format(
+                        i_es=i_es,
+                        n_rows=n_rows,
+                        n_new=n_new,
+                        n_unchanged=n_unchanged,
+                        n_deprecated=n_deprecated,
+                        n_skipped=n_skipped,
+                        n_errors=n_errors,
+                        p=(i_es + 1) / n_rows * 100,
+                    )
+                )
+
     session.commit()
 
 
 def load_geneinfo(session, opts, cf):
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     gir = ufgi.GeneInfoReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
@@ -292,40 +408,17 @@ def load_geneinfo(session, opts, cf):
     for i_gi, gi in enumerate(gir):
         session.merge(
             usam.Gene(
+                gene_id=gi.gene_id,
                 hgnc=gi.hgnc,
+                symbol=gi.gene_symbol,
                 maploc=gi.maploc,
                 descr=gi.descr,
                 summary=gi.summary,
                 aliases=gi.aliases,
+                type=gi.type,
+                xrefs=gi.xrefs,
             ))
-        logger.info("Added {gi.hgnc} ({gi.summary})".format(gi=gi))
-    session.commit()
-
-
-def load_ncbi_geneinfo(session, opts, cf):
-    """
-    import data as downloaded (by you) from 
-    ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz
-    """
-
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
-
-    gip = uta.parsers.geneinfo.GeneInfoParser(gzip.open(opts["FILE"], 'rt'))
-    for gi in gip:
-        if gi["tax_id"] != "9606" or gi["Symbol_from_nomenclature_authority"] == "-":
-            continue
-        g = usam.Gene(
-            gene_id=gi["GeneID"],
-            hgnc=gi["Symbol_from_nomenclature_authority"],
-            maploc=gi["map_location"],
-            descr=gi["Full_name_from_nomenclature_authority"],
-            aliases=gi["Synonyms"],
-            strand=gi[""],
-        )
-        session.add(g)
-        logger.info("loaded gene {g.hgnc} ({g.descr})".format(g=g))
+        logger.debug("Added {gi.gene_symbol}: {gi.gene_id} ({gi.summary})".format(gi=gi))
     session.commit()
 
 
@@ -362,9 +455,9 @@ def load_ncbi_seqgene(session, opts, cf):
         return ti
 
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     o_refseq = session.query(usam.Origin).filter(
         usam.Origin.name == "NCBI RefSeq").one()
@@ -404,9 +497,9 @@ def load_origin(session, opts, cf):
     def _none_if_empty(s):
         return None if s == "" else s
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     orir = csv.DictReader(open(opts["FILE"]), delimiter='\t')
     for rec in orir:
@@ -441,9 +534,9 @@ def load_seqinfo(session, opts, cf):
     max_len = int(2e6)
 
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     n_rows = len(gzip.open(opts["FILE"]).readlines()) - 1
 
@@ -474,7 +567,7 @@ def load_seqinfo(session, opts, cf):
     for md5, si_iter in itertools.groupby(sorted(sir, key=lambda si: si.md5),
                                           key=lambda si: si.md5):
         sis = list(si_iter)
-    
+
         # if sequence doesn't exist in sequence table, make it
         # this is to satisfy a FK dependency, which should be reconsidered
         si = sis[0]
@@ -502,6 +595,7 @@ def load_seqinfo(session, opts, cf):
                     session.merge(u_seqanno)
             else:
                 # create the new annotation
+                logger.debug("creating seq_anno({si.origin},{si.ac},{si.md5})".format(si=si))
                 u_seqanno = usam.SeqAnno(origin_id=u_ori.origin_id, seq_id=si.md5,
                                          ac=si.ac, descr=si.descr)
                 session.add(u_seqanno)
@@ -512,6 +606,7 @@ def load_seqinfo(session, opts, cf):
             logger.info("{n_created} annotations created/{i_md5} sequences seen ({p:.1f}%)/{n_rows} sequences total".format(
                 n_created=n_created, i_md5=i_md5, n_rows=n_rows, md5=md5, p=i_md5 / n_rows * 100))
             session.commit()
+    session.commit()
 
 
 def load_sequences(session, opts, cf):
@@ -521,9 +616,9 @@ def load_sequences(session, opts, cf):
     # 2e6 was chosen empirically based on sizes of NMs, NGs, NWs, NTs, NCs
     max_len = int(2e6)
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     sf = _get_seqfetcher(cf)
 
@@ -567,9 +662,9 @@ def load_sequences(session, opts, cf):
 
 def load_sql(session, opts, cf):
     """Create views"""
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     for fn in opts["FILES"]:
         logger.info("loading " + fn)
@@ -596,9 +691,9 @@ def load_txinfo(session, opts, cf):
     tir = ufti.TxInfoReader(gzip.open(opts["FILE"], 'rt'))
     logger.info("opened " + opts["FILE"])
 
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     n_new = 0
     n_unchanged = 0
@@ -612,8 +707,10 @@ def load_txinfo(session, opts, cf):
 
         if ti.cds_se_i:
             cds_start_i, cds_end_i = map(int, ti.cds_se_i.split(","))
+            codon_table = ti.codon_table
         else:
             cds_start_i = cds_end_i = None
+            codon_table = None
             cds_md5 = None
 
         # 1. Fetch or make the Transcript record
@@ -632,6 +729,29 @@ def load_txinfo(session, opts, cf):
                 session.flush()
                 u_tx = None
                 n_cds_changed += 1
+
+            if ti.transl_except:
+                # if the transl_except exists, make sure it exists in the database.
+                te_list = _create_translation_exceptions(
+                    transcript=ti.ac, transl_except_list=ti.transl_except.split(";")
+                )
+                for te_data in te_list:
+                    te, created = _get_or_insert(
+                        session=session,
+                        table=usam.TranslationException,
+                        row=te_data,
+                        row_identifier=("tx_ac", "start_position", "end_position", "amino_acid"),
+                    )
+                    if created:
+                        logger.info(
+                            f"TranslationException added: {te.tx_ac}, {te.start_position}, {te.end_position}, {te.amino_acid}"
+                        )
+                    else:
+                        logger.info(
+                            f"TranslationException already exists: {te.tx_ac}, {te.start_position}, {te.end_position}, {te.amino_acid}"
+                        )
+
+
 
         # state: u_tx is set if a transcript was found and was
         # unchanged, or None if 1) no such was found or 2) was found
@@ -654,17 +774,24 @@ def load_txinfo(session, opts, cf):
             u_tx = usam.Transcript(
                 ac=ti.ac,
                 origin=ori,
-                hgnc=ti.hgnc,
+                gene_id=ti.gene_id,
                 cds_start_i=cds_start_i,
                 cds_end_i=cds_end_i,
                 cds_md5=cds_md5,
+                codon_table=codon_table,
             )
             session.add(u_tx)
 
-        if u_tx.hgnc != ti.hgnc:
-            logger.warn("{ti.ac}: HGNC symbol changed from {u_tx.hgnc} to {ti.hgnc}".format(
-                u_tx=u_tx, ti=ti))
-            u_tx.hgnc = ti.hgnc
+            if ti.transl_except:
+                # if transl_except exists, it looks like this:
+                # (pos:333..335,aa:Sec);(pos:1017,aa:TERM)
+                transl_except_list = ti.transl_except.split(';')
+                te_list = _create_translation_exceptions(transcript=ti.ac, transl_except_list=transl_except_list)
+                for te in te_list:
+                    session.add(usam.TranslationException(**te))
+
+        if u_tx.gene_id != ti.gene_id:
+            logger.warning("{ti.ac}: GeneID changed from {u_tx.gene_id} to {ti.gene_id}".format(u_tx=u_tx, ti=ti))
 
         # state: transcript now exists, either existing or freshly-created
 
@@ -675,7 +802,7 @@ def load_txinfo(session, opts, cf):
         if no == (True, False):
             n_new += 1
         elif no == (True, True):
-            logger.warn("Transcript {ti.ac} exon structure changed".format(ti=ti))
+            logger.warning("Transcript {ti.ac} exon structure changed".format(ti=ti))
             n_exons_changed += 1
         elif no == (False, True):
             logger.debug("Transcript {ti.ac} exon structure unchanged".format(ti=ti))
@@ -688,14 +815,46 @@ def load_txinfo(session, opts, cf):
                 i_ti=i_ti, n_rows=n_rows,
                 n_new=n_new, n_unchanged=n_unchanged, n_cds_changed=n_cds_changed, n_exons_changed=n_exons_changed,
                 p=(i_ti + 1) / n_rows * 100))
-            
 
+
+def _create_translation_exceptions(transcript: str, transl_except_list: List[str]) -> List[Dict]:
+    """
+    Create TranslationException object data where start and end positions are 0-based, from transl_except data that is 1-based.
+    For example, [(pos:333..335,aa:Sec), (pos:1017,aa:TERM)] should result in start and end positions [(332, 335), (1016, 1017)]
+    """
+    result = []
+
+    for te in transl_except_list:
+        # remove parens
+        te = te.replace('(','').replace(')','')
+
+        # extract positions
+        pos_str, aa_str = te.split(',')
+        pos_str = pos_str.removeprefix('pos:')
+        if '..' in pos_str:
+            start_position, _, end_position = pos_str.partition('..')
+        else:
+            start_position = end_position = pos_str
+
+        # extract amino acid
+        amino_acid = aa_str.removeprefix('aa:')
+
+        result.append(
+            {
+                'tx_ac': transcript,
+                'start_position': int(start_position) - 1,
+                'end_position': int(end_position),
+                'amino_acid': amino_acid,
+            }
+        )
+
+    return result
 
 
 def refresh_matviews(session, opts, cf):
-    session.execute("set role {admin_role};".format(
-        admin_role=cf.get("uta", "admin_role")))
-    session.execute("set search_path = " + usam.schema_name)
+    session.execute(text("set role {admin_role};".format(
+        admin_role=cf.get("uta", "admin_role"))))
+    session.execute(text("set search_path = " + usam.schema_name))
 
     # matviews must be updated in dependency order. Unfortunately,
     # it's difficult to determine this programmatically. The "right"
@@ -714,13 +873,12 @@ def refresh_matviews(session, opts, cf):
         "refresh materialized view exon_set_exons_fp_mv",
         "refresh materialized view tx_exon_set_summary_mv",
         "refresh materialized view tx_def_summary_mv",
-        # "refresh materialized view tx_aln_cigar_mv",
-        # "refresh materialized view tx_aln_summary_mv",
+        "refresh materialized view tx_exon_aln_mv",
     ]
 
     for cmd in cmds:
         logger.info(cmd)
-        session.execute(cmd)
+        session.execute(text(cmd))
     session.commit()
 
 
@@ -740,6 +898,34 @@ def _get_seqrepo(cf):
 _get_seqfetcher = _get_seqrepo
 
 
+def _get_or_insert(
+    session: Session,
+    table: type[usam.Base],
+    row: dict[str, Any],
+    row_identifier: str | tuple[str, ...],
+) -> tuple[usam.Base, bool]:
+    """
+    Returns a sqlalchemy model of the inserted or fetched row.
+
+    `session` is a sqlalchemy session.
+    `table` is the database table in which to insert `row`.
+    `row` is the a list of key-value pairs to insert into the table.
+    `row_identifier` is a map of key-value pairs which define a match between `row` and an existing row in the table.
+
+    sqlalchemy.orm.exc.MultipleResultsFound may be raised if `row_identifier` does not uniquely identify a row.
+    KeyError may be raised if `row_identifier` refers to columns not present as keys in `row`.
+    sqlalchemy.exc.IntegrityError (raised from psycopg2.errors.ForeignKeyViolation) may be raised if a foreign key reference does not exist
+    """
+    row_filter = {ri: row[ri] for ri in row_identifier}
+    try:
+        row_instance = session.query(table).filter_by(**row_filter).one()
+        created = False
+    except NoResultFound:
+        row_instance = table(**row)
+        session.add(row_instance)
+        created = True
+    return row_instance, created
+
 
 def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
 
@@ -747,9 +933,9 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
     returns tuple of (new_record, old_record) as follows:
 
     (new, None) -- no prior record; new was inserted
-    (None, old) -- prior record and unchaged; nothing was inserted
+    (None, old) -- prior record and unchanged; nothing was inserted
     (new, old)  -- prior record existed and was changed
-    
+
     """
 
     key = (tx_ac, alt_ac, method)
@@ -781,9 +967,29 @@ def _upsert_exon_set_record(session, tx_ac, alt_ac, strand, method, ess):
             usam.ExonSet.alt_aln_method == alt_aln_method_with_hash,
             )
         if existing.count() == 1:
+            logger.warning(
+                "Exon set {tx_ac}/{alt_ac} with method {method} already exists with hash {esh}".format(
+                    tx_ac=tx_ac,
+                    alt_ac=alt_ac,
+                    method=method,
+                    esh=alt_aln_method_with_hash,
+                )
+            )
             return (None, existing[0])
 
         # update aln_method to add a unique exon set hash based on the *existing* exon set string
+        logger.warning(
+            "Exon set {tx_ac}/{alt_ac} with method {method} already exists, but with different exons; "
+            "existing exon set: {es_ess}; new exon set: {ess}; updated alt_aln_method of exonset to "
+            "{alt_aln_method_with_hash}".format(
+                tx_ac=tx_ac,
+                alt_ac=alt_ac,
+                method=method,
+                es_ess=es_ess,
+                ess=ess,
+                alt_aln_method_with_hash=alt_aln_method_with_hash,
+            )
+        )
         es.alt_aln_method = alt_aln_method_with_hash
         session.flush()
         old_es = es

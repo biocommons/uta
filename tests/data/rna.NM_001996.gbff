@@ -1,0 +1,393 @@
+LOCUS       NM_001996               2251 bp    mRNA    linear   PRI 18-APR-2022
+DEFINITION  Homo sapiens fibulin 1 (FBLN1), transcript variant C, mRNA.
+ACCESSION   NM_001996
+VERSION     NM_001996.4
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 2251)
+  AUTHORS   Yang F, Shi J, Zhang L, Wang H and Li Y.
+  TITLE     Role of fibulin-1 gene promoter methylation in the carcinogenesis
+            and development of tongue squamous cell carcinoma
+  JOURNAL   Oral Surg Oral Med Oral Pathol Oral Radiol 133 (4), 432-440 (2022)
+   PUBMED   35153187
+  REMARK    GeneRIF: Role of fibulin-1 gene promoter methylation in the
+            carcinogenesis and development of tongue squamous cell carcinoma.
+REFERENCE   2  (bases 1 to 2251)
+  AUTHORS   Wan Y, Song Y, Chen J, Kong J, Gu C, Huang J and Zuo L.
+  TITLE     Upregulated Fibulin-1 Increased Endometrial Stromal Cell Viability
+            and Migration by Repressing EFEMP1-Dependent Ferroptosis in
+            Endometriosis
+  JOURNAL   Biomed Res Int 2022, 4809415 (2022)
+   PUBMED   35127942
+  REMARK    GeneRIF: Upregulated Fibulin-1 Increased Endometrial Stromal Cell
+            Viability and Migration by Repressing EFEMP1-Dependent Ferroptosis
+            in Endometriosis.
+            Publication Status: Online-Only
+REFERENCE   3  (bases 1 to 2251)
+  AUTHORS   Xu G, Geng X, Yang F and Zhang H.
+  TITLE     FBLN1 promotes chondrocyte proliferation by increasing
+            phosphorylation of Smad2
+  JOURNAL   J Orthop Sci 27 (1), 242-248 (2022)
+   PUBMED   33610427
+  REMARK    GeneRIF: FBLN1 promotes chondrocyte proliferation by increasing
+            phosphorylation of Smad2.
+REFERENCE   4  (bases 1 to 2251)
+  AUTHORS   Ustunyurt E, Dundar B, Simsek D and Temur M.
+  TITLE     Act of fibulin-1 in preeclamptic patients: can it be a predictive
+            marker?
+  JOURNAL   J Matern Fetal Neonatal Med 34 (22), 3775-3781 (2021)
+   PUBMED   34238097
+  REMARK    GeneRIF: Act of fibulin-1 in preeclamptic patients: can it be a
+            predictive marker?
+REFERENCE   5  (bases 1 to 2251)
+  AUTHORS   Liu XT, Liu TT, Wu MY, Chen QX, Zhuang JX and Wang Q.
+  TITLE     Identifying FBLN1 (Gene ID: 2192) as a Potential Melanoma Biomarker
+            for Melanoma based on an Analysis of microRNA Expression Profiles
+            in the GEO and TCGA Databases
+  JOURNAL   Genet Test Mol Biomarkers 25 (1), 68-78 (2021)
+   PUBMED   33470885
+  REMARK    GeneRIF: Identifying FBLN1 (Gene ID: 2192) as a Potential Melanoma
+            Biomarker for Melanoma based on an Analysis of microRNA Expression
+            Profiles in the GEO and TCGA Databases.
+REFERENCE   6  (bases 1 to 2251)
+  AUTHORS   Sasaki T, Gohring W, Pan TC, Chu ML and Timpl R.
+  TITLE     Binding of mouse and human fibulin-2 to extracellular matrix
+            ligands
+  JOURNAL   J Mol Biol 254 (5), 892-899 (1995)
+   PUBMED   7500359
+REFERENCE   7  (bases 1 to 2251)
+  AUTHORS   Roark EF, Keene DR, Haudenschild CC, Godyna S, Little CD and
+            Argraves WS.
+  TITLE     The association of human fibulin-1 with elastic fibers: an
+            immunohistological, ultrastructural, and RNA study
+  JOURNAL   J Histochem Cytochem 43 (4), 401-411 (1995)
+   PUBMED   7534784
+REFERENCE   8  (bases 1 to 2251)
+  AUTHORS   Balbona K, Tran H, Godyna S, Ingham KC, Strickland DK and Argraves
+            WS.
+  TITLE     Fibulin binds to itself and to the carboxyl-terminal
+            heparin-binding region of fibronectin
+  JOURNAL   J Biol Chem 267 (28), 20120-20125 (1992)
+   PUBMED   1400330
+REFERENCE   9  (bases 1 to 2251)
+  AUTHORS   Argraves WS, Tran H, Burgess WH and Dickerson K.
+  TITLE     Fibulin is an extracellular matrix and plasma glycoprotein with
+            repeated domain structure
+  JOURNAL   J Cell Biol 111 (6 Pt 2), 3155-3164 (1990)
+   PUBMED   2269669
+REFERENCE   10 (bases 1 to 2251)
+  AUTHORS   Argraves WS, Dickerson K, Burgess WH and Ruoslahti E.
+  TITLE     Fibulin, a novel protein that interacts with the fibronectin
+            receptor beta subunit cytoplasmic domain
+  JOURNAL   Cell 58 (4), 623-629 (1989)
+   PUBMED   2527614
+COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
+            reference sequence was derived from AL021391.3, Z98047.1 and
+            Z95331.2.
+
+            On May 31, 2019 this sequence version replaced NM_001996.3.
+
+            Summary: Fibulin 1 is a secreted glycoprotein that becomes
+            incorporated into a fibrillar extracellular matrix. Calcium-binding
+            is apparently required to mediate its binding to laminin and
+            nidogen. It mediates platelet adhesion via binding fibrinogen. Four
+            splice variants which differ in the 3' end have been identified.
+            Each variant encodes a different isoform, but no functional
+            distinctions have been identified among the four variants.
+            [provided by RefSeq, Jul 2008].
+
+            Transcript Variant: This variant (C) has an alternate 3' sequence,
+            as compared to variant D. The encoded isoform C is shorter and has
+            a distinct C-terminus, as compared to isoform D.
+
+            Publication Note:  This RefSeq record includes a subset of the
+            publications that are available for this gene. Please see the Gene
+            record to access additional publications.
+
+            ##Evidence-Data-START##
+            Transcript exon combination :: SRR7346977.956579.1,
+                                           SRR7346977.1110405.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1965299, SAMEA1966682
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-182               AL021391.3         135806-135987
+            183-288             Z98047.1           13577-13682
+            289-424             Z98047.1           20438-20573
+            425-587             Z98047.1           22742-22904
+            588-647             Z98047.1           26160-26219
+            648-749             Z98047.1           27958-28059
+            750-887             Z98047.1           28656-28793
+            888-1025            Z98047.1           30095-30232
+            1026-1169           Z98047.1           36124-36267
+            1170-1298           Z98047.1           37050-37178
+            1299-1424           Z98047.1           38296-38421
+            1425-1544           Z98047.1           41980-42099
+            1545-1676           Z98047.1           43508-43639
+            1677-1800           Z98047.1           45387-45510
+            1801-2251           Z95331.2           10369-10819
+FEATURES             Location/Qualifiers
+     source          1..2251
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="22"
+                     /map="22q13.31"
+     gene            1..2251
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="fibulin 1"
+                     /db_xref="GeneID:2192"
+                     /db_xref="HGNC:HGNC:3600"
+                     /db_xref="MIM:135820"
+     exon            1..182
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     CDS             104..2155
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="isoform C precursor is encoded by transcript
+                     variant C"
+                     /codon_start=1
+                     /product="fibulin-1 isoform C precursor"
+                     /protein_id="NP_001987.3"
+                     /db_xref="CCDS:CCDS14069.1"
+                     /db_xref="GeneID:2192"
+                     /db_xref="HGNC:HGNC:3600"
+                     /db_xref="MIM:135820"
+                     /translation="MERAAPSRRVPLPLLLLGGLALLAAGVDADVLLEACCADGHRMA
+                     THQKDCSLPYATESKECRMVQEQCCHSQLEELHCATGISLANEQDRCATPHGDNASLE
+                     ATFVKRCCHCCLLGRAAQAQGQSCEYSLMVGYQCGQVFQACCVKSQETGDLDVGGLQE
+                     TDKIIEVEEEQEDPYLNDRCRGGGPCKQQCRDTGDEVVCSCFVGYQLLSDGVSCEDVN
+                     ECITGSHSCRLGESCINTVGSFRCQRDSSCGTGYELTEDNSCKDIDECESGIHNCLPD
+                     FICQNTLGSFRCRPKLQCKSGFIQDALGNCIDINECLSISAPCPIGHTCINTEGSYTC
+                     QKNVPNCGRGYHLNEEGTRCVDVDECAPPAEPCGKGHRCVNSPGSFRCECKTGYYFDG
+                     ISRMCVDVNECQRYPGRLCGHKCENTLGSYLCSCSVGFRLSVDGRSCEDINECSSSPC
+                     SQECANVYGSYQCYCRRGYQLSDVDGVTCEDIDECALPTGGHICSYRCINIPGSFQCS
+                     CPSSGYRLAPNGRNCQDIDECVTGIHNCSINETCFNIQGGFRCLAFECPENYRRSAAT
+                     RCERLPCHENRECSKLPLRITYYHLSFPTNIQAPAVVFRMGPSSAVPGDSMQLAITGG
+                     NEEGFFTTRKVSPHSGVVALTKPVPEPRDLLLTVKMDLSRHGTVSSFVAKLFIFVSAE
+                     L"
+     sig_peptide     104..190
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="COORDINATES: ab initio prediction:SignalP:4.0"
+     mat_peptide     191..2152
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /product="fibulin-1 isoform C"
+     misc_feature    191..340
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Anaphylatoxin homologous domain; C3a, C4a and C5a
+                     anaphylatoxins are protein fragments generated
+                     enzymatically in serum during activation of complement
+                     molecules C3, C4, and C5. They induce smooth muscle
+                     contraction. These fragments are homologous to...; Region:
+                     ANATO; cd00017"
+                     /db_xref="CDD:237984"
+     misc_feature    392..559
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Anaphylatoxin homologous domain; C3a, C4a and C5a
+                     anaphylatoxins are protein fragments generated
+                     enzymatically in serum during activation of complement
+                     molecules C3, C4, and C5. They induce smooth muscle
+                     contraction. These fragments are homologous to...; Region:
+                     ANATO; cd00017"
+                     /db_xref="CDD:237984"
+     misc_feature    698..760
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Complement Clr-like EGF-like; Region: cEGF;
+                     pfam12662"
+                     /db_xref="CDD:432704"
+     misc_feature    749..832
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Calcium-binding EGF domain; Region: EGF_CA;
+                     pfam07645"
+                     /db_xref="CDD:429571"
+     misc_feature    887..994
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Calcium-binding EGF domain; Region: EGF_CA;
+                     pfam07645"
+                     /db_xref="CDD:429571"
+     misc_feature    order(887..889,896..898,944..946)
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Ca2+ binding site [ion binding]; other site"
+                     /db_xref="CDD:238011"
+     misc_feature    1025..1168
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Calcium-binding EGF-like domain; Region: EGF_CA;
+                     smart00179"
+                     /db_xref="CDD:214542"
+     misc_feature    order(1025..1027,1034..1036,1082..1084)
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Ca2+ binding site [ion binding]; other site"
+                     /db_xref="CDD:238011"
+     misc_feature    1169..1270
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Calcium-binding EGF-like domain; Region: EGF_CA;
+                     smart00179"
+                     /db_xref="CDD:214542"
+     misc_feature    order(1169..1171,1178..1180,1226..1228)
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Ca2+ binding site [ion binding]; other site"
+                     /db_xref="CDD:238011"
+     misc_feature    order(1298..1300,1307..1309,1352..1354)
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Ca2+ binding site [ion binding]; other site"
+                     /db_xref="CDD:238011"
+     misc_feature    1364..1435
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Complement Clr-like EGF-like; Region: cEGF;
+                     pfam12662"
+                     /db_xref="CDD:432704"
+     misc_feature    1481..1555
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Complement Clr-like EGF-like; Region: cEGF;
+                     pfam12662"
+                     /db_xref="CDD:432704"
+     misc_feature    1544..1636
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Calcium-binding EGF-like domain, present in a large
+                     number of membrane-bound and extracellular (mostly animal)
+                     proteins. Many of these proteins require calcium for their
+                     biological function and calcium-binding sites have been
+                     found to be located at the...; Region: EGF_CA; cl21504"
+                     /db_xref="CDD:451279"
+     misc_feature    1613..1687
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Complement Clr-like EGF-like; Region: cEGF;
+                     pfam12662"
+                     /db_xref="CDD:432704"
+     misc_feature    1676..1780
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="Calcium-binding EGF domain; Region: EGF_CA;
+                     pfam07645"
+                     /db_xref="CDD:429571"
+     exon            183..288
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            289..424
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            425..587
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            588..647
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            648..749
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            750..887
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            888..1025
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            1026..1169
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            1170..1298
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            1299..1424
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            1425..1544
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            1545..1676
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            1677..1800
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            1801..2251
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /inference="alignment:Splign:2.1.0"
+     regulatory      2220..2225
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="hexamer: AATAAA"
+     polyA_site      2251
+                     /gene="FBLN1"
+                     /gene_synonym="FBLN; FIBL1"
+                     /note="major polyA site"
+ORIGIN
+        1 gttggctgcc gaggctcggc cggagcgtgg agcccgcgcc gctgccccag gaccgcgccc
+       61 gcgcctttgt ccgccgccgc ccaccgcccg tcgcccgccg cccatggagc gcgccgcgcc
+      121 gtcgcgccgg gtcccgcttc cgctgctgct gctcggcggc cttgcgctgc tggcggccgg
+      181 agtggacgcg gatgtcctcc tggaggcctg ctgtgcggac ggacaccgga tggccactca
+      241 tcagaaggac tgctcgctgc catatgctac ggaatccaaa gaatgcagga tggtgcagga
+      301 gcagtgctgc cacagccagc tggaggagct gcactgtgcc acgggcatca gcctggccaa
+      361 cgagcaggac cgctgtgcca cgccccacgg tgacaacgcc agcctggagg ccacatttgt
+      421 gaagaggtgc tgccattgct gtctgctggg gagggcggcc caggcccagg gccagagctg
+      481 cgagtacagc ctcatggttg gctaccagtg tggacaggtc ttccaggcat gctgtgtcaa
+      541 gagccaggag accggagatt tggatgtcgg gggcctccaa gaaacggata agatcattga
+      601 ggttgaggag gaacaagagg acccatatct gaatgaccgc tgccgaggag gcgggccctg
+      661 caagcagcag tgccgagaca cgggtgacga ggtggtctgc tcctgcttcg tgggctacca
+      721 gctgctgtct gatggtgtct cctgtgaaga tgtcaatgaa tgcatcacgg gcagccacag
+      781 ctgccggctt ggagaatcct gcatcaacac agtgggctct ttccgctgcc agcgggacag
+      841 cagctgcggg actggctatg agctcacaga ggacaatagc tgcaaagata ttgacgagtg
+      901 tgagagtggt attcataact gcctccccga ttttatctgt cagaatactc tgggatcctt
+      961 ccgctgccga cccaagctac agtgcaagag tggctttata caagatgctc taggcaactg
+     1021 tattgatatc aatgagtgtt tgagtatcag tgccccgtgc cctatcgggc atacatgcat
+     1081 caacacagag ggctcctaca cgtgccagaa gaacgtgccc aactgtggcc gtggctacca
+     1141 tctcaacgag gagggaacgc gctgtgttga tgtggacgag tgcgcgccac ctgctgagcc
+     1201 ctgtgggaag ggacatcgct gcgtgaactc tcccggcagt ttccgctgcg aatgcaagac
+     1261 gggttactat tttgacggca tcagcaggat gtgtgtcgat gtcaacgagt gccagcgcta
+     1321 ccccgggcgc ctgtgtggcc acaagtgcga gaacacgctg ggctcctacc tctgcagctg
+     1381 ttccgtgggc ttccggctct ctgtggatgg caggtcatgt gaagacatca atgagtgcag
+     1441 cagcagcccc tgtagccagg agtgtgccaa cgtctacggc tcctaccagt gttactgccg
+     1501 gcgaggctac cagctcagcg atgtggatgg agtcacctgt gaagacatcg acgagtgcgc
+     1561 cctgcccacc gggggccaca tctgctccta ccgctgcatc aacatccctg gaagcttcca
+     1621 gtgcagctgc ccctcgtctg gctacaggct ggcccccaat ggccgcaact gccaagacat
+     1681 tgatgagtgt gtgactggca tccacaactg ctccatcaac gagacctgct tcaacatcca
+     1741 gggcggcttc cgctgcctgg ccttcgagtg ccctgagaac taccgccgct ccgcagccac
+     1801 ccgctgtgag cgcttgcctt gccatgagaa tcgggagtgc tccaagctgc ctctgagaat
+     1861 aacctactac cacctctctt tccccaccaa catccaagcg cccgcggtgg ttttccgcat
+     1921 gggcccctcc agtgctgtcc ccggggacag catgcagctg gccatcaccg gcggcaatga
+     1981 ggagggcttt ttcaccaccc ggaaggtgag cccccacagt ggggtggtgg ccctcaccaa
+     2041 gcctgtcccc gagcccaggg acttgctcct gaccgtcaag atggatctct ctcgccacgg
+     2101 caccgtcagc tcctttgtgg ccaagctttt catctttgtg tctgcagagc tctgagcact
+     2161 cgcttcgcgt cgcggggtct ccctcctgtt gctttcctaa ccctgccctc cggggcgtta
+     2221 ataaagtctt agcaagcgtc ccacacagtg a
+//

@@ -10,8 +10,6 @@ ftp://ftp.ncbi.nih.gov/gene/DATA/gene2refseq.gz
 import io
 import sys
 
-from csv import DictReader
-
 from uta.formats.geneaccessions import GeneAccessions, GeneAccessionsWriter
 from uta.formats.ncbitsv import NCBITSVReader
 
@@ -38,16 +36,16 @@ if __name__ == "__main__":
         if rec["rna_nucleotide_accession.version"] == "-" and rec["protein_accession.version"] == "-":
             continue
 
-        ga = GeneAccessions(hgnc=rec["symbol"],
+        ga = GeneAccessions(gene_symbol=rec["symbol"],
                             tx_ac=rec["rna_nucleotide_accession.version"],
                             gene_id=rec["geneid"],
                             pro_ac=rec["protein_accession.version"],
                             origin="NCBI",
                             )
 
-        key = (ga.hgnc, ga.tx_ac, ga.gene_id, ga.pro_ac)
+        key = (ga.gene_symbol, ga.tx_ac, ga.gene_id, ga.pro_ac)
         if key in seen:
-           continue 
+            continue
 
         seen.add(key)
         gaw.write(ga)

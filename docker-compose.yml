@@ -1,0 +1,62 @@
+# docker compose file for the UTA update procedure
+
+version: '3'
+
+services:
+  seqrepo-pull:
+    user: root
+    image: uta-update
+    command: sbin/seqrepo-pull
+    volumes:
+      - seqrepo-volume:/biocommons/dl.biocommons.org/seqrepo
+    network_mode: host
+  ncbi-download:
+    image: uta-update
+    command: sbin/ncbi-download etc/ncbi-files.txt /ncbi-dir
+    volumes:
+      - .:/opt/repos/uta
+      - ${UTA_ETL_NCBI_DIR}:/ncbi-dir
+    working_dir: /opt/repos/uta
+    network_mode: host
+  uta-extract:
+    image: uta-update
+    command: sbin/uta-extract /ncbi-dir /uta-extract/work /uta-extract/logs
+    volumes:
+      - ${UTA_ETL_NCBI_DIR}:/ncbi-dir
+      - ${UTA_ETL_WORK_DIR}:/uta-extract/work
+      - ${UTA_ETL_LOG_DIR}:/uta-extract/logs
+    working_dir: /opt/repos/uta
+    network_mode: host
+  seqrepo-load:
+    image: uta-update
+    command: sbin/seqrepo-load /seqrepo-load/work /seqrepo-load/logs
+    volumes:
+      - seqrepo-volume:/biocommons/dl.biocommons.org/seqrepo
+      - ${UTA_ETL_WORK_DIR}:/seqrepo-load/work
+      - ${UTA_ETL_LOG_DIR}:/seqrepo-load/logs
+    working_dir: /opt/repos/uta
+    network_mode: host
+  uta:
+    container_name: uta
+    image: biocommons/uta:${UTA_ETL_OLD_UTA_IMAGE_TAG}
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test: psql -h localhost -U anonymous -d uta -c "select * from ${UTA_ETL_OLD_UTA_IMAGE_TAG}.meta"
+      interval: 10s
+      retries: 80
+    network_mode: host
+  uta-load:
+    image: uta-update
+    command: sbin/uta-load ${UTA_ETL_OLD_UTA_VERSION} ${UTA_ETL_NEW_UTA_VERSION} /ncbi-dir /uta-load/work /uta-load/logs
+    depends_on:
+      uta:
+        condition: service_healthy
+    volumes:
+      - seqrepo-volume:/biocommons/dl.biocommons.org/seqrepo
+      - ${UTA_ETL_WORK_DIR}:/uta-load/work
+      - ${UTA_ETL_LOG_DIR}:/uta-load/logs
+    network_mode: host
+
+volumes:
+  seqrepo-volume:
