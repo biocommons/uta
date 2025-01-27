@@ -4,7 +4,7 @@
    this version must already exist at dl.biocommons.org.
 
 ```
-UTA_VERSION=uta_20210129b
+UTA_VERSION=uta_20240523b
 ```
 
 
@@ -17,7 +17,11 @@ docker build -f uta.dockerfile --build-arg uta_version=$UTA_VERSION --rm=true -t
 3. Try to build a running container with the image
 ```
 docker run -e POSTGRES_PASSWORD=password -v /tmp:/tmp -v uta_vol:/var/lib/postgresql/data --name $UTA_VERSION --network=host biocommons/uta:$UTA_VERSION
+
 ```
+
+Login with something like `psql -h localhost -d uta -U anonymous`
+
 
 (`-v /tmp:/tmp` ensures that you'll reuse prior data downloads, if available)
 

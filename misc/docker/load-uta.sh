@@ -1,10 +1,9 @@
 #!/bin/bash -eux
 # This file creates a password-less read-only instance of UTA
-# (https://bitbucket.org/biocommons/uta/) based on the postgres docker
+# (https://github.com/biocommons/uta/) based on the postgres docker
 # image.
 
 # TODO:
-# * consider how/whether to cache downloaded dump
 # * fetch sha1 and check before loading
 
 # Overwrite pg_hba.conf, including whatever edits might have been made
@@ -22,6 +21,7 @@ EOF
 
 # Create required users
 createuser --username "$POSTGRES_USER" uta_admin
+createuser --username "$POSTGRES_USER" uta_public
 createuser --username "$POSTGRES_USER" anonymous
 createuser --username "$POSTGRES_USER" PUBLIC
 createdb   --username "$POSTGRES_USER" -O uta_admin uta
@@ -40,19 +40,13 @@ if ! [ -e "${UTA_PGD_FN}" ]; then
     mv "${UTA_PGD_FN}.tmp" "${UTA_PGD_FN}"
 fi
 
-# Build post-processing script
-cat <<EOF >/tmp/$UTA_VERSION.psql
+gzip -cdq < "${UTA_PGD_FN}" \
+    | psql -1e -U uta_admin -d uta -v ON_ERROR_STOP=1
 
+
+psql -1e -U uta_admin -d uta -v ON_ERROR_STOP=1 <<EOF
+ALTER DATABASE :DBNAME SET search_path=$UTA_VERSION
 EOF
-
-gzip -cdq < "${UTA_PGD_FN}" \
-    | psql -1e -U uta_admin -d uta -v ON_ERROR_STOP=1
-
-gzip -cdq < "${UTA_PGD_FN}" \
-    | perl -n \
-	   -e 'm/CREATE SCHEMA (uta_[\d\w]+)/ && print("ALTER DATABASE :DBNAME SET search_path=$1;\n");' \
-	   -e 'print if s/CREATE MATERIALIZED VIEW (.\S+) AS/REFRESH MATERIALIZED VIEW $1;/' \
-    | psql -1e -U uta_admin -d uta -v ON_ERROR_STOP=1
 
 
 cat <<EOF
