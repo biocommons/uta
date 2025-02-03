@@ -129,11 +129,14 @@ if __name__ == "__main__":
         "seq_anno",
         "transcript",
     ]
-
+    
     ns1, ns2 = sys.argv[1:3]
     con = psycopg2.connect(uta_uri)
 
-    print(f"# UTA comparison: url={uta_uri}, s1={ns1}, s2={ns2}\n\n")
+    print(f"""# UTA comparison
+          
+`url={uta_uri}`, `ns1={ns1}`, `ns2={ns2}`
+""")
 
     # Content summary
     field_names = "table t n1 n2 nu1 nc nu2 cols".split()
@@ -155,12 +158,33 @@ if __name__ == "__main__":
     print("""## Content summary
 
 - `t`: time taken (seconds)
-- `n1`, `n2`: total number of rows in schemas s1 and s2
-- `nu1`, `nu2`, `nc`: number of rows unique to s1, unique to s2, and common to both
+- `n1`, `n2`: total number of rows in namespaces ns1 and ns2
+- `nu1`, `nu2`, `nc`: number of rows unique to ns1, unique to ns2, and common to both
 - `cols`: cols used for comparison
 
 """)
     print(pt)
 
+
+    # Updated transcript alignments
+    sql = f"select * from {ns2}.exon_set where exon_set_id in (select exon_set_id from (select * from {ns1}.exon_set except select * from {ns2}.exon_set)) order by tx_ac, alt_ac"
+    cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute(sql)
+    rows = list(cur)
+    pt = PrettyTable(field_names=rows[0].keys())
+    pt.set_style(MARKDOWN)
+    pt.add_rows(rows)
+    print(f"""## Updated transcript alignments
+
+The following transcript alignments were updated in {ns2}:
+
+""")
+    print(pt)
+
     # Schema diff
-    print("## Schema diff\n\n```\n" + schema_diff(uta_uri, ns1, ns2) + "\n```\n")
+    print(f"""## Schema diff
+          
+Differences between {ns1} and {ns2}
+""")
+    print("```\n" + schema_diff(uta_uri, ns1, ns2) + "```\n")
+
