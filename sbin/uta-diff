@@ -2,22 +2,81 @@
 """summarize differences between two version of UTA"""
 
 import collections
+import difflib
 import logging
+import re
 import sys
+import subprocess
 import time
 
-import prettytable
+from prettytable import PrettyTable, MARKDOWN
 import psycopg2
 import psycopg2.extras
 
-cmp_cols = collections.defaultdict(lambda: ['*'])
-cmp_cols.update({
-    "associated_accessions": "tx_ac pro_ac origin".split(),
-    "exon_aln": "exon_aln_id tx_exon_id alt_exon_id cigar added".split(),
-    "gene": "gene_id".split(),
-    "seq_anno": "seq_anno_id seq_id origin_id ac added".split(),
-    "transcript": "ac".split(),
-    })
+cmp_cols = collections.defaultdict(lambda: ["*"])
+cmp_cols.update(
+    {
+        "associated_accessions": "tx_ac pro_ac origin".split(),
+        "exon_aln": "exon_aln_id tx_exon_id alt_exon_id cigar added".split(),
+        "gene": "gene_id".split(),
+        "seq_anno": "seq_anno_id seq_id origin_id ac added".split(),
+        "transcript": "ac".split(),
+    }
+)
+
+
+def schema_diff(uri, ns1, ns2):
+    """geneate a schema diff"""
+
+    def get_schema(uri: str, namespace: str) -> str:
+        """get schema from pg_dump and redact namespace"""
+        COMMANDS_BEFORE_NAMESPACE = (
+            r"ALTER MATERIALIZED VIEW\s+",
+            r"ALTER SCHEMA\s+",
+            r"ALTER SEQUENCE\s+",
+            r"ALTER TABLE ONLY\s+",
+            r"ALTER TABLE\s+",
+            r"ALTER VIEW\s+",
+            r"COMMENT ON TABLE\s+",
+            r"COMMENT ON VIEW\s+",
+            r"CREATE MATERIALIZED VIEW\s+",
+            r"CREATE SCHEMA\s+",
+            r"CREATE SEQUENCE\s+",
+            r"CREATE TABLE\s+",
+            r"CREATE VIEW\s+",
+            r"FROM\s+",
+            r"GRANT SELECT ON TABLE\s+",
+            r"GRANT USAGE ON SCHEMA\s+",
+            r"JOIN\s+",
+            r"ON\s+",
+            r"OWNED BY\s+",
+            r"REFERENCES\s+",
+            r"SCHEMA\s+",
+            r"Name:\s+",
+            r"Schema:\s+",
+            r"SET DEFAULT nextval\('",
+            r"FROM \(+",
+        )
+        regexp = re.compile(
+            r"(" + r"|".join(COMMANDS_BEFORE_NAMESPACE) + r")" + namespace
+        )
+        cmd = ("pg_dump", uri, "-s", "-n", namespace)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        schema = regexp.sub(r"\1 NAMESPACE", result.stdout)
+        return schema
+
+    schema1 = get_schema(uri, ns1)
+    schema2 = get_schema(uri, ns2)
+    diff = "".join(
+        difflib.unified_diff(
+            schema1.splitlines(keepends=True),
+            schema2.splitlines(keepends=True),
+            fromfile=ns1,
+            tofile=ns2,
+            n=0,
+        )
+    )
+    return diff
 
 
 def cmp1(con, tbl, s1, s2):
@@ -28,9 +87,21 @@ def cmp1(con, tbl, s1, s2):
 
     n1_r = "{s}.{tbl}".format(s=s1, tbl=tbl)
     n2_r = "{s}.{tbl}".format(s=s2, tbl=tbl)
-    u1_r = "(select {cols} from {a}.{tbl} except    select {cols} from {b}.{tbl})".format(a=s1, b=s2, tbl=tbl, cols=",".join(cmp_cols[tbl]))
-    u2_r = "(select {cols} from {a}.{tbl} except    select {cols} from {b}.{tbl})".format(a=s2, b=s1, tbl=tbl, cols=",".join(cmp_cols[tbl]))
-    c_r  = "(select {cols} from {a}.{tbl} intersect select {cols} from {b}.{tbl})".format(a=s1, b=s2, tbl=tbl, cols=",".join(cmp_cols[tbl]))
+    u1_r = (
+        "(select {cols} from {a}.{tbl} except    select {cols} from {b}.{tbl})".format(
+            a=s1, b=s2, tbl=tbl, cols=",".join(cmp_cols[tbl])
+        )
+    )
+    u2_r = (
+        "(select {cols} from {a}.{tbl} except    select {cols} from {b}.{tbl})".format(
+            a=s2, b=s1, tbl=tbl, cols=",".join(cmp_cols[tbl])
+        )
+    )
+    c_r = (
+        "(select {cols} from {a}.{tbl} intersect select {cols} from {b}.{tbl})".format(
+            a=s1, b=s2, tbl=tbl, cols=",".join(cmp_cols[tbl])
+        )
+    )
 
     return (
         getcount(n1_r),
@@ -38,37 +109,58 @@ def cmp1(con, tbl, s1, s2):
         getcount(u1_r),
         getcount(c_r),
         getcount(u2_r),
-        )
+    )
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger()
 
-    url = "postgresql://uta_admin@localhost/uta"
-    tables = ["associated_accessions", "exon", "exon_aln", "exon_set",
-              "gene", "meta", "origin", "seq", "seq_anno", "transcript",]
+    uta_uri = "postgresql://uta_admin@localhost/uta_dev"
+    tables = [
+        "associated_accessions",
+        "exon",
+        "exon_aln",
+        "exon_set",
+        "gene",
+        "meta",
+        "origin",
+        "seq",
+        "seq_anno",
+        "transcript",
+    ]
 
-    s1, s2 = sys.argv[1:3]
-    con = psycopg2.connect(url)
+    ns1, ns2 = sys.argv[1:3]
+    con = psycopg2.connect(uta_uri)
 
-    pt = prettytable.PrettyTable(field_names="table t n1 n2 nu1 nc nu2 cols".split())
-    pt.aligns = "lrrrrrl".split()
+    print(f"# UTA comparison: url={uta_uri}, s1={ns1}, s2={ns2}\n\n")
 
+    # Content summary
+    field_names = "table t n1 n2 nu1 nc nu2 cols".split()
+    data = []
     for tbl in tables:
         t0 = time.time()
-        logger.debug("{}: Fetching data".format(tbl))
-        n1, n2, nu1, c, nu2 = cmp1(con, tbl, s1, s2)
+        logger.debug(f"{tbl}: Fetching data")
+        n1, n2, nu1, c, nu2 = cmp1(con, tbl, ns1, ns2)
         t1 = time.time()
-        td = t1-t0
-        pt.add_row([tbl, "{:.1f}".format(td), n1, n2, nu1, c, nu2, ",".join(cmp_cols[tbl])])
-        logger.info("{}: Fetching data in {}s".format(tbl, td))
+        td = t1 - t0
+        data.append([tbl, "{:.1f}".format(td), n1, n2, nu1, c, nu2, ",".join(cmp_cols[tbl])])
+        logger.info(f"{tbl}: Fetched data in {td}s")
 
-    print("""UTA comparison: url={url}, s1={s1}, s2={s2}
-t: time taken (seconds)
-n1, n2: total number of rows in schemas s1 and s2
-nu1, nu2, nc: number of rows unique to s1, unique to s2, and common to both
-cols: cols used for comparison
-""".format(url=url, s1=s1, s2=s2))
+    pt = PrettyTable(field_names=field_names)
+    pt.set_style(MARKDOWN)
+    pt.aligns = "lrrrrrl".split()
+    pt.add_rows(data)
+
+    print("""## Content summary
+
+- `t`: time taken (seconds)
+- `n1`, `n2`: total number of rows in schemas s1 and s2
+- `nu1`, `nu2`, `nc`: number of rows unique to s1, unique to s2, and common to both
+- `cols`: cols used for comparison
+
+""")
     print(pt)
-    
+
+    # Schema diff
+    print("## Schema diff\n\n```\n" + schema_diff(uta_uri, ns1, ns2) + "\n```\n")
