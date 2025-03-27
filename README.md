@@ -172,7 +172,7 @@ you will not need to install PostgreSQL or any of its dependencies.
         $ docker run \
            -d \
            -e POSTGRES_PASSWORD=some-password-that-you-make-up \
-           -v /tmp:/tmp \
+           -v uta-dl-cache:/tmp \
            -v uta_vol:/var/lib/postgresql/data \
            --name $uta_v \
            --network=host \
@@ -180,6 +180,10 @@ you will not need to install PostgreSQL or any of its dependencies.
 
     The first time you run this image, it will initialize a PostgreSQL
     database cluster, then download a database dump from biocommons and install it.
+
+    The uta container stages the postgres dump archive into the `/tmp` directory.
+    Putting that in another volume called `uta-dl-cache` is helpful because it lets
+    you re-build the database without having to re-download the postgres dump archive.
 
     `-d` starts the container in daemon (background) mode. To see
     progress:
@@ -351,7 +355,7 @@ docker compose run uta-load
 ```
 
 #### 2C. Manual splign transcripts
-To load splign-manual transcripts, the workflow expects an input txdata.yaml file and splign alignments. Define this path 
+To load splign-manual transcripts, the workflow expects an input txdata.yaml file and splign alignments. Define this path
 using the environment variable $UTA_SPLIGN_MANUAL_DIR. These file paths should exist:
 - `$UTA_SPLIGN_MANUAL_DIR/splign-manual/txdata.yaml`
 - `$UTA_SPLIGN_MANUAL_DIR/splign-manual/alignments/*.splign`
