@@ -5,9 +5,9 @@
 import argparse
 import gzip
 import logging
+import importlib.resources
 import logging.config
 import os
-import pkg_resources
 import re
 import sys
 
@@ -70,8 +70,7 @@ def process1(opts, siw, fn):
 
 
 if __name__ == "__main__":
-    logging_conf_fn = pkg_resources.resource_filename(
-        "uta", "etc/logging.conf")
+    logging_conf_fn = str(importlib.resources.files("uta").joinpath("etc/logging.conf"))
     logging.config.fileConfig(logging_conf_fn)
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
