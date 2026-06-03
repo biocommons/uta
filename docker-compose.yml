@@ -41,6 +41,11 @@ services:
     image: biocommons/uta:${UTA_ETL_OLD_UTA_IMAGE_TAG}
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - type: bind
+        source: ./output/artifacts/${UTA_ETL_OLD_UTA_IMAGE_TAG}.pgd.gz
+        target: /tmp/${UTA_ETL_OLD_UTA_IMAGE_TAG}.pgd.gz
+        read_only: true
     healthcheck:
       test: psql -h localhost -U anonymous -d uta -c "select * from ${UTA_ETL_OLD_UTA_IMAGE_TAG}.meta"
       interval: 10s
