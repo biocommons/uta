@@ -17,13 +17,25 @@ else
     echo "Downloading files to $DOWNLOAD_DIR"
 fi
 
+# Top-level modules available on NCBI's rsync daemon (ftp.ncbi.nlm.nih.gov::)
+RSYNC_MODULES="1000genomes bigwig bioproject biosample blast cgap cn3d comparative-genome-viewer dbgap entrez epigenomics fa2htgs genbank gene hapmap hmm mmdb ncbi-asn1 osiris pathogen pubchem pubmed rapt ReferenceSamples refseq repository sequin sky-cgh snp sra tech-reports toolbox tpa tracedb variation"
+
 grep -v -e '^#' -e '^$' "$FILE_PATH_CONFIG" | while read -r DOWNLOAD_PATH; do
     # each top-level directory in NCBI is an rsync module.
     # bash parameter expansion removes all content after first slash.
     DOWNLOAD_MODULE="${DOWNLOAD_PATH%%/*}"
-    DOWNLOAD_SRC="ftp.ncbi.nlm.nih.gov::$DOWNLOAD_PATH"
-    DOWNLOAD_DST="$DOWNLOAD_DIR/$DOWNLOAD_MODULE"
-    mkdir -p $DOWNLOAD_DST
-    echo "Downloading $DOWNLOAD_SRC to $DOWNLOAD_DST"
-    rsync --no-motd -DHPRprtv "$DOWNLOAD_SRC" "$DOWNLOAD_DST"
+
+    if echo "$RSYNC_MODULES" | grep -qw "$DOWNLOAD_MODULE"; then
+        DOWNLOAD_SRC="ftp.ncbi.nlm.nih.gov::$DOWNLOAD_PATH"
+        DOWNLOAD_DST="$DOWNLOAD_DIR/$DOWNLOAD_MODULE"
+        mkdir -p "$DOWNLOAD_DST"
+        echo "Downloading $DOWNLOAD_SRC to $DOWNLOAD_DST"
+        rsync --no-motd -DHPRprtv "$DOWNLOAD_SRC" "$DOWNLOAD_DST"
+    else
+        DOWNLOAD_SRC="https://ftp.ncbi.nlm.nih.gov/$DOWNLOAD_PATH"
+        DOWNLOAD_DST="$DOWNLOAD_DIR/$DOWNLOAD_PATH"
+        mkdir -p "$(dirname "$DOWNLOAD_DST")"
+        echo "Downloading $DOWNLOAD_SRC to $DOWNLOAD_DST"
+        curl -fSL --progress-bar -o "$DOWNLOAD_DST" "$DOWNLOAD_SRC"
+    fi
 done
