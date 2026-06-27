@@ -25,7 +25,6 @@ NM_138933.2 NC_000010.10    splign  -1  52645340,52645435;52...
 from __future__ import division, unicode_literals
 
 import argparse
-from collections import Counter
 import gzip
 import importlib_resources
 import io
@@ -35,7 +34,6 @@ import re
 import sys
 
 import Bio.SeqIO
-from bioutils.digests import seq_md5
 
 from uta.formats.txinfo import TxInfo, TxInfoWriter
 from uta.parsers.seqrecord import SeqRecordFacade, SeqRecordFeatureError
@@ -56,20 +54,6 @@ def parse_args(argv):
                     default="ncbi-gbff")
     opts = ap.parse_args(argv)
     return opts
-
-
-def gbff_filter(it):
-    """pre-filter genbank file stream for records that match a specific LOCUS pattern"""
-    delim = "//"
-    emit = False
-    locus_re = re.compile(r'LOCUS\s+N[MR]')
-    for line in it:
-        if line.startswith("LOCUS") and locus_re.match(line):
-            emit = True
-        if emit:
-            yield line
-            if line.startswith(delim):
-                emit = False
 
 
 def gbff_block_reader(it):
@@ -99,18 +83,11 @@ if __name__ == "__main__":
     tiw = TxInfoWriter(sys.stdout)
 
     total_genes = set()
-    skipped_ids = set()
-    all_prefixes = Counter()
     for fn in opts.GBFF_FILES:
         flo = gzip.open(fn, "rt")
         logger.info("opened " + fn)
         genes = set()
-        prefixes = Counter()
-        for srf in (SeqRecordFacade(r) for r in Bio.SeqIO.parse(flo, "gb")):
-            prefixes.update([srf.id[:2]])
-            if srf.id.partition("_")[0] not in ["NM", "NR"]:
-                skipped_ids.add(srf.id)
-                continue
+        for srf in gbff_block_reader(flo):
             ti = TxInfo(
                 ac=srf.id,
                 origin=opts.origin,
@@ -123,8 +100,7 @@ if __name__ == "__main__":
             )
             tiw.write(ti)
             genes.add(srf.gene_symbol)
-        logger.info("{ng} genes in {fn} ({c})".format(ng=len(genes), fn=fn, c=prefixes))
+        logger.info("{ng} genes in {fn}".format(ng=len(genes), fn=fn))
         total_genes ^= genes
-        all_prefixes += prefixes
-    logger.info("{ng} genes in {nf} files ({c})".format(
-        ng=len(total_genes), nf=len(opts.GBFF_FILES), c=all_prefixes))
+    logger.info("{ng} genes in {nf} files".format(
+        ng=len(total_genes), nf=len(opts.GBFF_FILES)))

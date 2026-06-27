@@ -1,7 +1,7 @@
-import pkg_resources
 import logging
 import os
 import warnings
+from importlib.metadata import version, PackageNotFoundError
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -11,8 +11,8 @@ from uta import models
 
 
 try:
-    __version__ = pkg_resources.get_distribution(__package__).version
-except pkg_resources.DistributionNotFound as e:
+    __version__ = version(__package__)
+except PackageNotFoundError:
     warnings.warn(
         "can't get __version__ because %s package isn't installed" % __package__, Warning)
     __version__ = None
