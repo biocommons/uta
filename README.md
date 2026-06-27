@@ -28,6 +28,19 @@ PostgreSQL access. (A [REST interface](https://github.com/biocommons/uta/issues/
 Users can access a public instance of UTA or build their own instance of
 the database.
 
+## Documentation
+
+This README covers accessing and installing UTA. Additional documentation lives
+in the [`docs/`](docs/) directory:
+
+- [Developer Setup](docs/development.md) — virtual environment, building the
+  Docker image, and running the tests.
+- [UTA update procedure](docs/updating-uta.md) — maintainer runbook for building
+  a new UTA/SeqRepo release (NCBI download, extract/transform, load, and SeqRepo
+  export).
+- [Migrations](docs/migrations.md) — managing database schema migrations with
+  alembic.
+
 ## Accessing the Public UTA Instance
 
 Invitae provides a public instance of UTA. The connection parameters
@@ -269,133 +282,3 @@ the installation environment.*
 
         $ uta_v=uta_20241220
         $ gzip -cdq $uta_v.pgd.gz | psql -U uta_admin -1 -v ON_ERROR_STOP=1 -d uta -Eae
-
-## Developer Setup
-
-### Virtual Environment
-To develop UTA, follow these steps.
-
-1.  Set up a virtual environment using your preferred method.
-    For example:
-
-        $ python3 -m venv uta-venv
-        $ source uta-venv/bin/activate
-
-2.  Clone UTA and install:
-
-        $ git clone git@github.com:biocommons/uta.git
-        $ cd uta
-        $ pip install -e .[test]
-
-3.  Restore a database or load a new one using the instructions [above](#installing-from-database-dumps).
-
-4.  To run the tests:
-
-        $ python3 -m unittest
-
-### Docker
-
-1. Clone UTA and build docker image:
-
-        $ git clone git@github.com:biocommons/uta.git
-        $ cd uta
-        $ docker build -t uta .
-
-2. Restore a database or load a new one using the instructions [above](#installing-from-database-dumps).
-
-3. Run container and tests
-
-        $ docker run -it --rm uta bash
-
-4. Testing
-
-        $ docker build --target uta-test -t uta-test .
-        $ docker run --rm uta-test python -m unittest
-
-## UTA update procedure
-
-Requires docker.
-
-### 0. Setup
-
-Make directories:
-```
-mkdir -p $(pwd)/ncbi-data
-mkdir -p $(pwd)/output/artifacts
-mkdir -p $(pwd)/output/logs
-```
-
-Set variables:
-```
-export UTA_ETL_OLD_UTA_IMAGE_TAG=uta_20240512
-export UTA_ETL_OLD_UTA_VERSION=UTA_ETL_OLD_UTA_IMAGE_TAG
-export UTA_ETL_NEW_UTA_VERSION=uta_20241220
-export UTA_ETL_NCBI_DIR=./ncbi-data
-export UTA_ETL_WORK_DIR=./output/artifacts
-export UTA_ETL_LOG_DIR=./output/logs
-```
-
-Build the UTA image:
-```
-docker build --target uta -t uta-update .
-```
-
-### 1. Download SeqRepo data
-```
-docker compose run seqrepo-pull
-```
-
-Note: pulling data takes ~30 minutes and requires ~13 GB.
-Note: a container called seqrepo will be left behind.
-
-### 2. Extract and transform data from NCBI
-
-Download files from NCBI, extract into intermediate files, and load into UTA and SeqRepo.
-
-See 2A for nuclear transcripts and 2B for mitochondrial transcripts.
-
-#### 2A. Nuclear transcripts
-```
-docker compose run ncbi-download
-docker compose run uta-extract
-docker compose run seqrepo-load
-docker compose run uta-load
-```
-
-#### 2B. Mitochondrial transcripts
-```
-docker compose -f docker-compose.yml -f misc/mito-transcripts/docker-compose-mito-extract.yml run mito-extract
-docker compose run seqrepo-load
-docker compose run uta-load
-```
-
-#### 2C. Manual splign transcripts
-To load splign-manual transcripts, the workflow expects an input txdata.yaml file and splign alignments. Define this path
-using the environment variable $UTA_SPLIGN_MANUAL_DIR. These file paths should exist:
-- `$UTA_SPLIGN_MANUAL_DIR/splign-manual/txdata.yaml`
-- `$UTA_SPLIGN_MANUAL_DIR/splign-manual/alignments/*.splign`
-
-[txdata.yaml](loading/data/splign-manual/txdata.yaml) defines the transcripts and their metadata. The [alignments dir](loading/data/splign-manual/alignments) contains the splign alignments.
-To run the workflow:
-```
-export UTA_SPLIGN_MANUAL_DIR=$(pwd)/loading/data/splign-manual/
-docker compose run splign-manual
-```
-
-UTA has updated and the database has been dumped into a pgd file in `UTA_ETL_WORK_DIR`. SeqRepo has been updated in place.
-
-
-## Migrations
-UTA uses alembic to manage database migrations. To auto-generate a migration:
-```
-alembic -c etc/alembic.ini revision --autogenerate -m "description of the migration"
-```
-This will create a migration script in the alembic/versions directory.
-Adjust the upgrade and downgrade function definitions. To apply the migration:
-```
-alembic -c etc/alembic.ini upgrade head
-```
-To reverse a migration, use `downgrade` with the number of steps to reverse. For example, to reverse the last:
-```
-alembic -c etc/alembic.ini downgrade -1
-```
